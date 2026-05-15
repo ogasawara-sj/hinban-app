@@ -245,10 +245,11 @@ body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sa
 
 <div class="steps">
   <div class="stab on" id="t1" onclick="go(1)"><span class="sn">1</span>施策設定</div>
-  <div class="stab" id="t2" onclick="go(2)"><span class="sn">2</span>カラー・サイズ</div>
-  <div class="stab" id="t3" onclick="go(3)"><span class="sn">3</span>購入パターン</div>
-  <div class="stab" id="t4" onclick="go(4)"><span class="sn">4</span>価格入力</div>
-  <div class="stab" id="t5" onclick="go(5)"><span class="sn">5</span>確認・登録</div>
+  <div class="stab" id="t2" onclick="go(2)"><span class="sn">2</span>サイズ・カラー</div>
+  <div class="stab" id="t3" onclick="go(3)"><span class="sn">3</span>SKU割り当て</div>
+  <div class="stab" id="t4" onclick="go(4)"><span class="sn">4</span>購入パターン</div>
+  <div class="stab" id="t5" onclick="go(5)"><span class="sn">5</span>価格入力</div>
+  <div class="stab" id="t6" onclick="go(6)"><span class="sn">6</span>確認・登録</div>
 </div>
 
 <!-- S1 -->
@@ -306,6 +307,34 @@ body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sa
 
 <!-- S3 -->
 <div class="panel" id="p3">
+  <div class="card">
+    <div class="card-title">📦 SKU割り当て（カラー × サイズ）</div>
+    <div class="info-box">ℹ️ カラーとサイズの組み合わせごとにSKUコードを入力してください。コードを入力するとマスタから名称を自動取得します。</div>
+    <div id="sku-assign-table"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">🎁 全品番共通の追加SKU（延長保証・特典など）</div>
+    <div class="info-box">ℹ️ カラー・サイズに関わらず全品番に共通で付くSKUを追加してください。</div>
+    <div id="common-sku-list"></div>
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+      <input type="text" id="csku-code" placeholder="SKUコード" oninput="onCskuCodeInput(this.value)"
+        style="width:130px;padding:7px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px">
+      <input type="text" id="csku-name" placeholder="SKU名称（自動入力）"
+        style="flex:1;min-width:160px;padding:7px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px">
+      <input type="number" id="csku-qty" value="1" min="1"
+        style="width:60px;padding:7px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px;text-align:right">
+      <button class="btn btn-p" onclick="addCommonSku()">＋ 追加</button>
+    </div>
+    <div id="csku-confirm" style="display:none;margin-top:6px;font-size:12px;padding:6px 10px;background:var(--blue-lt);border-radius:var(--r);color:var(--blue-dk)"></div>
+  </div>
+  <div class="nav-btns">
+    <button class="btn" onclick="go(2)">← 戻る</button>
+    <button class="btn btn-p" onclick="go(4)">次へ →</button>
+  </div>
+</div>
+
+<!-- S4 -->
+<div class="panel" id="p4">
 
   <!-- 購入パターン設定 -->
   <div class="card">
@@ -317,65 +346,32 @@ body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sa
   </div>
 
   <div class="nav-btns">
-    <button class="btn" onclick="go(2)">← 戻る</button>
-    <button class="btn btn-p" onclick="generate()">🪄 品番を自動生成 →</button>
-  </div>
-</div>
-
-<!-- S4 -->
-<div class="panel" id="p4">
-  <!-- SKU構成設定（STEP4に集約） -->
-  <div class="card" style="border:2px solid var(--blue-bd)">
-    <div class="card-title">📦 SKU構成設定（この品番に含めるSKUを追加してください）</div>
-    <div class="info-box">ℹ️ SKUコードを入力すると名称を自動取得します。追加後「全品番に反映」で一括設定できます。</div>
-    <div style="display:flex;gap:8px;margin-bottom:10px;align-items:flex-start;flex-wrap:wrap">
-      <div style="position:relative;flex:1;min-width:200px">
-        <input type="text" id="sp-search" placeholder="SKUコードまたは名称で検索..."
-          oninput="onSpSearch(this.value)"
-          style="width:100%;padding:7px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px">
-        <div id="sp-dropdown"
-          style="display:none;position:absolute;top:100%;left:0;right:0;z-index:100;border:1px solid var(--bd);border-radius:0 0 var(--r) var(--r);background:#fff;max-height:200px;overflow-y:auto;box-shadow:var(--shadow)"></div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:4px;min-width:180px">
-        <input type="text" id="sp-code" placeholder="SKUコード（直接入力）"
-          oninput="onSpCodeInput(this.value)"
-          style="padding:7px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px;width:100%">
-        <div id="sp-name-confirm" style="display:none;font-size:12px;padding:6px 10px;background:var(--blue-lt);border-radius:var(--r);color:var(--blue-dk)"></div>
-      </div>
-      <input type="text" id="sp-name-manual" placeholder="SKU名称（自動 or 手動入力）"
-        style="flex:1;min-width:160px;padding:7px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px">
-      <input type="number" id="sp-qty" value="1" min="1"
-        style="width:60px;padding:7px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px;text-align:right">
-      <button class="btn btn-p" onclick="addSpSku()">＋ 追加</button>
-    </div>
-    <div id="sp-list"></div>
-    <div id="sp-apply-area" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--bd)">
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button class="btn btn-p" onclick="spApplyAll()" style="font-size:12px">全品番に反映</button>
-        <div id="sp-pt-btns" style="display:flex;gap:6px;flex-wrap:wrap"></div>
-      </div>
-      <div style="font-size:11px;color:var(--gray-400);margin-top:4px">反映後は各品番コードをクリックしてSKU構成を確認できます</div>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-title">💴 価格一括入力</div>
-    <div id="price-matrix"></div>
-  </div>
-  <div class="nav-btns">
     <button class="btn" onclick="go(3)">← 戻る</button>
-    <button class="btn btn-p" onclick="go(5)">確認へ →</button>
+    <button class="btn btn-p" onclick="generate()">🪄 品番を自動生成 →</button>
   </div>
 </div>
 
 <!-- S5 -->
 <div class="panel" id="p5">
+  <div class="card">
+    <div class="card-title">💴 価格一括入力</div>
+    <div id="price-matrix"></div>
+  </div>
+  <div class="nav-btns">
+    <button class="btn" onclick="go(4)">← 戻る</button>
+    <button class="btn btn-p" onclick="go(6)">確認へ →</button>
+  </div>
+</div>
+
+<!-- S6 -->
+<div class="panel" id="p6">
   <div class="g4" id="s-metrics" style="margin-bottom:14px"></div>
   <div class="card">
     <div class="card-title">✅ 登録内容確認</div>
     <div class="tbl-wrap" id="confirm-wrap"></div>
   </div>
   <div class="nav-btns">
-    <button class="btn" onclick="go(4)">← 戻る</button>
+    <button class="btn" onclick="go(5)">← 戻る</button>
     <button class="btn btn-g" onclick="doRegister()">✅ この内容で登録する</button>
   </div>
 </div>
@@ -659,11 +655,14 @@ function showPage(id){
   if(id==='wizard'){renderSpPanel();}
 }
 function go(n){
-  if(n===5)buildConfirm();
-  for(let i=1;i<=5;i++){
-    document.getElementById('p'+i).className='panel'+(i===n?' on':'');
-    document.getElementById('t'+i).className='stab'+(i===n?' on':i<n?' done':'');
+  if(n===6)buildConfirm();
+  for(let i=1;i<=6;i++){
+    const p=document.getElementById('p'+i);
+    const t=document.getElementById('t'+i);
+    if(p) p.className='panel'+(i===n?' on':'');
+    if(t) t.className='stab'+(i===n?' on':i<n?' done':'');
   }
+  if(n===3) renderSkuAssignTable();
 }
 function showMasterTab(id){
   document.querySelectorAll('.msec').forEach(s=>s.classList.remove('on'));
@@ -1167,39 +1166,50 @@ function generateCore(){
 
         const name=makeName(grpName,colorLabel,sizeLabel,pt.label,pt.shipFee,colorAbbr);
 
-        // SKUリスト構築
+        // SKUリスト構築（上書きSKU対応）
         const skuList=[];
 
-        // ①SKUパネルで登録したSKU（最優先・全品番共通）
-        spSkuList.forEach(s=>skuList.push({...s, _fromSp:true}));
+        // ①カラー×サイズ×パターンでSKUを決定
+        cg.forEach(col=>{
+          szg.forEach(sz=>{
+            const baseKey  = col.c+'_'+sz.c;
+            const overKey  = baseKey+'_pt'+pt.id;
+            const baseAssigned = skuAssignMap[baseKey];
+            const overAssigned = skuAssignMap[overKey];
 
-        // ②skuCacheからカラー別メインSKU（SKUパネル未登録の場合のフォールバック）
-        if(!spSkuList.length){
-          if(cg.length && skuCache.length){
-            cg.forEach(col=>{
-              const candidates=skuCache.filter(s=>s.col===col.n||s.n.includes(col.n));
-              candidates.sort((a,b)=>(b.d||'')>(a.d||'')?1:-1);
-              const best=candidates[0];
-              if(best) skuList.push({code:best.c,name:best.n,qty:1,role:'ﾒｲﾝ('+col.n+')'});
-              else skuList.push({code:`[${col.n}SKU未設定]`,name:`${col.n}本体`,qty:1,role:'ﾒｲﾝ'});
-            });
-          } else if(cg.length){
-            cg.forEach(col=>skuList.push({
-              code:`[${col.c}]`,name:`${col.n}本体`,qty:1,role:'ﾒｲﾝ'
-            }));
-          }
-        }
-
-        // ③パターン別SKU（STEP3でチェックされたもの）
-        (pt.patternSkuIds||[]).forEach(si=>{
-          if(patternSkus[si]) skuList.push({...patternSkus[si],role:'ﾊﾟﾀｰﾝ別'});
+            if(overAssigned && overAssigned.code){
+              // パターン別上書きSKUがある場合
+              skuList.push({
+                code:overAssigned.code,
+                name:overAssigned.name||overAssigned.code,
+                qty:1,
+                role:col.n+(sz.c!=='—'?' '+sz.n:'')+'('+pt.label+'専用)'
+              });
+            } else if(baseAssigned && baseAssigned.code){
+              // メインSKU×枚数
+              skuList.push({
+                code:baseAssigned.code,
+                name:baseAssigned.name||baseAssigned.code,
+                qty:pt.sheets||1,
+                role:col.n+(sz.c!=='—'?' '+sz.n:'')
+              });
+            } else {
+              skuList.push({
+                code:`[${col.n}/${sz.n||sz.c}未設定]`,
+                name:`${col.n} ${sz.n||sz.c}`,
+                qty:pt.sheets||1,
+                role:'ﾒｲﾝ'
+              });
+            }
+          });
         });
 
-        // ④施策特典SKU（pt.bonus=trueのパターンに付与）
+        // ②共通SKU（延長保証・特典等）
+        commonSkus.forEach(s=>skuList.push({...s}));
+
+        // ③施策特典SKU
         if(pt.bonus && bonuses.length){
-          bonuses.forEach(b=>skuList.push({
-            code:b.code||'',name:b.name||'特典',qty:1,role:'特典'
-          }));
+          bonuses.forEach(b=>skuList.push({code:b.code||'',name:b.name||'特典',qty:1,role:'特典'}));
         }
 
         generated.push({
@@ -1226,7 +1236,7 @@ function renderPriceMatrix(){
       <input type="number" id="all-price" placeholder="全品番に一括適用（税抜）" style="width:210px;padding:7px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px">
       <button class="btn btn-p" onclick="setAllPrice()">全品番に適用</button>
     </div>
-    ${spSkuList.length?`<div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap;padding:10px 12px;background:var(--green-lt);border-radius:var(--r);border:1px solid var(--green-bd)">
+    ${false?`<div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap;padding:10px 12px;background:var(--green-lt);border-radius:var(--r);border:1px solid var(--green-bd)">
       <span style="font-size:12px;color:var(--green);font-weight:600">📦 SKU登録済み（${sku3List.length}件）</span>
       <button class="btn" onclick="applySkuToAll()" style="font-size:12px;background:var(--green);color:#fff;border-color:var(--green)">全品番に再反映</button>
       ${patterns.map(p=>`<button class="btn" onclick="applySkuToPattern(${p.id})" style="font-size:12px">「${p.label}」のみ再反映</button>`).join('')}
@@ -1417,7 +1427,7 @@ function doRegister(){
   },300);
 }
 function resetWizardForm(){
-  bonuses=[];patternSkus=[];sku3List=[];spSkuList=[];
+  bonuses=[];patternSkus=[];sku3List=[];spSkuList=[];skuAssignMap={};commonSkus=[];
   patterns=[
     {id:1,label:'1枚購入',sheets:1,shipFee:990,bonus:false,colorMode:'single',patternSkuIds:[]},
     {id:2,label:'2枚セット',sheets:2,shipFee:0,bonus:true,colorMode:'set',patternSkuIds:[]},
@@ -2254,7 +2264,7 @@ function spApplyAll(silent){
   });
   if(!silent) alert('✅ 全'+generated.length+'件の品番にSKU'+spSkuList.length+'件を反映しました');
   if(document.getElementById('p4').classList.contains('on')) renderPriceMatrix();
-  if(document.getElementById('p5').classList.contains('on')) buildConfirm();
+  if(document.getElementById('p6').classList.contains('on')) buildConfirm();
 }
 
 function spApplyToPattern(ptId){
@@ -2267,7 +2277,7 @@ function spApplyToPattern(ptId){
   const ptName=patterns.find(p=>p.id===ptId)?.label||'';
   alert('✅ 「'+ptName+'」'+targets.length+'件にSKU反映しました');
   if(document.getElementById('p4').classList.contains('on')) renderPriceMatrix();
-  if(document.getElementById('p5').classList.contains('on')) buildConfirm();
+  if(document.getElementById('p6').classList.contains('on')) buildConfirm();
 }
 
 // ドロップダウンを外クリックで閉じる
@@ -2277,6 +2287,155 @@ document.addEventListener('click',e=>{
     dd.style.display='none';
 });
 
+
+
+// ============================================================
+// STEP3: SKU割り当て表
+// ============================================================
+function renderSkuAssignTable(){
+  const el = document.getElementById('sku-assign-table');
+  if(!el) return;
+  const selC = colors.filter(c=>c.on);
+  const selS = sizes.filter(s=>s.on);
+
+  if(!selC.length && !selS.length){
+    el.innerHTML='<div style="font-size:12px;color:var(--gray-400)">STEP2でカラーとサイズを選択してください</div>';
+    return;
+  }
+
+  // 行：カラー×サイズの組み合わせ
+  const rows = [];
+  if(selC.length && selS.length){
+    selC.forEach(c=>selS.forEach(s=>rows.push({label:`${c.n} / ${s.n}`,ck:c.c,sk:s.c,cn:c.n,sn:s.n})));
+  } else if(selC.length){
+    selC.forEach(c=>rows.push({label:c.n,ck:c.c,sk:'',cn:c.n,sn:''}));
+  } else {
+    selS.forEach(s=>rows.push({label:s.n,ck:'',sk:s.c,cn:'',sn:s.n}));
+  }
+
+  let t = `<div style="font-size:12px;color:var(--gray-600);margin-bottom:8px">
+    💡 <strong>基本：</strong>1枚用SKUを入力すると2枚以上は自動で×数量になります。
+    2枚用に別SKUがある場合のみ上書き入力してください。
+  </div>`;
+  t += '<div class="tbl-wrap"><table style="border-collapse:collapse;font-size:12px;width:100%"><thead><tr>';
+  t += '<th style="padding:8px 12px;background:var(--blue-lt);border:1px solid var(--blue-bd);font-size:11px;color:var(--blue-dk);min-width:120px">カラー / サイズ</th>';
+  // 1枚用列
+  t += '<th style="padding:8px 12px;background:var(--blue-lt);border:1px solid var(--blue-bd);font-size:11px;color:var(--blue-dk);min-width:180px">メインSKU<br><span style="font-weight:400;opacity:.75">（1枚基準・全パターン共通）</span></th>';
+  // パターン別上書き列
+  patterns.filter(p=>p.sheets>1).forEach(p=>{
+    t += `<th style="padding:8px 12px;background:var(--amber-lt);border:1px solid var(--blue-bd);font-size:11px;color:var(--amber);min-width:180px">${p.label}の上書きSKU<br><span style="font-weight:400;opacity:.75">（別SKUある場合のみ）</span></th>`;
+  });
+  t += '</tr></thead><tbody>';
+
+  rows.forEach(row=>{
+    const baseKey = row.ck+'_'+row.sk;
+    const baseAssigned = skuAssignMap[baseKey] || {code:'',name:''};
+    t += `<tr>
+      <td style="padding:8px 12px;background:var(--gray-50);border:1px solid var(--bd);font-weight:600;white-space:nowrap">${row.label}</td>
+      <td style="padding:6px 8px;border:1px solid var(--bd);vertical-align:top">
+        <input type="text" value="${baseAssigned.code}" placeholder="SKUコード"
+          oninput="onSkuAssignInput('${baseKey}',this.value)"
+          id="sa-code-${baseKey}"
+          style="width:100%;padding:4px 7px;border:1px solid var(--bd);border-radius:4px;font-size:12px;font-family:monospace;margin-bottom:2px">
+        <div id="sa-name-${baseKey}" style="font-size:11px;min-height:14px;color:var(--green)">${baseAssigned.name?'✓ '+baseAssigned.name:''}</div>
+      </td>`;
+    // パターン別上書き
+    patterns.filter(p=>p.sheets>1).forEach(p=>{
+      const overKey = baseKey+'_pt'+p.id;
+      const overAssigned = skuAssignMap[overKey] || {code:'',name:''};
+      t += `<td style="padding:6px 8px;border:1px solid var(--bd);vertical-align:top;background:${overAssigned.code?'var(--amber-lt)':'#fff'}">
+        <input type="text" value="${overAssigned.code}" placeholder="空欄=メインSKU×${p.sheets}"
+          oninput="onSkuAssignInput('${overKey}',this.value)"
+          id="sa-code-${overKey}"
+          style="width:100%;padding:4px 7px;border:1px solid var(--bd);border-radius:4px;font-size:12px;font-family:monospace;margin-bottom:2px">
+        <div id="sa-name-${overKey}" style="font-size:11px;min-height:14px;color:var(--amber)">${overAssigned.name?'✓ '+overAssigned.name:''}</div>
+      </td>`;
+    });
+    t += '</tr>';
+  });
+  t += '</tbody></table></div>';
+  el.innerHTML = t;
+  renderCommonSkuList();
+}
+
+function onSkuAssignInput(key, code){
+  code = code.trim();
+  skuAssignMap[key] = skuAssignMap[key] || {code:'', name:''};
+  skuAssignMap[key].code = code;
+  const nameEl = document.getElementById('sa-name-' + key);
+  if(!nameEl) return;
+  if(!code){ nameEl.textContent = ''; return; }
+  // マスタ検索
+  const found = skuCache.find(s => s.c.toUpperCase() === code.toUpperCase());
+  if(found){
+    skuAssignMap[key].name = found.n;
+    nameEl.textContent = '✓ ' + found.n;
+    nameEl.style.color = 'var(--green)';
+  } else if(code.length >= 7){
+    nameEl.textContent = '⚠ マスタに見つかりません';
+    nameEl.style.color = 'var(--amber)';
+  } else {
+    nameEl.textContent = '';
+  }
+}
+
+// 共通SKU
+function renderCommonSkuList(){
+  const el = document.getElementById('common-sku-list');
+  if(!el) return;
+  if(!commonSkus.length){
+    el.innerHTML = '<div style="font-size:12px;color:var(--gray-400);margin-bottom:4px">共通SKUなし（任意）</div>';
+    return;
+  }
+  el.innerHTML = commonSkus.map((s,i)=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:5px 10px;background:var(--gray-50);border:1px solid var(--bd);border-radius:5px;margin-bottom:4px;font-size:12px">
+      <span class="mono">${s.code||'—'}</span>
+      <span style="flex:1">${s.name||'—'}</span>
+      <span style="color:var(--gray-400)">×${s.qty}</span>
+      <button onclick="commonSkus.splice(${i},1);renderCommonSkuList()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px">×</button>
+    </div>`).join('');
+}
+
+function onCskuCodeInput(code){
+  code = code.trim();
+  const conf = document.getElementById('csku-confirm');
+  const nameEl = document.getElementById('csku-name');
+  if(!conf) return;
+  if(!code){ conf.style.display='none'; return; }
+  const found = skuCache.find(s => s.c.toUpperCase() === code.toUpperCase());
+  if(found){
+    if(nameEl) nameEl.value = found.n;
+    conf.style.display = 'block';
+    conf.textContent = '✓ ' + found.n;
+    conf.style.background = 'var(--green-lt)';
+    conf.style.color = 'var(--green)';
+  } else if(code.length >= 7){
+    conf.style.display = 'block';
+    conf.textContent = '⚠ マスタに見つかりません。名称を手動で入力してください。';
+    conf.style.background = 'var(--amber-lt)';
+    conf.style.color = 'var(--amber)';
+  } else {
+    conf.style.display = 'none';
+  }
+}
+
+function addCommonSku(){
+  const code = document.getElementById('csku-code').value.trim();
+  const name = document.getElementById('csku-name').value.trim();
+  const qty  = parseInt(document.getElementById('csku-qty').value)||1;
+  if(!code && !name){ alert('SKUコードまたは名称を入力してください'); return; }
+  let role = 'セット構成';
+  if(code.startsWith('YR')) role = '延長保証';
+  else if(code.startsWith('IN')) role = '取説';
+  else if(code.startsWith('LT')) role = '特典';
+  commonSkus.push({code, name, qty, role});
+  document.getElementById('csku-code').value = '';
+  document.getElementById('csku-name').value = '';
+  document.getElementById('csku-qty').value = '1';
+  const conf = document.getElementById('csku-confirm');
+  if(conf) conf.style.display = 'none';
+  renderCommonSkuList();
+}
 
 function showLoading(msg){
   const el=document.getElementById('loading-overlay');
