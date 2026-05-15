@@ -1123,6 +1123,11 @@ function generate(){
   if(!g){alert('商品グループを選択してください');return;}
   if(!selS.length){alert('サイズを1つ以上選択してください');return;}
   showLoading('品番を生成中...');
+  setTimeout(()=>{ generateCore(); }, 50);
+}
+function generateCore(){
+  const g=document.getElementById('s-group').value;
+  const selS=sizes.filter(s=>s.on),selC=colors.filter(c=>c.on);
   generated=[];
   const opt=document.querySelector(`#s-group option[value="${g}"]`);
   const grpName=opt?zenToHan(opt.textContent.replace(g+' ','')):g;
@@ -1210,6 +1215,7 @@ function generate(){
   });
   hideLoading();renderPriceMatrix();go(4);
 }
+
 
 function renderPriceMatrix(){
   const el=document.getElementById('price-matrix');
