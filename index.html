@@ -96,7 +96,10 @@ body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sa
 .ok-box{background:var(--green-lt);border-left:3px solid var(--green);border-radius:0 var(--r) var(--r) 0;padding:9px 12px;font-size:12px;color:var(--green);margin-bottom:10px}
 
 /* ===== BUTTONS ===== */
-.btn{padding:7px 16px;border-radius:var(--r);border:1px solid var(--bd);font-size:13px;font-family:inherit;cursor:pointer;background:#fff;transition:all .12s;white-space:nowrap}
+.btn{padding:7px 16px;border-radius:var(--r);border:1px solid var(--bd);font-size:13px;font-family:inherit;cursor:pointer;background:#fff;transition:all .12s;white-space:nowrap;user-select:none}
+.btn:active{transform:scale(.96);opacity:.85}
+.btn-p:active{transform:scale(.96);filter:brightness(.9)}
+.btn-g:active{transform:scale(.96);filter:brightness(.9)}
 .btn:hover{background:var(--gray-100)}
 .btn-p{background:var(--blue);color:#fff;border-color:var(--blue)}
 .btn-p:hover{background:var(--blue-dk);border-color:var(--blue-dk)}
@@ -153,11 +156,24 @@ body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sa
 .pt-card{background:var(--gray-50);border:1px solid var(--bd);border-radius:var(--r);padding:14px;margin-bottom:8px}
 .import-area{border:2px dashed var(--bd);border-radius:var(--r-lg);padding:24px;text-align:center;cursor:pointer;transition:all .15s}
 .import-area:hover{border-color:var(--blue);background:var(--blue-lt)}
+
+/* ローディングオーバーレイ */
+.loading-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center;flex-direction:column;gap:16px}
+.loading-overlay.on{display:flex}
+.spinner{width:44px;height:44px;border:4px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{color:#fff;font-size:15px;font-weight:600;letter-spacing:.05em}
 </style>
 </head>
 <body>
 
 <!-- ===== NAVBAR ===== -->
+
+<!-- ローディングオーバーレイ -->
+<div class="loading-overlay" id="loading-overlay">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loading-text">処理中...</div>
+</div>
 <div class="navbar">
   <div class="n-brand"><span class="dot"></span>品番取得システム</div>
   <div class="n-tabs">
@@ -825,7 +841,6 @@ function renderColors(){
   const el=document.getElementById('color-chips');
   if(!el)return;
   el.innerHTML=colors.map((c,i)=>`<div class="chip${c.on?' on':''}" onclick="colors[${i}].on=!colors[${i}].on;renderColors();updateCount()">${c.n}<sub>${c.c}</sub></div>`).join('');
-  renderPtColorPreviews();
 }
 function addColor(){
   const n=document.getElementById('nc-name').value.trim();
@@ -1016,22 +1031,9 @@ function renderPts(){
           ${shipSelectHTML(p.shipFee,pi)}
           ${p.shipFee>0?`<div style="font-size:10px;color:var(--amber);margin-top:2px">品番名末尾に「_」付与</div>`:''}
         </div>
-        <div class="tog-row">
-          <button class="tog${p.bonus?' on':''}" onclick="patterns[${pi}].bonus=!patterns[${pi}].bonus;renderPts()"></button>
-          <span style="font-size:12px">${p.bonus?'施策特典あり':'施策特典なし'}</span>
-        </div>
+
       </div>
-      <div style="border-top:1px solid var(--bd);padding-top:10px;margin-bottom:10px">
-        <div style="font-size:11px;color:var(--gray-600);font-weight:500;margin-bottom:6px">カラー生成方法（複数カラー選択時）</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          ${['single','set','both'].map(m=>`
-            <label style="display:flex;align-items:center;gap:5px;cursor:pointer;padding:5px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px;${p.colorMode===m?'background:var(--blue-lt);border-color:var(--blue);font-weight:600;color:var(--blue)':''}">
-              <input type="radio" name="cm-${pi}" value="${m}" ${p.colorMode===m?'checked':''} onchange="patterns[${pi}].colorMode='${m}';renderPts()">
-              ${{single:'カラー別個別',set:'カラーセット',both:'両方'}[m]}
-            </label>`).join('')}
-        </div>
-        <div id="cm-prev-${pi}" style="margin-top:6px;font-size:11px;color:var(--blue);background:var(--blue-lt);padding:6px 10px;border-radius:var(--r);display:none"></div>
-      </div>
+
       ${patternSkus.length?`
       <div style="border-top:1px solid var(--bd);padding-top:10px">
         <div style="font-size:11px;color:var(--gray-600);font-weight:500;margin-bottom:6px">パターン別SKU</div>
@@ -1065,9 +1067,8 @@ function updateCount(){
     // カラー数
     let cn=0;
     if(!selC.length)cn=1;
-    else if(sh===1||mode==='single')cn=selC.length;
-    else if(mode==='set')cn=getCombinations(selC,Math.min(sh,selC.length)).length;
-    else cn=selC.length+getCombinations(selC,Math.min(sh,selC.length)).length;
+    else if(sh<=1)cn=selC.length;
+    else cn=getCombinationsWithRep(selC,sh).length;
     // サイズ数（2枚以上はC(n,sh)の組み合わせ）
     const sn=sh<=1?selS.length:Math.max(1,getCombinationsWithRep(selS,sh).length);
     const pt=cn*sn;total+=pt;det.push(`${p.label}：${pt}品番`);
@@ -1121,6 +1122,7 @@ function generate(){
   const selS=sizes.filter(s=>s.on),selC=colors.filter(c=>c.on);
   if(!g){alert('商品グループを選択してください');return;}
   if(!selS.length){alert('サイズを1つ以上選択してください');return;}
+  showLoading('品番を生成中...');
   generated=[];
   const opt=document.querySelector(`#s-group option[value="${g}"]`);
   const grpName=opt?zenToHan(opt.textContent.replace(g+' ','')):g;
@@ -1128,12 +1130,12 @@ function generate(){
   patterns.forEach(pt=>{
     const mode=pt.colorMode||'single', sh=pt.sheets||1;
 
-    // カラーグループ
+    // カラーグループ（自動）
+    // 1枚=カラー別個別、2枚以上=重複あり全組み合わせ（同色含む）
     let cgs=[];
     if(!selC.length) cgs=[[]];
-    else if(sh===1||mode==='single') cgs=selC.map(c=>[c]);
-    else if(mode==='set') cgs=getCombinations(selC,Math.min(sh,selC.length));
-    else cgs=[...selC.map(c=>[c]),...getCombinations(selC,Math.min(sh,selC.length))];
+    else if(sh<=1) cgs=selC.map(c=>[c]);
+    else cgs=getCombinationsWithRep(selC,sh);
 
     // サイズグループ：1枚=個別、2枚以上=全組み合わせ（同サイズ含む）
     let szGroups=[];
@@ -1206,7 +1208,7 @@ function generate(){
       });
     });
   });
-  renderPriceMatrix();go(4);
+  hideLoading();renderPriceMatrix();go(4);
 }
 
 function renderPriceMatrix(){
@@ -1399,11 +1401,14 @@ function doRegister(){
   if(np.length&&!confirm(`価格未入力 ${np.length}件あります。このまま登録しますか？`))return;
   const cn=document.getElementById('s-name').value.trim();
   if(cn&&!campaignHistory.includes(cn)){campaignHistory.unshift(cn);if(campaignHistory.length>50)campaignHistory.pop();renderCampaignDl();}
+  showLoading('登録中...');
+  setTimeout(()=>{
   generated.forEach(h=>registeredList.push({...h,registeredAt:new Date().toLocaleDateString('ja-JP')}));
   document.getElementById('total-badge').textContent=`登録済 ${registeredList.length}件`;
   saveMaster();
   alert(`✅ ${generated.length}件登録しました。`);
-  generated=[];resetWizardForm();showPage('list');
+  generated=[];resetWizardForm();hideLoading();showPage('list');
+  },300);
 }
 function resetWizardForm(){
   bonuses=[];patternSkus=[];sku3List=[];spSkuList=[];
@@ -2266,6 +2271,17 @@ document.addEventListener('click',e=>{
     dd.style.display='none';
 });
 
+
+function showLoading(msg){
+  const el=document.getElementById('loading-overlay');
+  const tx=document.getElementById('loading-text');
+  if(el){el.classList.add('on');}
+  if(tx){tx.textContent=msg||'処理中...';}
+}
+function hideLoading(){
+  const el=document.getElementById('loading-overlay');
+  if(el) el.classList.remove('on');
+}
 // ============================================================
 // INIT
 // ============================================================
