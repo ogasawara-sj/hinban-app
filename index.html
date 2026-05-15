@@ -1,0 +1,2279 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>品番取得システム v5｜ショップジャパン</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js">
+function getCombinationsWithRep(arr,r){
+  if(r===1)return arr.map(x=>[x]);
+  const result=[];
+  for(let i=0;i<arr.length;i++){
+    getCombinationsWithRep(arr.slice(i),r-1).forEach(c=>result.push([arr[i],...c]));
+  }
+  return result;
+}
+</script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --blue:#1659A8;--blue-dk:#0D3F7A;--blue-lt:#EBF3FD;--blue-bd:#BAD4F5;
+  --green:#1A9E72;--green-lt:#E0F5EE;--green-bd:#A3DFC9;
+  --red:#D94040;--red-lt:#FDEAEA;
+  --amber:#B87010;--amber-lt:#FAF0DC;
+  --purple:#6B3FA0;--purple-lt:#F2EBF9;
+  --gray-50:#F7F8FA;--gray-100:#EEF0F4;--gray-200:#DDE0E8;
+  --gray-400:#96A0B0;--gray-600:#4A5568;--gray-800:#1A202C;
+  --bd:#DDE0E8;--r:8px;--r-lg:12px;--r-xl:16px;
+  --shadow-sm:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --shadow:0 4px 12px rgba(0,0,0,.08),0 1px 3px rgba(0,0,0,.05);
+}
+body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sans-serif;font-size:13px;color:var(--gray-800);background:#F0F2F5;min-height:100vh}
+
+/* ===== NAVBAR ===== */
+.navbar{background:var(--blue);color:#fff;display:flex;align-items:stretch;height:52px;position:sticky;top:0;z-index:300;box-shadow:0 2px 10px rgba(22,89,168,.3)}
+.n-brand{display:flex;align-items:center;gap:10px;padding:0 20px;font-size:14px;font-weight:700;letter-spacing:.02em;border-right:1px solid rgba(255,255,255,.15);white-space:nowrap}
+.n-brand .dot{width:8px;height:8px;border-radius:50%;background:#4CF0C0}
+.n-tabs{display:flex;align-items:stretch;flex:1}
+.n-tab{display:flex;align-items:center;gap:6px;padding:0 20px;cursor:pointer;font-size:13px;opacity:.65;border-bottom:3px solid transparent;transition:all .15s;white-space:nowrap}
+.n-tab .ico{font-size:15px}
+.n-tab:hover{opacity:.85;background:rgba(255,255,255,.08)}
+.n-tab.on{opacity:1;border-bottom-color:#fff;font-weight:600;background:rgba(255,255,255,.1)}
+.n-right{display:flex;align-items:center;gap:8px;padding:0 16px;margin-left:auto;border-left:1px solid rgba(255,255,255,.15)}
+.n-badge{background:rgba(255,255,255,.15);padding:3px 10px;border-radius:12px;font-size:11px;white-space:nowrap}
+.n-btn{padding:5px 12px;border-radius:var(--r);border:1px solid rgba(255,255,255,.3);font-size:12px;font-family:inherit;cursor:pointer;background:rgba(255,255,255,.12);color:#fff;transition:all .12s;white-space:nowrap}
+.n-btn:hover{background:rgba(255,255,255,.22)}
+
+/* ===== PAGES ===== */
+.page{display:none;padding:20px;max-width:1100px;margin:0 auto}
+.page.on{display:block}
+
+/* ===== CARDS ===== */
+.card{background:#fff;border:1px solid var(--bd);border-radius:var(--r-lg);padding:20px;margin-bottom:14px;box-shadow:var(--shadow-sm)}
+.card-title{font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;display:flex;align-items:center;gap:6px}
+
+/* ===== WIZARD STEPS ===== */
+.steps{display:flex;background:#fff;border:1px solid var(--bd);border-radius:var(--r-lg);overflow:hidden;margin-bottom:14px;box-shadow:var(--shadow-sm)}
+.stab{flex:1;padding:10px 4px;text-align:center;font-size:11px;cursor:pointer;border-right:1px solid var(--bd);background:var(--gray-50);color:var(--gray-400);transition:all .12s}
+.stab:last-child{border-right:none}
+.stab .sn{font-size:15px;font-weight:700;display:block;margin-bottom:1px}
+.stab.on{background:#fff;color:var(--gray-800);font-weight:600}
+.stab.done{background:#fff;color:var(--green)}
+.panel{display:none}.panel.on{display:block}
+
+/* ===== GRID ===== */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+
+/* ===== FORM ===== */
+.f{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
+.f label{font-size:12px;color:var(--gray-600);font-weight:500}
+.f input,.f select,.f textarea{width:100%;padding:7px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px;font-family:inherit;outline:none;transition:border-color .12s;background:#fff}
+.f input:focus,.f select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-lt)}
+.req{color:var(--red)}
+
+/* ===== CHIPS ===== */
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.chip{padding:5px 12px;border-radius:16px;border:1px solid var(--bd);font-size:12px;cursor:pointer;user-select:none;transition:all .12s;background:#fff;color:var(--gray-600)}
+.chip:hover{border-color:var(--blue);color:var(--blue)}
+.chip.on{background:var(--blue-lt);color:var(--blue);border-color:var(--blue);font-weight:600}
+.chip sub{font-size:9px;opacity:.6;margin-left:2px}
+.irow{display:flex;gap:6px;margin-top:6px;align-items:center;flex-wrap:wrap}
+.irow input,.irow select{padding:6px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px;font-family:inherit}
+.irow input:focus,.irow select:focus{outline:none;border-color:var(--blue)}
+
+/* ===== TOGGLE ===== */
+.tog-row{display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:6px}
+.tog{width:36px;height:20px;border-radius:10px;background:#ccc;position:relative;cursor:pointer;border:none;flex-shrink:0;transition:background .15s}
+.tog.on{background:var(--blue)}
+.tog::after{content:'';position:absolute;width:16px;height:16px;background:#fff;border-radius:50%;top:2px;left:2px;transition:left .15s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.tog.on::after{left:18px}
+
+/* ===== INFO BOXES ===== */
+.info-box{background:var(--blue-lt);border-left:3px solid var(--blue);border-radius:0 var(--r) var(--r) 0;padding:9px 12px;font-size:12px;color:var(--blue-dk);margin-bottom:10px;line-height:1.6}
+.warn-box{background:var(--amber-lt);border-left:3px solid var(--amber);border-radius:0 var(--r) var(--r) 0;padding:9px 12px;font-size:12px;color:var(--amber);margin-bottom:10px}
+.ok-box{background:var(--green-lt);border-left:3px solid var(--green);border-radius:0 var(--r) var(--r) 0;padding:9px 12px;font-size:12px;color:var(--green);margin-bottom:10px}
+
+/* ===== BUTTONS ===== */
+.btn{padding:7px 16px;border-radius:var(--r);border:1px solid var(--bd);font-size:13px;font-family:inherit;cursor:pointer;background:#fff;transition:all .12s;white-space:nowrap}
+.btn:hover{background:var(--gray-100)}
+.btn-p{background:var(--blue);color:#fff;border-color:var(--blue)}
+.btn-p:hover{background:var(--blue-dk);border-color:var(--blue-dk)}
+.btn-g{background:var(--green);color:#fff;border-color:var(--green)}
+.btn-g:hover{background:#0F7052}
+.btn-ghost{background:transparent;border:1px dashed var(--bd);color:var(--gray-400)}
+.btn-ghost:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-lt)}
+.nav-btns{display:flex;justify-content:space-between;margin-top:16px;align-items:center}
+
+/* ===== TABLES ===== */
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{background:var(--gray-50);padding:8px 10px;text-align:left;font-weight:600;font-size:11px;color:var(--gray-600);border-bottom:2px solid var(--bd);white-space:nowrap}
+.tbl td{padding:7px 10px;border-bottom:1px solid var(--bd);vertical-align:middle}
+.tbl tbody tr:hover td{background:var(--gray-50)}
+.tbl-wrap{overflow-x:auto}
+
+/* ===== PRICE MATRIX ===== */
+.ptbl{border-collapse:collapse;font-size:12px}
+.ptbl th{background:var(--blue-lt);padding:8px 12px;font-weight:600;font-size:11px;color:var(--blue-dk);border:1px solid var(--blue-bd);white-space:nowrap;text-align:center}
+.ptbl td{padding:6px 8px;border:1px solid var(--bd);vertical-align:middle}
+.ptbl td.row-hd{background:var(--gray-50);font-weight:600;font-size:12px;color:var(--gray-600);white-space:nowrap;padding:6px 12px;text-align:left}
+.ptbl td.code-cell{background:var(--gray-50);font-family:'Courier New',monospace;font-size:11px;color:var(--blue);font-weight:600;white-space:nowrap;text-align:center}
+.ptbl input[type=number]{width:95px;padding:4px 6px;border:1px solid var(--bd);border-radius:5px;font-size:12px;text-align:right;font-family:inherit}
+.ptbl .tax-in{font-size:11px;color:var(--gray-400);text-align:right;white-space:nowrap}
+
+/* ===== MASTER PAGE ===== */
+.master-tabs{display:flex;gap:0;border-bottom:2px solid var(--bd);margin-bottom:20px}
+.mtab{padding:10px 20px;cursor:pointer;font-size:13px;color:var(--gray-400);border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .12s;white-space:nowrap}
+.mtab:hover{color:var(--gray-600)}
+.mtab.on{color:var(--blue);border-bottom-color:var(--blue);font-weight:600}
+.msec{display:none}.msec.on{display:block}
+
+/* ===== SKU MASTER TABLE ===== */
+.sku-type{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}
+.st-single{background:var(--blue-lt);color:var(--blue)}
+.st-double{background:var(--amber-lt);color:var(--amber)}
+.st-fixed{background:var(--green-lt);color:var(--green)}
+.st-pattern{background:var(--purple-lt);color:var(--purple)}
+
+/* ===== MISC ===== */
+.mono{font-family:'Courier New',monospace;font-size:11px;background:var(--blue-lt);padding:2px 6px;border-radius:4px;color:var(--blue);font-weight:700}
+.status-sel{font-size:11px;padding:3px 6px;border:1px solid var(--bd);border-radius:5px;font-family:inherit;cursor:pointer}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}
+.tag-blue{background:var(--blue-lt);color:var(--blue)}
+.tag-green{background:var(--green-lt);color:var(--green)}
+.tag-amber{background:var(--amber-lt);color:var(--amber)}
+.sep{height:1px;background:var(--bd);margin:14px 0}
+.filter-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
+.filter-bar select,.filter-bar input{padding:6px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px;font-family:inherit}
+.mcard{background:var(--gray-50);border:1px solid var(--bd);border-radius:var(--r);padding:14px;text-align:center}
+.ml{font-size:11px;color:var(--gray-400);margin-bottom:4px}
+.mv{font-size:22px;font-weight:700}
+.mv.ok{color:var(--green)}.mv.ng{color:var(--red)}.mv.info{color:var(--blue)}
+.pt-card{background:var(--gray-50);border:1px solid var(--bd);border-radius:var(--r);padding:14px;margin-bottom:8px}
+.import-area{border:2px dashed var(--bd);border-radius:var(--r-lg);padding:24px;text-align:center;cursor:pointer;transition:all .15s}
+.import-area:hover{border-color:var(--blue);background:var(--blue-lt)}
+</style>
+</head>
+<body>
+
+<!-- ===== NAVBAR ===== -->
+<div class="navbar">
+  <div class="n-brand"><span class="dot"></span>品番取得システム</div>
+  <div class="n-tabs">
+    <div class="n-tab on" id="nav-init" onclick="showPage('init')"><span class="ico">⚙</span>初期設定</div>
+    <div class="n-tab" id="nav-wizard" onclick="showPage('wizard')"><span class="ico">✦</span>新規品番取得</div>
+    <div class="n-tab" id="nav-list"   onclick="showPage('list')"><span class="ico">☰</span>品番一覧 / 価格表</div>
+    <div class="n-tab" id="nav-master" onclick="showPage('master')"><span class="ico">⚙</span>マスタ管理</div>
+  </div>
+  <div class="n-right">
+    <span class="n-badge" id="total-badge">登録済 0件</span>
+    <button class="n-btn" onclick="exportExcel()">⬇ Excel出力</button>
+    <button class="n-btn" onclick="exportMasterHTML()">💾 HTML書き出し</button>
+  </div>
+</div>
+
+
+<!-- ==================== INIT PAGE ==================== -->
+<div class="page on" id="page-init" style="max-width:700px">
+  <div style="text-align:center;padding:40px 0 24px">
+    <div style="font-size:28px;font-weight:700;color:var(--blue);margin-bottom:8px">品番取得システム</div>
+    <div style="font-size:14px;color:var(--gray-400)">ショップジャパン 品番管理ツール</div>
+  </div>
+
+  <div class="card" style="border:2px solid var(--blue-bd)">
+    <div class="card-title">🔄 STEP 0｜SKUマスタの更新（作業開始前に必ず実施）</div>
+    <div class="info-box" style="margin-bottom:14px">
+      ℹ️ SharePointから最新のSKUマスタExcelをダウンロードして読み込みます。<br>
+      読み込むと商品グループ・カラーが自動で最新化されます。
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+      <button class="btn btn-g" onclick="updateSkuMasterAndProceed()" style="font-size:14px;padding:12px 24px">
+        📥 SKUマスタExcelを選択して読み込む
+      </button>
+      <button class="btn" onclick="proceedWithoutUpdate()" style="font-size:13px;color:var(--gray-400)">
+        前回のデータで続ける →
+      </button>
+    </div>
+    <div id="init-sku-status" style="font-size:13px;color:var(--gray-400)">
+      ${skuCache.length ? '' : '未読込'}
+    </div>
+
+    <div style="background:var(--gray-50);border-radius:var(--r);padding:12px 14px;font-size:12px;color:var(--gray-600);line-height:1.9;margin-top:10px">
+      <strong>手順：</strong><br>
+      1. SharePointを開き「SKUコード･サービス品コード管理台帳(ShareBoard用).xlsx」をダウンロード<br>
+      2. 上のボタンを押してファイルを選択<br>
+      3. 自動でFN・YR・RT・UA・UB・SS・INシートを読み取り、商品グループ・カラーを最新化<br>
+      <span style="color:var(--gray-400)">※ SharePointのファイルには一切書き込みません（読み取り専用）</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📊 現在の状況</div>
+    <div class="g2">
+      <div class="mcard">
+        <div class="ml">SKUマスタ</div>
+        <div class="mv" id="init-sku-count" style="font-size:16px">—</div>
+        <div style="font-size:11px;color:var(--gray-400);margin-top:4px" id="init-sku-date"></div>
+      </div>
+      <div class="mcard">
+        <div class="ml">登録済み品番</div>
+        <div class="mv info" id="init-reg-count" style="font-size:16px">0件</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== WIZARD PAGE ==================== -->
+<div class="page" id="page-wizard">
+
+<div class="steps">
+  <div class="stab on" id="t1" onclick="go(1)"><span class="sn">1</span>施策設定</div>
+  <div class="stab" id="t2" onclick="go(2)"><span class="sn">2</span>カラー・サイズ</div>
+  <div class="stab" id="t3" onclick="go(3)"><span class="sn">3</span>購入パターン</div>
+  <div class="stab" id="t4" onclick="go(4)"><span class="sn">4</span>価格入力</div>
+  <div class="stab" id="t5" onclick="go(5)"><span class="sn">5</span>確認・登録</div>
+</div>
+
+<!-- S1 -->
+<div class="panel on" id="p1">
+  <div class="card">
+    <div class="card-title">📣 施策情報</div>
+    <div class="g2" style="margin-bottom:10px">
+      <div class="f"><label>施策月 <span class="req">*</span></label>
+        <select id="s-month"><option value="">選択</option>
+          <option>1月</option><option>2月</option><option>3月</option><option>4月</option>
+          <option>5月</option><option>6月</option><option>7月</option><option>8月</option>
+          <option>9月</option><option>10月</option><option>11月</option><option>12月</option>
+        </select></div>
+      <div class="f"><label>施策名 <span class="req">*</span></label>
+        <input type="text" id="s-name" list="campaign-dl" placeholder="例：TRS下取りDM春号" onchange="onCampaignInput(this.value)" autocomplete="off">
+        <datalist id="campaign-dl"></datalist></div>
+    </div>
+    <div class="g2">
+      <div class="f"><label>商品グループ <span class="req">*</span></label>
+        <select id="s-group" onchange="onGroup()"><option value="">選択してください</option></select></div>
+      <div class="f"><label>担当者 <span class="req">*</span></label>
+        <select id="s-staff"><option value="">選択</option></select></div>
+    </div>
+    <div id="group-info"></div>
+  </div>
+  <div class="nav-btns"><div></div><button class="btn btn-p" onclick="go(2)">次へ →</button></div>
+</div>
+
+<!-- S2 -->
+<div class="panel" id="p2">
+  <div class="card">
+    <div class="card-title">📐 サイズ選択</div>
+    <div class="chips" id="size-chips"></div>
+    <div class="irow">
+      <input type="text" id="ns-name" placeholder="サイズ名">
+      <input type="text" id="ns-code" placeholder="略称" style="width:70px;flex:none">
+      <button class="btn" onclick="addSize()">＋ 追加</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">🎨 カラー選択</div>
+    <div class="info-box">ℹ️ マスタ管理で登録済みのカラーが表示されます。</div>
+    <div class="chips" id="color-chips"></div>
+    <div class="irow">
+      <input type="text" id="nc-name" placeholder="カラー名">
+      <input type="text" id="nc-code" placeholder="略称" style="width:70px;flex:none">
+      <button class="btn" onclick="addColor()">＋ 追加</button>
+    </div>
+  </div>
+  <div class="nav-btns">
+    <button class="btn" onclick="go(1)">← 戻る</button>
+    <button class="btn btn-p" onclick="go(3)">次へ →</button>
+  </div>
+</div>
+
+<!-- S3 -->
+<div class="panel" id="p3">
+
+  <!-- 購入パターン設定 -->
+  <div class="card">
+    <div class="card-title">📋 購入パターン設定</div>
+    <div class="info-box">ℹ️ 枚数パターンごとに送料・特典を設定します。</div>
+    <div id="pt-list"></div>
+    <button class="btn btn-ghost" onclick="addPt()" style="margin-top:6px;font-size:12px;width:100%">＋ パターン追加</button>
+    <div id="gen-count" style="margin-top:12px"></div>
+  </div>
+
+  <div class="nav-btns">
+    <button class="btn" onclick="go(2)">← 戻る</button>
+    <button class="btn btn-p" onclick="generate()">🪄 品番を自動生成 →</button>
+  </div>
+</div>
+
+<!-- S4 -->
+<div class="panel" id="p4">
+  <!-- SKU構成設定（STEP4に集約） -->
+  <div class="card" style="border:2px solid var(--blue-bd)">
+    <div class="card-title">📦 SKU構成設定（この品番に含めるSKUを追加してください）</div>
+    <div class="info-box">ℹ️ SKUコードを入力すると名称を自動取得します。追加後「全品番に反映」で一括設定できます。</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;align-items:flex-start;flex-wrap:wrap">
+      <div style="position:relative;flex:1;min-width:200px">
+        <input type="text" id="sp-search" placeholder="SKUコードまたは名称で検索..."
+          oninput="onSpSearch(this.value)"
+          style="width:100%;padding:7px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px">
+        <div id="sp-dropdown"
+          style="display:none;position:absolute;top:100%;left:0;right:0;z-index:100;border:1px solid var(--bd);border-radius:0 0 var(--r) var(--r);background:#fff;max-height:200px;overflow-y:auto;box-shadow:var(--shadow)"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;min-width:180px">
+        <input type="text" id="sp-code" placeholder="SKUコード（直接入力）"
+          oninput="onSpCodeInput(this.value)"
+          style="padding:7px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px;width:100%">
+        <div id="sp-name-confirm" style="display:none;font-size:12px;padding:6px 10px;background:var(--blue-lt);border-radius:var(--r);color:var(--blue-dk)"></div>
+      </div>
+      <input type="text" id="sp-name-manual" placeholder="SKU名称（自動 or 手動入力）"
+        style="flex:1;min-width:160px;padding:7px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px">
+      <input type="number" id="sp-qty" value="1" min="1"
+        style="width:60px;padding:7px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px;text-align:right">
+      <button class="btn btn-p" onclick="addSpSku()">＋ 追加</button>
+    </div>
+    <div id="sp-list"></div>
+    <div id="sp-apply-area" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--bd)">
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-p" onclick="spApplyAll()" style="font-size:12px">全品番に反映</button>
+        <div id="sp-pt-btns" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+      </div>
+      <div style="font-size:11px;color:var(--gray-400);margin-top:4px">反映後は各品番コードをクリックしてSKU構成を確認できます</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">💴 価格一括入力</div>
+    <div id="price-matrix"></div>
+  </div>
+  <div class="nav-btns">
+    <button class="btn" onclick="go(3)">← 戻る</button>
+    <button class="btn btn-p" onclick="go(5)">確認へ →</button>
+  </div>
+</div>
+
+<!-- S5 -->
+<div class="panel" id="p5">
+  <div class="g4" id="s-metrics" style="margin-bottom:14px"></div>
+  <div class="card">
+    <div class="card-title">✅ 登録内容確認</div>
+    <div class="tbl-wrap" id="confirm-wrap"></div>
+  </div>
+  <div class="nav-btns">
+    <button class="btn" onclick="go(4)">← 戻る</button>
+    <button class="btn btn-g" onclick="doRegister()">✅ この内容で登録する</button>
+  </div>
+</div>
+</div><!-- /wizard -->
+
+<!-- ==================== LIST PAGE ==================== -->
+<div class="page" id="page-list">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+    <h2 style="font-size:16px;font-weight:700">品番一覧 / 価格表</h2>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-g" onclick="exportExcel()">⬇ Excel出力（価格表）</button>
+      <button class="btn" onclick="exportExcel('detail')">⬇ Excel出力（取得用シート形式）</button>
+    </div>
+  </div>
+  <div class="filter-bar">
+    <select id="f-group" onchange="renderList()"><option value="">全グループ</option></select>
+    <select id="f-month" onchange="renderList()"><option value="">全施策月</option></select>
+    <select id="f-staff" onchange="renderList()"><option value="">全担当者</option></select>
+    <select id="f-status" onchange="renderList()">
+      <option value="">全ステータス</option>
+      <option>取得OK</option><option>MS依頼済</option><option>Access登録済み</option>
+      <option>チェック依頼</option><option>チェック完了</option><option>済</option><option>取得不要</option>
+    </select>
+    <input type="text" id="f-search" placeholder="品番・品番名で検索" onkeyup="renderList()" style="width:180px">
+    <button class="btn" onclick="clearFilters()">リセット</button>
+  </div>
+  <div class="card" style="padding:0">
+    <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr>
+        <th style="width:104px">品番コード</th><th>品番名</th>
+        <th style="width:60px">グループ</th><th style="width:56px">施策月</th>
+        <th style="width:70px">担当者</th><th style="width:88px">販売価格(税抜)</th>
+        <th style="width:80px">販売価格(税込)</th><th style="width:52px">送料</th>
+        <th style="width:108px">ステータス</th><th style="width:50px">SKU数</th>
+        <th style="width:44px">操作</th>
+      </tr></thead>
+      <tbody id="list-body"></tbody>
+    </table>
+    </div>
+  </div>
+  <div id="list-footer" style="margin-top:8px;font-size:12px;color:var(--gray-400)"></div>
+</div>
+
+<!-- ==================== MASTER PAGE ==================== -->
+<div class="page" id="page-master">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:wrap;gap:8px">
+    <h2 style="font-size:16px;font-weight:700">⚙ マスタ管理</h2>
+    <button class="btn btn-g" onclick="exportMasterHTML()" style="font-size:12px">💾 全マスタをHTMLに書き出し（チーム配布用）</button>
+  </div>
+  <div class="info-box" style="margin-bottom:14px">ℹ️ ここで管理する全マスタはブラウザに自動保存され、「HTMLに書き出し」でチームに配布できます。SharePointのSKUマスタはExcelインポートで一括取込できます。</div>
+
+  <div class="master-tabs">
+    <div class="mtab on" id="mt-sku"    onclick="showMasterTab('sku')">📋 SKUマスタ</div>
+    <div class="mtab" id="mt-color"  onclick="showMasterTab('color')">🎨 カラーマスタ</div>
+    <div class="mtab" id="mt-size"   onclick="showMasterTab('size')">📐 サイズマスタ</div>
+    <div class="mtab" id="mt-staff"  onclick="showMasterTab('staff')">👤 担当者</div>
+    <div class="mtab" id="mt-group"  onclick="showMasterTab('group')">📦 商品グループ</div>
+    <div class="mtab" id="mt-ship"   onclick="showMasterTab('ship')">🚚 送料</div>
+    <div class="mtab" id="mt-camp"   onclick="showMasterTab('camp')">📣 施策名</div>
+  </div>
+
+  <!-- SKUマスタ -->
+  <div class="msec on" id="msec-sku">
+    <div class="card">
+      <div class="card-title">SKUマスタ（SharePoint参照専用）</div>
+      <div class="warn-box">⚠ このSKUマスタ台帳は<strong>読み取り専用</strong>です。追加・編集・削除は行いません。SharePointの台帳を正として、以下のボタンで最新データを取り込んでください。</div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+        <button class="btn btn-g" onclick="updateSkuMaster()" style="font-size:13px;padding:9px 18px">
+          🔄 SKUマスタを更新（SharePointからExcelをダウンロードして読み込む）
+        </button>
+        <div id="sku-master-status-main" style="font-size:12px;color:var(--gray-400)"></div>
+      </div>
+      <div style="background:var(--blue-lt);border-radius:var(--r);padding:12px;font-size:12px;color:var(--blue-dk);margin-bottom:14px;line-height:1.8">
+        <strong>手順：</strong><br>
+        1. SharePointを開いて「SKUコード･サービス品コード管理台帳(ShareBoard用).xlsx」をダウンロード<br>
+        2. 上のボタンを押してダウンロードしたファイルを選択<br>
+        3. 自動でFN・YR・RT・UA・UB・SS・INシートを読み取りカラー判定まで実行します<br>
+        <span style="color:var(--gray-400)">※ SharePointのファイルには一切書き込みません</span>
+      </div>
+      <div style="font-size:12px;font-weight:600;color:var(--gray-600);margin-bottom:8px">SKUを検索して確認</div>
+      <div class="irow" style="margin-bottom:8px">
+        <input type="text" id="master-sku-search" placeholder="SKUコードまたは名称で検索..." oninput="renderMasterSkuSearch(this.value)" style="flex:1;font-size:13px">
+      </div>
+      <div id="master-sku-results" style="max-height:300px;overflow-y:auto"></div>
+    </div>
+  </div>
+
+  <!-- カラーマスタ -->
+  <div class="msec" id="msec-color">
+    <div class="card">
+      <div class="card-title">カラーマスタ（全社共通）</div>
+      <div id="master-color-list" style="margin-bottom:10px"></div>
+      <div class="irow">
+        <input type="text" id="m-color-name" placeholder="カラー名（例：グレージュ）">
+        <input type="text" id="m-color-code" placeholder="略称（例：GR）" style="width:80px;flex:none">
+        <button class="btn btn-p" onclick="addColorMaster()">追加</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- サイズマスタ -->
+  <div class="msec" id="msec-size">
+    <div class="card">
+      <div class="card-title">サイズマスタ（全社共通）</div>
+      <div id="master-size-list" style="margin-bottom:10px"></div>
+      <div class="irow">
+        <input type="text" id="m-size-name" placeholder="サイズ名（例：キング）">
+        <input type="text" id="m-size-code" placeholder="略称（例：K）" style="width:80px;flex:none">
+        <button class="btn btn-p" onclick="addSizeMaster()">追加</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 担当者 -->
+  <div class="msec" id="msec-staff">
+    <div class="card">
+      <div class="card-title">担当者マスタ</div>
+      <div id="master-staff-list" style="margin-bottom:10px"></div>
+      <div class="irow">
+        <input type="text" id="m-staff-name" placeholder="担当者名">
+        <button class="btn btn-p" onclick="addStaffMaster()">追加</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 商品グループ -->
+  <div class="msec" id="msec-group">
+    <div class="card">
+      <div class="card-title">商品グループマスタ</div>
+      <div id="master-group-list" style="max-height:400px;overflow-y:auto;margin-bottom:10px"></div>
+      <div class="irow">
+        <input type="text" id="m-grp-code" placeholder="コード（例：NEWP）" style="width:120px;flex:none">
+        <input type="text" id="m-grp-name" placeholder="商品名（例：新商品）">
+        <input type="text" id="m-grp-cat"  placeholder="カテゴリ" style="width:140px;flex:none">
+        <button class="btn btn-p" onclick="addGroupMaster()">追加</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 送料 -->
+  <div class="msec" id="msec-ship">
+    <div class="card">
+      <div class="card-title">送料マスタ</div>
+      <div id="master-ship-list" style="margin-bottom:10px"></div>
+      <div class="irow">
+        <input type="number" id="m-ship-fee" placeholder="金額（円）" style="width:110px;flex:none">
+        <input type="text" id="m-ship-label" placeholder="ラベル（例：特別送料）">
+        <button class="btn btn-p" onclick="addShipMaster()">追加</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 施策名 -->
+  <div class="msec" id="msec-camp">
+    <div class="card">
+      <div class="card-title">施策名履歴</div>
+      <div class="info-box">ℹ️ ウィザードで入力した施策名が自動で追加されます。不要なものは削除できます。</div>
+      <div id="master-camp-list" style="margin-bottom:10px"></div>
+      <div class="irow">
+        <input type="text" id="m-camp-name" placeholder="施策名を直接追加">
+        <button class="btn btn-p" onclick="addCampaignMaster()">追加</button>
+      </div>
+    </div>
+  </div>
+</div><!-- /master -->
+
+<script>
+// ============================================================
+// KATAKANA
+// ============================================================
+const DAKUTEN={'ガ':'ｶﾞ','ギ':'ｷﾞ','グ':'ｸﾞ','ゲ':'ｹﾞ','ゴ':'ｺﾞ','ザ':'ｻﾞ','ジ':'ｼﾞ','ズ':'ｽﾞ','ゼ':'ｾﾞ','ゾ':'ｿﾞ','ダ':'ﾀﾞ','ヂ':'ﾁﾞ','ヅ':'ﾂﾞ','デ':'ﾃﾞ','ド':'ﾄﾞ','バ':'ﾊﾞ','ビ':'ﾋﾞ','ブ':'ﾌﾞ','ベ':'ﾍﾞ','ボ':'ﾎﾞ','パ':'ﾊﾟ','ピ':'ﾋﾟ','プ':'ﾌﾟ','ペ':'ﾍﾟ','ポ':'ﾎﾟ','ヴ':'ｳﾞ'};
+const SEION={'ア':'ｱ','イ':'ｲ','ウ':'ｳ','エ':'ｴ','オ':'ｵ','カ':'ｶ','キ':'ｷ','ク':'ｸ','ケ':'ｹ','コ':'ｺ','サ':'ｻ','シ':'ｼ','ス':'ｽ','セ':'ｾ','ソ':'ｿ','タ':'ﾀ','チ':'ﾁ','ツ':'ﾂ','テ':'ﾃ','ト':'ﾄ','ナ':'ﾅ','ニ':'ﾆ','ヌ':'ﾇ','ネ':'ﾈ','ノ':'ﾉ','ハ':'ﾊ','ヒ':'ﾋ','フ':'ﾌ','ヘ':'ﾍ','ホ':'ﾎ','マ':'ﾏ','ミ':'ﾐ','ム':'ﾑ','メ':'ﾒ','モ':'ﾓ','ヤ':'ﾔ','ユ':'ﾕ','ヨ':'ﾖ','ラ':'ﾗ','リ':'ﾘ','ル':'ﾙ','レ':'ﾚ','ロ':'ﾛ','ワ':'ﾜ','ヲ':'ｦ','ン':'ﾝ','ァ':'ｧ','ィ':'ｨ','ゥ':'ｩ','ェ':'ｪ','ォ':'ｫ','ャ':'ｬ','ュ':'ｭ','ョ':'ｮ','ッ':'ｯ','ー':'ｰ'};
+function zenToHan(s){let r='';for(const c of s){if(DAKUTEN[c])r+=DAKUTEN[c];else if(SEION[c])r+=SEION[c];else r+=c;}return r;}
+
+// ============================================================
+// MASTER DATA
+// ============================================================
+let staffList    = ['牧村','鈴木','田中','山田','佐藤','その他'];
+let groupMaster  = [
+  {code:'TRR3',name:'ﾌﾟﾚﾐｱﾘｯﾁ pr.3',cat:'ﾄｩﾙｰｽﾘｰﾊﾟｰ'},{code:'TRAF',name:'ｴｱﾌﾘｰ',cat:'ﾄｩﾙｰｽﾘｰﾊﾟｰ'},
+  {code:'TRPA',name:'洗えるﾌﾟﾗｽ',cat:'ﾄｩﾙｰｽﾘｰﾊﾟｰ'},{code:'TRPR3',name:'ﾌﾟﾚﾐｱﾘｯﾁ三つ折り',cat:'ﾄｩﾙｰｽﾘｰﾊﾟｰ'},
+  {code:'TRAF3',name:'ｴｱﾌﾘｰ三つ折り',cat:'ﾄｩﾙｰｽﾘｰﾊﾟｰ'},{code:'TRPRB',name:'ﾌﾟﾚﾐｱﾘｯﾁ枕',cat:'ﾄｩﾙｰｽﾘｰﾊﾟｰ'},
+  {code:'TRSP',name:'ｶﾊﾞｰ',cat:'ﾄｩﾙｰｽﾘｰﾊﾟｰ'},{code:'TRHT',name:'ﾎｯﾄﾏｯﾄ',cat:'ﾄｩﾙｰｽﾘｰﾊﾟｰ'},
+  {code:'TRND',name:'ﾈｯｸﾄﾞﾘｰﾑ',cat:'ﾄｩﾙｰｽﾘｰﾊﾟｰ'},{code:'TRR2',name:'ﾌﾟﾚﾐｱﾘｯﾁ pr.2',cat:'ﾄｩﾙｰｽﾘｰﾊﾟｰ'},
+  {code:'TR7A',name:'ﾄｩﾙｰｽﾘｰﾊﾟｰ7',cat:'ﾄｩﾙｰｽﾘｰﾊﾟｰ'},
+  {code:'RAH',name:'楽ちんﾋｱﾘﾝｸﾞ',cat:'健康・美容'},{code:'RAH6',name:'楽ちんﾋｱﾘﾝｸﾞ6',cat:'健康・美容'},
+  {code:'RASA',name:'ﾗｻ',cat:'健康・美容'},{code:'MQT',name:'ﾏｲｷｭｯﾄ',cat:'健康・美容'},
+  {code:'INV1',name:'ｲﾝｳﾞｨｺﾞﾚｰﾀｰ',cat:'健康・美容'},{code:'INV2',name:'ｲﾝｳﾞｨｺﾞﾚｰﾀｰ2',cat:'健康・美容'},
+  {code:'NICS',name:'ﾅｲｽﾃﾞｲ',cat:'健康・美容'},
+  {code:'CKP3',name:'ｸｯｷﾝｸﾞﾌﾟﾛV3',cat:'ｷｯﾁﾝ家電'},{code:'CCH7',name:'ここひえ7',cat:'ｷｯﾁﾝ家電'},
+  {code:'CCH8',name:'ここひえ8',cat:'ｷｯﾁﾝ家電'},{code:'CCHT3',name:'ここひえT3',cat:'ｷｯﾁﾝ家電'},
+  {code:'KRF',name:'ｶﾗｯﾄﾌﾗｲﾔｰ',cat:'ｷｯﾁﾝ家電'},
+  {code:'ACT',name:'ｱｸﾃｨﾌﾞｽﾚﾝﾀﾞｰ',cat:'ﾌｨｯﾄﾈｽ'},{code:'LGMX',name:'ﾚｯｸﾞﾏｼﾞｯｸX',cat:'ﾌｨｯﾄﾈｽ'},
+  {code:'SOY',name:'ｿｲﾘｯﾁ',cat:'ﾌｨｯﾄﾈｽ'},{code:'BPA',name:'ﾎﾞﾃﾞｨﾍﾟｱｰ',cat:'ﾌｨｯﾄﾈｽ'},
+  {code:'VOOM',name:'ｳﾙﾄﾗｳﾞｰﾑ',cat:'ﾌｨｯﾄﾈｽ'},
+];
+let colorMaster  = [
+  {n:'ﾌﾞﾗｯｸ',c:'BK'},{n:'ﾌﾞﾙｰｸﾞﾚｰ',c:'BG'},{n:'ｸﾞﾚｰｼﾞｭ',c:'GR'},{n:'ｸﾞﾚｰ',c:'GY'},
+  {n:'ﾎﾜｲﾄ',c:'WH'},{n:'ﾌﾞﾙｰ',c:'BL'},{n:'ﾗｲﾄﾌﾞﾙｰ',c:'LB'},{n:'ﾋﾟﾝｸ',c:'PK'},
+  {n:'ﾚｯﾄﾞ',c:'RD'},{n:'ﾍﾞｰｼﾞｭ',c:'BE'},{n:'ｱｲﾎﾞﾘｰ',c:'IV'},{n:'ﾈｲﾋﾞｰ',c:'NV'},
+  {n:'ﾓｶ',c:'MO'},{n:'ﾊﾟｰﾌﾟﾙ',c:'PL'},{n:'ｶﾗｰなし',c:'—'},
+];
+let sizeMaster   = [
+  {n:'ｼﾝｸﾞﾙ',c:'S'},{n:'ｾﾐﾀﾞﾌﾞﾙ',c:'M'},{n:'ﾀﾞﾌﾞﾙ',c:'W'},{n:'ｸｲｰﾝ',c:'Q'},{n:'ｻｲｽﾞなし',c:'—'},
+];
+let shipOptions  = [{fee:0,label:'無料'},{fee:990,label:'990円'},{fee:1320,label:'1,320円'},{fee:1980,label:'1,980円'}];
+let campaignHistory = [];
+let skuMaster    = {};
+let patternSkus  = [];
+let bonuses      = [];
+let sku3List     = []; // STEP3で設定するSKUリスト
+
+const P2DB={
+  TRR3:{oc:363,sc:1757,cc:0.011284,cod:0.004331},TRAF:{oc:363,sc:1757,cc:0.011284,cod:0.004331},
+  TRPA:{oc:363,sc:1757,cc:0.011284,cod:0.004331},TRPR3:{oc:363,sc:1757,cc:0.011284,cod:0.004331},
+  TRAF3:{oc:363,sc:1757,cc:0.011284,cod:0.004331},TRPRB:{oc:363,sc:1757,cc:0.011284,cod:0.004331},
+  TRSP:{oc:363,sc:1757,cc:0.011284,cod:0.004331},TRHT:{oc:363,sc:1176,cc:0.012,cod:0.004268},
+  TRND:{oc:363,sc:1757,cc:0.011284,cod:0.004331},TRR2:{oc:363,sc:1757,cc:0.011284,cod:0.004331},
+  TR7A:{oc:356,sc:1120,cc:0.009999,cod:0.007615},RAH:{oc:309,sc:591,cc:0.009507,cod:0.012121},
+  RAH6:{oc:309,sc:591,cc:0.009507,cod:0.012121},RASA:{oc:309,sc:591,cc:0.009507,cod:0.012121},
+  MQT:{oc:300,sc:697,cc:0.009497,cod:0.013},INV1:{oc:300,sc:697,cc:0.009497,cod:0.013},
+  INV2:{oc:300,sc:697,cc:0.009497,cod:0.013},NICS:{oc:300,sc:697,cc:0.009497,cod:0.013},
+  CKP3:{oc:308,sc:948,cc:0.009911,cod:0.009965},CCH7:{oc:259,sc:829,cc:0.01,cod:0.013},
+  CCH8:{oc:259,sc:829,cc:0.01,cod:0.013},CCHT3:{oc:259,sc:829,cc:0.01,cod:0.013},
+  KRF:{oc:308,sc:948,cc:0.009911,cod:0.009965},ACT:{oc:300,sc:697,cc:0.009497,cod:0.013},
+  LGMX:{oc:300,sc:697,cc:0.009497,cod:0.013},SOY:{oc:300,sc:697,cc:0.009497,cod:0.013},
+  BPA:{oc:300,sc:697,cc:0.009497,cod:0.013},VOOM:{oc:300,sc:697,cc:0.009497,cod:0.013},
+};
+const STATUS_LIST=['取得OK','MS依頼済','Access登録済み','修正依頼','チェック依頼','チェック完了','稟議申請中','WF完了','最終チェック依頼','済','取得不要','構成変更依頼','終売対応'];
+
+// Wizard state
+let colors=[], sizes=[], patterns=[
+  {id:1,label:'1枚購入',sheets:1,shipFee:990,bonus:false,colorMode:'single',patternSkuIds:[]},
+  {id:2,label:'2枚セット',sheets:2,shipFee:0,bonus:true,colorMode:'set',patternSkuIds:[]},
+];
+let generated=[], registeredList=[], seqCounters={};
+
+// ============================================================
+// STORAGE
+// ============================================================
+const SK={STAFF:'hbs_staff',GROUP:'hbs_group',COLOR:'hbs_color',SIZE:'hbs_size',
+          SHIP:'hbs_ship',CAMP:'hbs_camp',SKU:'hbs_sku'};
+
+async function saveMaster(){
+  try{
+    const data={staffList,groupMaster,colorMaster,sizeMaster,shipOptions,campaignHistory,skuMaster};
+    await window.storage.set('hbs_all_masters', JSON.stringify(data));
+  }catch(e){}
+}
+async function loadMaster(){
+  try{
+    const r=await window.storage.get('hbs_all_masters');
+    if(r&&r.value){
+      const d=JSON.parse(r.value);
+      if(d.staffList&&d.staffList.length)    staffList=d.staffList;
+      if(d.groupMaster&&d.groupMaster.length) groupMaster=d.groupMaster;
+      if(d.colorMaster&&d.colorMaster.length) colorMaster=d.colorMaster;
+      if(d.sizeMaster&&d.sizeMaster.length)   sizeMaster=d.sizeMaster;
+      if(d.shipOptions&&d.shipOptions.length)  shipOptions=d.shipOptions;
+      if(d.campaignHistory)                   campaignHistory=d.campaignHistory;
+      if(d.skuMaster&&typeof d.skuMaster==='object') skuMaster=d.skuMaster;
+    }
+  }catch(e){}
+  renderAll();
+}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  document.getElementById('page-'+id).classList.add('on');
+  ['init','wizard','list','master'].forEach(t=>{
+    const el=document.getElementById('nav-'+t);
+    if(el) el.classList.toggle('on',t===id);
+  });
+  if(id==='list')renderList();
+  if(id==='master'){renderMasterAll();}
+  if(id==='init'){renderInitStatus();}
+  if(id==='wizard'){renderSpPanel();}
+}
+function go(n){
+  if(n===5)buildConfirm();
+  for(let i=1;i<=5;i++){
+    document.getElementById('p'+i).className='panel'+(i===n?' on':'');
+    document.getElementById('t'+i).className='stab'+(i===n?' on':i<n?' done':'');
+  }
+}
+function showMasterTab(id){
+  document.querySelectorAll('.msec').forEach(s=>s.classList.remove('on'));
+  document.querySelectorAll('.mtab').forEach(t=>t.classList.remove('on'));
+  document.getElementById('msec-'+id).classList.add('on');
+  document.getElementById('mt-'+id).classList.add('on');
+}
+
+// ============================================================
+// RENDER ALL
+// ============================================================
+function renderAll(){
+  renderGroupSelect();renderStaffSelect();renderCampaignDl();
+  resetWizardColors();resetWizardSizes();
+  renderPts();
+  renderSpPanel();
+}
+
+// ============================================================
+// WIZARD S1
+// ============================================================
+function renderGroupSelect(){
+  const sel=document.getElementById('s-group');
+  const cur=sel?sel.value:'';
+  if(!sel)return;
+  const cats=[...new Set(groupMaster.map(g=>g.cat))];
+  sel.innerHTML='<option value="">選択してください</option>'+
+    cats.map(cat=>`<optgroup label="${cat}">${
+      groupMaster.filter(g=>g.cat===cat).map(g=>`<option value="${g.code}">${g.code} ${g.name}</option>`).join('')
+    }</optgroup>`).join('');
+  if(cur)sel.value=cur;
+  // マスタ管理ページのselも更新
+  const msel=document.getElementById('master-group-sel');
+  if(msel){
+    msel.innerHTML='<option value="">商品グループを選択</option>'+
+      groupMaster.map(g=>`<option value="${g.code}">${g.code} ${g.name}</option>`).join('');
+  }
+}
+function renderStaffSelect(){
+  const sel=document.getElementById('s-staff');
+  if(!sel)return;
+  const cur=sel.value;
+  sel.innerHTML='<option value="">選択</option>'+staffList.map(s=>`<option${cur===s?' selected':''}>${s}</option>`).join('');
+}
+function renderCampaignDl(){
+  const dl=document.getElementById('campaign-dl');
+  if(dl)dl.innerHTML=campaignHistory.map(c=>`<option value="${c}">`).join('');
+}
+function onCampaignInput(v){
+  v=v.trim();
+  if(!v||campaignHistory.includes(v))return;
+  campaignHistory.unshift(v);
+  if(campaignHistory.length>50)campaignHistory.pop();
+  renderCampaignDl();saveMaster();
+}
+function onGroup(){
+  const g=document.getElementById('s-group').value;
+  const el=document.getElementById('group-info');
+  if(!g){el.innerHTML='';return;}
+  const gl=g.length,digits=8-gl,max=(Math.pow(10,digits)-1).toLocaleString('ja-JP');
+  const gObj=groupMaster.find(x=>x.code===g);
+  el.innerHTML=`<div class="info-box" style="margin-top:8px">ℹ️ <strong>${g} ${gObj?gObj.name:''}</strong> → 連番${digits}桁。最大 ${max} 品番。例：<span style="font-family:monospace">${g}${'0'.repeat(digits-1)}1</span></div>`;
+  renderSkuMasterTable();
+  renderColorsFromMaster();
+}
+function addBonus(){
+  const code=document.getElementById('b-code').value.trim();
+  const name=document.getElementById('b-name').value.trim();
+  if(!code&&!name)return;
+  bonuses.push({code,name});
+  document.getElementById('b-code').value='';document.getElementById('b-name').value='';
+  renderBonuses();
+}
+function renderBonuses(){
+  const el=document.getElementById('bonus-list');
+  if(!el)return;
+  el.innerHTML=bonuses.map((b,i)=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:5px 10px;background:var(--gray-50);border:1px solid var(--bd);border-radius:5px;margin-bottom:4px;font-size:12px">
+      <span class="mono">${b.code||'—'}</span><span style="flex:1">${b.name}</span>
+      <button onclick="bonuses.splice(${i},1);renderBonuses()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px">×</button>
+    </div>`).join('');
+}
+
+// ============================================================
+// WIZARD S2 – SKU MASTER
+// ============================================================
+function getSkuMasterForGroup(g){return skuMaster[g]||[];}
+function matchSkus(g,colorName,sizeName,sheets){
+  const list=getSkuMasterForGroup(g),result=[];
+  list.forEach(s=>{
+    const cm=!s.color||s.color===colorName;
+    const sm=!s.size||s.size===sizeName;
+    if(s.type==='fixed'&&cm&&sm)result.push({...s,role:'固定共通'});
+    else if(s.type==='single'&&sheets===1&&cm&&sm)result.push({...s,role:'ﾒｲﾝ(1枚)'});
+    else if(s.type==='double'&&sheets>=2&&cm&&sm)result.push({...s,role:'ﾒｲﾝ(2枚まとめ)'});
+  });
+  return result;
+}
+function renderSkuMasterTable(){
+  // 商品グループ選択時に関連SKUをプレビュー表示
+  const g = document.getElementById('s-group').value;
+  const tbl = document.getElementById('sku-master-table');
+  if(!tbl) return;
+  if(!skuCache.length){
+    tbl.innerHTML='<div style="font-size:12px;color:var(--amber)">⚠ SKUマスタが未読込です。「SKUマスタを更新」ボタンを押してください。</div>';
+    return;
+  }
+  // グループに関連しそうなSKUを上位表示（名称にグループコードが含まれるもの）
+  const related = g ? skuCache.filter(s => s.n.toUpperCase().includes(g.toUpperCase()) || s.c.toUpperCase().startsWith(g.toUpperCase())).slice(0,10) : [];
+  const total = skuCache.length;
+  tbl.innerHTML=`<div style="font-size:12px;color:var(--gray-600);margin-bottom:6px">
+    読込済み合計：<strong>${total}件</strong>
+    ${related.length ? ` / 「${g}」関連：<strong>${related.length}件</strong>（上位10件表示）` : ''}
+  </div>
+  ${related.length ? `<div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th style="width:110px">SKUコード</th><th>SKU名称</th><th style="width:80px">カラー</th><th style="width:60px">登録日</th></tr></thead>
+    <tbody>${related.map(s=>`<tr>
+      <td><span class="mono">${s.c}</span></td>
+      <td style="font-size:12px">${s.n}</td>
+      <td style="font-size:11px;text-align:center">${s.col||'<span style="color:var(--gray-400)">—</span>'}</td>
+      <td style="font-size:11px;color:var(--gray-400)">${s.d||'—'}</td>
+    </tr>`).join('')}</tbody>
+  </table></div>` : (g ? '<div style="font-size:12px;color:var(--gray-400)">このグループに関連するSKUが見つかりませんでした。検索ボックスで直接検索できます。</div>' : '')}`;
+  // ステータス表示を同期
+  const s2 = document.getElementById('sku-update-status2');
+  if(s2) s2.innerHTML = `<span style="color:var(--green)">✓ ${total}件読込済み</span> <span style="font-size:11px;color:var(--gray-400)">（${skuLastUpdated}）</span>`;
+}
+
+function renderSkuSearchResult(q){
+  const el = document.getElementById('sku-search-result');
+  if(!el) return;
+  if(!q || q.length < 2){ el.innerHTML=''; return; }
+  const results = skuSearch(q);
+  if(!results.length){ el.innerHTML='<div style="font-size:12px;color:var(--gray-400)">該当するSKUがありません</div>'; return; }
+  el.innerHTML=`<table class="tbl"><thead><tr>
+    <th style="width:110px">SKUコード</th><th>SKU名称</th><th style="width:80px">カラー</th><th style="width:50px">種別</th><th style="width:60px">登録日</th>
+  </tr></thead><tbody>${results.map(s=>`<tr>
+    <td><span class="mono">${s.c}</span></td>
+    <td style="font-size:12px">${s.n}</td>
+    <td style="font-size:11px;text-align:center">${s.col||'—'}</td>
+    <td style="font-size:11px;text-align:center;color:var(--gray-400)">${s.t}</td>
+    <td style="font-size:11px;color:var(--gray-400)">${s.d||'—'}</td>
+  </tr>`).join('')}</tbody></table>`;
+}
+function addSkuToMaster(){ /* 読み取り専用 */ return; }
+
+function removeSkuFromMaster(g,idx){
+  if(!skuMaster[g])return;
+  skuMaster[g].splice(idx,1);
+  renderSkuMasterTable();renderMasterSkuTable();saveMaster();
+}
+function renderColorsFromMaster(){
+  const g=document.getElementById('s-group').value;
+  if(!g)return;
+  const list=getSkuMasterForGroup(g);
+  const masterColors=[...new Set(list.map(s=>s.color).filter(Boolean))];
+  masterColors.forEach(cn=>{
+    if(!colorMaster.find(c=>c.n===cn)){colorMaster.push({n:cn,c:cn.substring(0,2).toUpperCase()});}
+  });
+  resetWizardColors();
+}
+
+// ============================================================
+// WIZARD S2 – COLORS & SIZES
+// ============================================================
+function resetWizardColors(){
+  colors=colorMaster.map(c=>({...c,on:false}));
+  renderColors();
+}
+function resetWizardSizes(){
+  sizes=sizeMaster.map(s=>({...s,on:false}));
+  renderSizes();
+}
+function renderColors(){
+  const el=document.getElementById('color-chips');
+  if(!el)return;
+  el.innerHTML=colors.map((c,i)=>`<div class="chip${c.on?' on':''}" onclick="colors[${i}].on=!colors[${i}].on;renderColors();updateCount()">${c.n}<sub>${c.c}</sub></div>`).join('');
+  renderPtColorPreviews();
+}
+function addColor(){
+  const n=document.getElementById('nc-name').value.trim();
+  const c=document.getElementById('nc-code').value.trim();
+  if(!n||!c)return;
+  colors.push({n,c,on:true});
+  if(!colorMaster.find(x=>x.n===n)){colorMaster.push({n,c});saveMaster();}
+  document.getElementById('nc-name').value='';document.getElementById('nc-code').value='';
+  renderColors();renderMasterColorList();
+}
+function renderSizes(){
+  const el=document.getElementById('size-chips');
+  if(!el)return;
+  el.innerHTML=sizes.map((s,i)=>`<div class="chip${s.on?' on':''}" onclick="sizes[${i}].on=!sizes[${i}].on;renderSizes();updateCount()">${s.n}<sub>${s.c}</sub></div>`).join('');
+}
+function addSize(){
+  const n=document.getElementById('ns-name').value.trim();
+  const c=document.getElementById('ns-code').value.trim();
+  if(!n||!c)return;
+  sizes.push({n,c,on:true});
+  if(!sizeMaster.find(x=>x.n===n)){sizeMaster.push({n,c});saveMaster();}
+  document.getElementById('ns-name').value='';document.getElementById('ns-code').value='';
+  renderSizes();renderMasterSizeList();
+}
+
+
+// ============================================================
+// STEP3 SKU設定
+// ============================================================
+function onSku3Search(q){
+  const dd = document.getElementById('sku3-dropdown');
+  if(!q || q.length < 2){ dd.style.display='none'; return; }
+  const results = skuSearch(q).slice(0, 10);
+  if(!results.length){ dd.style.display='none'; return; }
+  dd.innerHTML = results.map(s=>`
+    <div onclick="selectSku3('${s.c}','${s.n.replace(/'/g,"\'")}')"
+      style="padding:7px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--bd);display:flex;gap:10px;align-items:center"
+      onmouseover="this.style.background='var(--gray-50)'" onmouseout="this.style.background=''">
+      <span style="font-family:monospace;color:var(--blue);flex-shrink:0">${s.c}</span>
+      <span style="flex:1;color:var(--gray-600)">${s.n}</span>
+      ${s.col?`<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:var(--blue-lt);color:var(--blue)">${s.col}</span>`:''}
+    </div>`).join('');
+  dd.style.display = 'block';
+}
+
+function selectSku3(code, name){
+  document.getElementById('sku3-code').value = code;
+  document.getElementById('sku3-name').value = name;
+  document.getElementById('sku3-search').value = code + ' ' + name;
+  document.getElementById('sku3-dropdown').style.display = 'none';
+}
+
+function addSku3(){
+  const code = document.getElementById('sku3-code').value.trim();
+  const name = document.getElementById('sku3-name').value.trim();
+  const qty  = parseInt(document.getElementById('sku3-qty').value) || 1;
+  if(!code && !name){ alert('SKUコードまたは名称を入力してください'); return; }
+  sku3List.push({code, name, qty, role: code.startsWith('YR') ? '延長保証' : code.startsWith('IN') ? '特典' : 'セット構成'});
+  document.getElementById('sku3-code').value = '';
+  document.getElementById('sku3-name').value = '';
+  document.getElementById('sku3-search').value = '';
+  document.getElementById('sku3-qty').value = '1';
+  renderSku3List();
+}
+
+function removeSku3(i){
+  sku3List.splice(i,1);
+  renderSku3List();
+}
+
+function renderSku3List(){
+  const el = document.getElementById('sku3-list');
+  const applyEl = document.getElementById('sku3-apply-btns');
+  const ptBtns = document.getElementById('sku3-pattern-btns');
+  if(!el) return;
+
+  if(!sku3List.length){
+    el.innerHTML = '<div style="font-size:12px;color:var(--gray-400)">SKUが追加されていません</div>';
+    if(applyEl) applyEl.style.display = 'none';
+    return;
+  }
+
+  el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:4px">
+    <thead><tr style="border-bottom:2px solid var(--bd)">
+      <th style="padding:5px 8px;text-align:left;font-size:11px;color:var(--gray-400);width:120px">SKUコード</th>
+      <th style="padding:5px 8px;text-align:left;font-size:11px;color:var(--gray-400)">SKU名称</th>
+      <th style="padding:5px 8px;text-align:left;font-size:11px;color:var(--gray-400);width:80px">役割</th>
+      <th style="padding:5px 8px;text-align:center;font-size:11px;color:var(--gray-400);width:50px">数量</th>
+      <th style="width:30px"></th>
+    </tr></thead>
+    <tbody>
+      ${sku3List.map((s,i)=>`<tr style="border-bottom:1px solid var(--bd)">
+        <td style="padding:5px 8px"><span class="mono">${s.code||'—'}</span></td>
+        <td style="padding:5px 8px">${s.name||'—'}</td>
+        <td style="padding:5px 8px">
+          <input type="text" value="${s.role}" onchange="sku3List[${i}].role=this.value"
+            style="border:1px solid var(--bd);border-radius:4px;padding:2px 6px;font-size:11px;width:80px">
+        </td>
+        <td style="padding:5px 8px;text-align:center">
+          <input type="number" value="${s.qty}" min="1" onchange="sku3List[${i}].qty=+this.value"
+            style="width:44px;border:1px solid var(--bd);border-radius:4px;padding:2px 4px;font-size:11px;text-align:right">
+        </td>
+        <td><button onclick="removeSku3(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px;padding:2px 6px">×</button></td>
+      </tr>`).join('')}
+    </tbody>
+  </table>`;
+
+  if(applyEl) applyEl.style.display = 'block';
+
+  // パターン別反映ボタンを生成
+  if(ptBtns){
+    ptBtns.innerHTML = patterns.map(p=>
+      `<button class="btn" onclick="applySkuToPattern(${p.id})" style="font-size:12px">「${p.label}」のみに反映</button>`
+    ).join('');
+  }
+}
+
+function applySkuToAll(){
+  if(!sku3List.length){ alert('SKUが登録されていません'); return; }
+  // 生成済みの場合は直接反映
+  if(generated.length){
+    generated.forEach(h=>{
+      // 既存のsessionSKU（前回反映分）を除去して再追加
+      h.skuList = h.skuList.filter(s=>!s._fromSku3);
+      sku3List.forEach(s=>h.skuList.push({...s, _fromSku3:true}));
+    });
+    alert(`✅ ${generated.length}件の品番全てにSKU${sku3List.length}件を反映しました`);
+    renderPriceMatrix();
+  } else {
+    alert('品番を先に生成してください（「品番を自動生成」ボタンを押してください）');
+  }
+}
+
+function applySkuToPattern(ptId){
+  if(!sku3List.length){ alert('SKUが登録されていません'); return; }
+  if(!generated.length){ alert('品番を先に生成してください'); return; }
+  const targets = generated.filter(h=>h.pt.id===ptId);
+  targets.forEach(h=>{
+    h.skuList = h.skuList.filter(s=>!s._fromSku3);
+    sku3List.forEach(s=>h.skuList.push({...s, _fromSku3:true}));
+  });
+  const ptName = patterns.find(p=>p.id===ptId)?.label||'';
+  alert(`✅ 「${ptName}」の${targets.length}件にSKU${sku3List.length}件を反映しました`);
+  if(document.getElementById('p4').classList.contains('on')) renderPriceMatrix();
+}
+
+// ドロップダウンを外クリックで閉じる
+document.addEventListener('click', e=>{
+  const dd = document.getElementById('sku3-dropdown');
+  if(dd && !e.target.closest('#sku3-search') && !e.target.closest('#sku3-dropdown')){
+    dd.style.display='none';
+  }
+});
+
+// ============================================================
+// WIZARD S3 – PATTERNS
+// ============================================================
+function getCombinations(arr,r){
+  if(r===1)return arr.map(x=>[x]);
+  if(r>=arr.length)return[arr];
+  const res=[];
+  for(let i=0;i<=arr.length-r;i++){
+    getCombinations(arr.slice(i+1),r-1).forEach(c=>res.push([arr[i],...c]));
+  }
+  return res;
+}
+function shipSelectHTML(fee,pi){
+  return`<select onchange="patterns[${pi}].shipFee=+this.value;renderPts()" style="font-size:12px;padding:4px 8px;border:1px solid var(--bd);border-radius:5px;font-family:inherit">
+    ${shipOptions.map(s=>`<option value="${s.fee}"${s.fee===fee?' selected':''}>${s.label}</option>`).join('')}
+  </select>`;
+}
+function renderPts(){
+  const el=document.getElementById('pt-list');
+  if(!el)return;
+  el.innerHTML=patterns.map((p,pi)=>`
+    <div class="pt-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <input type="text" value="${p.label}" onchange="patterns[${pi}].label=this.value;updateCount()"
+            style="font-weight:700;font-size:13px;border:none;background:transparent;padding:0;width:140px;font-family:inherit">
+          <span class="tag tag-blue">${p.sheets}枚</span>
+        </div>
+        ${patterns.length>1?`<button onclick="patterns.splice(${pi},1);renderPts()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px">削除</button>`:''}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div>
+          <div style="font-size:11px;color:var(--gray-600);font-weight:500;margin-bottom:4px">送料</div>
+          ${shipSelectHTML(p.shipFee,pi)}
+          ${p.shipFee>0?`<div style="font-size:10px;color:var(--amber);margin-top:2px">品番名末尾に「_」付与</div>`:''}
+        </div>
+        <div class="tog-row">
+          <button class="tog${p.bonus?' on':''}" onclick="patterns[${pi}].bonus=!patterns[${pi}].bonus;renderPts()"></button>
+          <span style="font-size:12px">${p.bonus?'施策特典あり':'施策特典なし'}</span>
+        </div>
+      </div>
+      <div style="border-top:1px solid var(--bd);padding-top:10px;margin-bottom:10px">
+        <div style="font-size:11px;color:var(--gray-600);font-weight:500;margin-bottom:6px">カラー生成方法（複数カラー選択時）</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${['single','set','both'].map(m=>`
+            <label style="display:flex;align-items:center;gap:5px;cursor:pointer;padding:5px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px;${p.colorMode===m?'background:var(--blue-lt);border-color:var(--blue);font-weight:600;color:var(--blue)':''}">
+              <input type="radio" name="cm-${pi}" value="${m}" ${p.colorMode===m?'checked':''} onchange="patterns[${pi}].colorMode='${m}';renderPts()">
+              ${{single:'カラー別個別',set:'カラーセット',both:'両方'}[m]}
+            </label>`).join('')}
+        </div>
+        <div id="cm-prev-${pi}" style="margin-top:6px;font-size:11px;color:var(--blue);background:var(--blue-lt);padding:6px 10px;border-radius:var(--r);display:none"></div>
+      </div>
+      ${patternSkus.length?`
+      <div style="border-top:1px solid var(--bd);padding-top:10px">
+        <div style="font-size:11px;color:var(--gray-600);font-weight:500;margin-bottom:6px">パターン別SKU</div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          ${patternSkus.map((sk,si)=>`
+            <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;padding:5px 8px;background:#fff;border-radius:5px;border:1px solid var(--bd)">
+              <input type="checkbox" ${(p.patternSkuIds||[]).includes(si)?'checked':''} onchange="togglePtSku(${pi},${si},this.checked)">
+              <span class="mono">${sk.code||'—'}</span>
+              <span style="flex:1">${sk.name}</span>
+              <span style="color:var(--gray-400)">×${sk.qty}</span>
+            </label>`).join('')}
+        </div>
+      </div>`:''}
+    </div>`).join('');
+  updateCount();renderPtColorPreviews();
+}
+function addPt(){
+  patterns.push({id:Date.now(),label:(patterns.length+1)+'枚購入',sheets:patterns.length+1,shipFee:0,bonus:false,colorMode:'single',patternSkuIds:[]});
+  renderPts();
+}
+function togglePtSku(pi,si,checked){
+  if(!patterns[pi].patternSkuIds)patterns[pi].patternSkuIds=[];
+  if(checked){if(!patterns[pi].patternSkuIds.includes(si))patterns[pi].patternSkuIds.push(si);}
+  else{patterns[pi].patternSkuIds=patterns[pi].patternSkuIds.filter(x=>x!==si);}
+}
+function updateCount(){
+  const selS=sizes.filter(s=>s.on),selC=colors.filter(c=>c.on);
+  let total=0;const det=[];
+  patterns.forEach(p=>{
+    const mode=p.colorMode||'single',sh=p.sheets||1;
+    // カラー数
+    let cn=0;
+    if(!selC.length)cn=1;
+    else if(sh===1||mode==='single')cn=selC.length;
+    else if(mode==='set')cn=getCombinations(selC,Math.min(sh,selC.length)).length;
+    else cn=selC.length+getCombinations(selC,Math.min(sh,selC.length)).length;
+    // サイズ数（2枚以上はC(n,sh)の組み合わせ）
+    const sn=sh<=1?selS.length:Math.max(1,getCombinationsWithRep(selS,sh).length);
+    const pt=cn*sn;total+=pt;det.push(`${p.label}：${pt}品番`);
+  });
+  const el=document.getElementById('gen-count');
+  if(el)el.innerHTML=`<div class="info-box">ℹ️ 現在の設定で <strong>${total}品番</strong> が生成されます<br><span style="font-size:11px;opacity:.75">${det.join('　')}</span></div>`;
+}
+function renderPtColorPreviews(){
+  const selC=colors.filter(c=>c.on);
+  patterns.forEach((p,pi)=>{
+    const el=document.getElementById('cm-prev-'+pi);
+    if(!el)return;
+    if(selC.length<2){el.style.display='none';return;}
+    const names=selC.map(c=>c.n);
+    const sh=p.sheets||1,mode=p.colorMode||'single';
+    const r=Math.min(sh,selC.length);
+    const combos=getCombinations(names.map((_,i)=>i),r);
+    let prev='';
+    if(sh===1||mode==='single')prev='生成：'+names.map(n=>`「${n}」`).join('、')+` → ${names.length}品番`;
+    else if(mode==='set')prev='生成：'+combos.map(ix=>ix.map(i=>names[i]).join('×')).map(l=>`「${l}」`).join('、')+` → ${combos.length}品番`;
+    else prev=`生成：単色${names.length}品番 ＋ セット${combos.length}品番 = ${names.length+combos.length}品番`;
+    el.textContent=prev;el.style.display='block';
+  });
+}
+
+// ============================================================
+// GENERATE
+// ============================================================
+function getNextCode(g){
+  if(!seqCounters[g])seqCounters[g]=1;
+  const d=8-g.length;let code,att=0;
+  do{code=g+String(seqCounters[g]).padStart(d,'0');seqCounters[g]++;att++;}
+  while((registeredList.find(r=>r.code===code)||generated.find(x=>x.code===code))&&att<9999);
+  return code;
+}
+function makeName(grpName,colorLabel,sizeName,ptLabel,shipFee,colorAbbr){
+  const sp=sizeName&&sizeName!=='—'?' '+sizeName:'';
+  const suf=shipFee>0?'_':'';
+  // まずフルカラー名で試す
+  const cl=colorLabel?' '+colorLabel:'';
+  const base=grpName+cl+sp+' '+ptLabel;
+  const full=zenToHan((base+suf).substring(0,40-suf.length)+suf);
+  if(full.length<=40) return full;
+  // 40文字超 → カラーをアルファベット略称に切り替え
+  const clShort=colorAbbr?' '+colorAbbr:'';
+  const baseShort=grpName+clShort+sp+' '+ptLabel;
+  return zenToHan((baseShort+suf).substring(0,40-suf.length)+suf);
+}
+function generate(){
+  const g=document.getElementById('s-group').value;
+  const selS=sizes.filter(s=>s.on),selC=colors.filter(c=>c.on);
+  if(!g){alert('商品グループを選択してください');return;}
+  if(!selS.length){alert('サイズを1つ以上選択してください');return;}
+  generated=[];
+  const opt=document.querySelector(`#s-group option[value="${g}"]`);
+  const grpName=opt?zenToHan(opt.textContent.replace(g+' ','')):g;
+
+  patterns.forEach(pt=>{
+    const mode=pt.colorMode||'single', sh=pt.sheets||1;
+
+    // カラーグループ
+    let cgs=[];
+    if(!selC.length) cgs=[[]];
+    else if(sh===1||mode==='single') cgs=selC.map(c=>[c]);
+    else if(mode==='set') cgs=getCombinations(selC,Math.min(sh,selC.length));
+    else cgs=[...selC.map(c=>[c]),...getCombinations(selC,Math.min(sh,selC.length))];
+
+    // サイズグループ：1枚=個別、2枚以上=全組み合わせ（同サイズ含む）
+    let szGroups=[];
+    if(sh<=1){
+      szGroups=selS.map(s=>[s]);
+    } else {
+      // 同サイズ×同サイズ（シングル×シングル等）も含む全組み合わせ
+      szGroups=getCombinationsWithRep(selS,sh);
+      if(!szGroups.length) szGroups=selS.map(s=>[s,s]);
+    }
+
+    cgs.forEach(cg=>{
+      szGroups.forEach(szg=>{
+        const code=getNextCode(g);
+
+        // カラーラベルとアルファベット略称
+        const colorLabel=cg.length===0?'':cg.length===1?cg[0].n:cg.map(c=>c.n).join('×');
+        const colorAbbr=cg.length===0?'':cg.length===1?cg[0].c:cg.map(c=>c.c).join('×');
+
+        // サイズラベル
+        const sizeLabel=szg.length===1
+          ?(szg[0].c==='—'?'':szg[0].n)
+          :szg.map(s=>s.c==='—'?'':s.n).filter(Boolean).join('×');
+
+        const name=makeName(grpName,colorLabel,sizeLabel,pt.label,pt.shipFee,colorAbbr);
+
+        // SKUリスト構築
+        const skuList=[];
+
+        // ①SKUパネルで登録したSKU（最優先・全品番共通）
+        spSkuList.forEach(s=>skuList.push({...s, _fromSp:true}));
+
+        // ②skuCacheからカラー別メインSKU（SKUパネル未登録の場合のフォールバック）
+        if(!spSkuList.length){
+          if(cg.length && skuCache.length){
+            cg.forEach(col=>{
+              const candidates=skuCache.filter(s=>s.col===col.n||s.n.includes(col.n));
+              candidates.sort((a,b)=>(b.d||'')>(a.d||'')?1:-1);
+              const best=candidates[0];
+              if(best) skuList.push({code:best.c,name:best.n,qty:1,role:'ﾒｲﾝ('+col.n+')'});
+              else skuList.push({code:`[${col.n}SKU未設定]`,name:`${col.n}本体`,qty:1,role:'ﾒｲﾝ'});
+            });
+          } else if(cg.length){
+            cg.forEach(col=>skuList.push({
+              code:`[${col.c}]`,name:`${col.n}本体`,qty:1,role:'ﾒｲﾝ'
+            }));
+          }
+        }
+
+        // ③パターン別SKU（STEP3でチェックされたもの）
+        (pt.patternSkuIds||[]).forEach(si=>{
+          if(patternSkus[si]) skuList.push({...patternSkus[si],role:'ﾊﾟﾀｰﾝ別'});
+        });
+
+        // ④施策特典SKU（pt.bonus=trueのパターンに付与）
+        if(pt.bonus && bonuses.length){
+          bonuses.forEach(b=>skuList.push({
+            code:b.code||'',name:b.name||'特典',qty:1,role:'特典'
+          }));
+        }
+
+        generated.push({
+          code,name,group:g,szg,sz:szg[0],pt,skuList,
+          ship:pt.shipFee,price:0,
+          month:document.getElementById('s-month').value,
+          campaign:document.getElementById('s-name').value,
+          staff:document.getElementById('s-staff').value,
+          status:'取得OK',colorLabel,colorAbbr,sizeLabel,
+        });
+      });
+    });
+  });
+  renderPriceMatrix();go(4);
+}
+
+function renderPriceMatrix(){
+  const el=document.getElementById('price-matrix');
+  const yen=n=>'¥'+Math.round(n).toLocaleString('ja-JP');
+
+  let html_out=`<div class="ok-box">✅ <strong>${generated.length}件</strong>の品番コードを発行しました。</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap">
+      <input type="number" id="all-price" placeholder="全品番に一括適用（税抜）" style="width:210px;padding:7px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px">
+      <button class="btn btn-p" onclick="setAllPrice()">全品番に適用</button>
+    </div>
+    ${spSkuList.length?`<div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap;padding:10px 12px;background:var(--green-lt);border-radius:var(--r);border:1px solid var(--green-bd)">
+      <span style="font-size:12px;color:var(--green);font-weight:600">📦 SKU登録済み（${sku3List.length}件）</span>
+      <button class="btn" onclick="applySkuToAll()" style="font-size:12px;background:var(--green);color:#fff;border-color:var(--green)">全品番に再反映</button>
+      ${patterns.map(p=>`<button class="btn" onclick="applySkuToPattern(${p.id})" style="font-size:12px">「${p.label}」のみ再反映</button>`).join('')}
+    </div>`:'<div style="font-size:12px;color:var(--amber);margin-bottom:10px;padding:8px 12px;background:var(--amber-lt);border-radius:var(--r)">⚠ SKUが未設定です。STEP 3に戻ってSKUを追加してください。</div>'}`;
+
+  patterns.forEach(pt=>{
+    const ptItems=generated.filter(h=>h.pt.id===pt.id);
+    if(!ptItems.length) return;
+
+    html_out+=`
+    <div style="margin-bottom:20px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid var(--blue-lt)">
+        <span style="font-size:14px;font-weight:700;color:var(--blue)">${pt.label}</span>
+        <span class="tag tag-blue">${ptItems.length}品番</span>
+        <span style="font-size:12px;color:var(--gray-400)">${pt.shipFee>0?'送料'+pt.shipFee+'円':'送料無料'} / ${pt.bonus&&bonuses.length?'特典'+bonuses.length+'件':'特典なし'}</span>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;flex-wrap:wrap">
+        <input type="number" id="pt-price-${pt.id}" placeholder="このパターン一括（税抜）" style="width:200px;padding:6px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">
+        <button class="btn" onclick="setPtPrice(${pt.id})" style="font-size:12px">このパターンに適用</button>
+      </div>
+      <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr>
+          <th style="width:100px">品番コード</th>
+          <th style="width:160px">サイズ構成</th>
+          <th style="width:100px">カラー</th>
+          <th style="width:100px">販売価格(税抜)</th>
+          <th style="width:85px">税込</th>
+          <th style="width:46px">SKU数</th>
+          <th>品番名（編集可）</th>
+          <th style="width:50px">文字数</th>
+        </tr></thead>
+        <tbody>
+          ${ptItems.map((h)=>{
+            const i=generated.indexOf(h);
+            const skuOk=h.skuList.length>0;
+            return `<tr>
+              <td>
+                <span class="mono" style="cursor:pointer;text-decoration:underline dotted"
+                  onclick="toggleSkuRow4(${i})" title="クリックでSKU確認">${h.code}</span>
+              </td>
+              <td style="font-size:12px;font-weight:500">${h.sizeLabel||'—'}</td>
+              <td style="font-size:12px">${h.colorLabel||'—'}</td>
+              <td><input type="number" id="pr-${i}" value="${h.price||''}" min="0" placeholder="0"
+                onchange="generated[${i}].price=+this.value;updTax(${i})" style="width:90px"></td>
+              <td id="tx-${i}" style="text-align:right;font-size:12px;color:var(--gray-400)">${h.price?yen(Math.round(h.price*1.1)):'—'}</td>
+              <td style="text-align:center">
+                <span style="font-weight:600;color:${skuOk?'var(--green)':'var(--red)'}">${h.skuList.length}</span>
+              </td>
+              <td><input type="text" value="${h.name}" id="nm-${i}"
+                onchange="generated[${i}].name=this.value;updNL(${i})" maxlength="40"
+                style="width:100%;font-size:12px;padding:3px 6px;border:1px solid var(--bd);border-radius:5px"></td>
+              <td id="nl-${i}" style="text-align:center;font-size:11px;color:${h.name.length>38?'var(--red)':'var(--green)'}">${h.name.length}/40</td>
+            </tr>
+            <tr id="sku-row4-${i}" style="display:none;background:var(--gray-50)">
+              <td colspan="8" style="padding:8px 16px 12px 24px">
+                <div style="font-size:11px;font-weight:600;color:var(--gray-600);margin-bottom:6px">📦 ${h.code} のSKU構成</div>
+                ${renderSkuTable(h.skuList)}
+              </td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table></div>
+    </div>`;
+  });
+
+  el.innerHTML=html_out;
+}
+
+function toggleSkuRow4(i){
+  const el=document.getElementById('sku-row4-'+i);
+  if(el) el.style.display=el.style.display==='none'?'table-row':'none';
+}
+
+// SKU一覧テーブルHTML生成（共通）
+function renderSkuTable(skuList){
+  if(!skuList||!skuList.length){
+    return `<div style="font-size:12px;color:var(--red)">SKUが設定されていません。初期設定でSKUマスタを読み込んでから再生成してください。</div>`;
+  }
+  return `<table style="width:100%;border-collapse:collapse;font-size:12px">
+    <thead><tr style="border-bottom:1px solid var(--bd)">
+      <th style="padding:4px 8px;text-align:left;font-size:11px;color:var(--gray-400);width:120px">SKUコード</th>
+      <th style="padding:4px 8px;text-align:left;font-size:11px;color:var(--gray-400)">SKU名称</th>
+      <th style="padding:4px 8px;text-align:left;font-size:11px;color:var(--gray-400);width:90px">役割</th>
+      <th style="padding:4px 8px;text-align:center;font-size:11px;color:var(--gray-400);width:50px">数量</th>
+    </tr></thead>
+    <tbody>
+      ${skuList.map(s=>`<tr style="border-bottom:1px solid var(--bd)">
+        <td style="padding:4px 8px"><span class="mono">${s.code||'—'}</span></td>
+        <td style="padding:4px 8px">${s.name||'—'}</td>
+        <td style="padding:4px 8px">
+          <span style="font-size:10px;padding:1px 6px;border-radius:8px;background:var(--blue-lt);color:var(--blue)">${s.role||'—'}</span>
+        </td>
+        <td style="padding:4px 8px;text-align:center">${s.qty||1}</td>
+      </tr>`).join('')}
+    </tbody>
+  </table>`;
+}
+
+
+function setPtPrice(ptId){
+  const v=parseFloat(document.getElementById('pt-price-'+ptId).value)||0;
+  generated.forEach((h,i)=>{
+    if(h.pt.id===ptId){
+      h.price=v;
+      const el=document.getElementById('pr-'+i);
+      if(el) el.value=v;
+      updTax(i);
+    }
+  });
+}
+
+function updTax(i){const el=document.getElementById('tx-'+i);if(el)el.textContent=generated[i].price?'¥'+Math.round(generated[i].price*1.1).toLocaleString('ja-JP'):'—';}
+function updNL(i){const l=generated[i].name.length;const el=document.getElementById('nl-'+i);if(el){el.textContent=l+'/40';el.style.color=l>38?'var(--red)':'var(--green)';}}
+function setAllPrice(){const v=parseFloat(document.getElementById('all-price').value)||0;generated.forEach((_,i)=>{generated[i].price=v;const e=document.getElementById('pr-'+i);if(e)e.value=v;updTax(i);});}
+function setRowPrice(sc,idx){const v=parseFloat(document.getElementById('row-p-'+sc).value)||0;idx.forEach(i=>{generated[i].price=v;const e=document.getElementById('pr-'+i);if(e)e.value=v;updTax(i);});}
+
+// ============================================================
+// STEP 5 CONFIRM
+// ============================================================
+function buildConfirm(){
+  const g=document.getElementById('s-group').value;
+  const p2=P2DB[g]||{oc:300,sc:900,cc:0.01,cod:0.01};
+  const wp=generated.filter(h=>h.price>0);let tot=0;
+  wp.forEach(h=>{const si=Math.round(h.price*1.1);tot+=h.price-p2.oc-p2.sc-(si*p2.cc)-(si*p2.cod);});
+
+  document.getElementById('s-metrics').innerHTML=`
+    <div class="mcard"><div class="ml">生成品番数</div><div class="mv info">${generated.length}件</div></div>
+    <div class="mcard"><div class="ml">価格入力済み</div><div class="mv ok">${wp.length}件</div></div>
+    <div class="mcard"><div class="ml">SKU設定済み</div><div class="mv ${generated.every(h=>h.skuList.length)?'ok':'ng'}">${generated.filter(h=>h.skuList.length>0).length}/${generated.length}件</div></div>
+    <div class="mcard"><div class="ml">平均P2（概算）</div><div class="mv">${wp.length?'¥'+Math.round(tot/wp.length).toLocaleString('ja-JP'):'—'}</div></div>`;
+
+  const skuWarn=!skuCache.length
+    ?`<div class="warn-box" style="margin-bottom:10px">⚠ SKUマスタ未読込のためSKUが自動設定されていません。初期設定でSKUマスタを読み込んでからSTEP 2に戻り再生成してください。</div>`:'';
+
+  document.getElementById('confirm-wrap').innerHTML=skuWarn+`
+    <div style="font-size:12px;color:var(--gray-400);margin-bottom:8px">品番コードをクリックするとSKU構成を確認できます</div>
+    <table class="tbl">
+      <thead><tr>
+        <th style="width:110px">品番コード</th>
+        <th>品番名</th>
+        <th style="width:90px">販売価格(税抜)</th>
+        <th style="width:84px">販売価格(税込)</th>
+        <th style="width:52px">SKU数</th>
+        <th style="width:54px">送料</th>
+      </tr></thead>
+      <tbody>
+        ${generated.map((h,i)=>`
+          <tr>
+            <td><span class="mono" style="cursor:pointer;text-decoration:underline dotted"
+              onclick="toggleSkuDetail(${i})">${h.code}</span></td>
+            <td style="font-size:12px">${h.name}</td>
+            <td style="text-align:right">¥${(h.price||0).toLocaleString('ja-JP')}</td>
+            <td style="text-align:right;color:var(--gray-400)">¥${Math.round((h.price||0)*1.1).toLocaleString('ja-JP')}</td>
+            <td style="text-align:center">
+              <span style="font-weight:600;color:${h.skuList.length===0?'var(--red)':'var(--green)'}">${h.skuList.length}</span>
+              ${h.skuList.length===0?'<span style="font-size:10px;color:var(--red)">未</span>':''}
+            </td>
+            <td style="text-align:center;font-size:11px">${h.ship>0?h.ship+'円':'無料'}</td>
+          </tr>
+          <tr id="sku-detail-${i}" style="display:none;background:var(--gray-50)">
+            <td colspan="6" style="padding:0 10px 12px 24px">
+              <div style="font-size:11px;font-weight:600;color:var(--gray-600);padding:8px 0 4px">📦 ${h.code} のSKU構成</div>
+              ${renderSkuTable(h.skuList)}
+            </td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+function toggleSkuDetail(i){
+  const el=document.getElementById('sku-detail-'+i);
+  if(el) el.style.display=el.style.display==='none'?'table-row':'none';
+}
+
+function doRegister(){
+  if(!generated.length){alert('品番が生成されていません');return;}
+  const np=generated.filter(h=>!h.price);
+  if(np.length&&!confirm(`価格未入力 ${np.length}件あります。このまま登録しますか？`))return;
+  const cn=document.getElementById('s-name').value.trim();
+  if(cn&&!campaignHistory.includes(cn)){campaignHistory.unshift(cn);if(campaignHistory.length>50)campaignHistory.pop();renderCampaignDl();}
+  generated.forEach(h=>registeredList.push({...h,registeredAt:new Date().toLocaleDateString('ja-JP')}));
+  document.getElementById('total-badge').textContent=`登録済 ${registeredList.length}件`;
+  saveMaster();
+  alert(`✅ ${generated.length}件登録しました。`);
+  generated=[];resetWizardForm();showPage('list');
+}
+function resetWizardForm(){
+  bonuses=[];patternSkus=[];sku3List=[];spSkuList=[];
+  patterns=[
+    {id:1,label:'1枚購入',sheets:1,shipFee:990,bonus:false,colorMode:'single',patternSkuIds:[]},
+    {id:2,label:'2枚セット',sheets:2,shipFee:0,bonus:true,colorMode:'set',patternSkuIds:[]},
+  ];
+  ['s-month','s-name','s-staff','s-group'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  const gi=document.getElementById('group-info');if(gi)gi.innerHTML='';
+  renderBonuses();resetWizardColors();resetWizardSizes();renderPts();go(1);
+}
+
+// ============================================================
+// LIST PAGE
+// ============================================================
+function renderList(){
+  const fg=document.getElementById('f-group').value,fm=document.getElementById('f-month').value;
+  const fs=document.getElementById('f-staff').value,fst=document.getElementById('f-status').value;
+  const fq=document.getElementById('f-search').value.toLowerCase();
+  const data=registeredList.filter(r=>{
+    if(fg&&r.group!==fg)return false;if(fm&&r.month!==fm)return false;
+    if(fs&&r.staff!==fs)return false;if(fst&&r.status!==fst)return false;
+    if(fq&&!r.code.toLowerCase().includes(fq)&&!r.name.toLowerCase().includes(fq))return false;
+    return true;
+  });
+  const tb=document.getElementById('list-body');
+  if(!data.length){tb.innerHTML=`<tr><td colspan="11" style="text-align:center;padding:30px;color:var(--gray-400)">登録された品番がありません</td></tr>`;document.getElementById('list-footer').textContent='';return;}
+  tb.innerHTML=data.map(r=>{
+    const idx=registeredList.indexOf(r);
+    return`<tr>
+      <td><span class="mono">${r.code}</span></td>
+      <td style="font-size:12px;max-width:240px">${r.name}</td>
+      <td style="font-size:11px">${r.group}</td>
+      <td style="font-size:12px">${r.month||'—'}</td>
+      <td style="font-size:12px">${r.staff||'—'}</td>
+      <td style="text-align:right;font-weight:600">¥${(r.price||0).toLocaleString('ja-JP')}</td>
+      <td style="text-align:right;color:var(--gray-400)">¥${Math.round((r.price||0)*1.1).toLocaleString('ja-JP')}</td>
+      <td style="text-align:center;font-size:11px">${r.ship>0?r.ship+'円':'無料'}</td>
+      <td><select class="status-sel" onchange="registeredList[${idx}].status=this.value;renderList()">${STATUS_LIST.map(s=>`<option${r.status===s?' selected':''}>${s}</option>`).join('')}</select></td>
+      <td style="text-align:center">${r.skuList.length}</td>
+      <td><button onclick="if(confirm('削除しますか？')){registeredList.splice(${idx},1);document.getElementById('total-badge').textContent='登録済 '+registeredList.length+'件';renderList()}" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px">削除</button></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('list-footer').textContent=`${data.length}件表示 / 合計 ${registeredList.length}件`;
+  [['f-group',registeredList.map(r=>r.group),'全グループ'],['f-month',registeredList.map(r=>r.month).filter(Boolean),'全施策月'],['f-staff',registeredList.map(r=>r.staff).filter(Boolean),'全担当者']].forEach(([id,vals,label])=>{
+    const sel=document.getElementById(id),cur=sel.value;
+    sel.innerHTML=`<option value="">${label}</option>`+[...new Set(vals)].map(v=>`<option${cur===v?' selected':''}>${v}</option>`).join('');
+  });
+}
+function clearFilters(){['f-group','f-month','f-staff','f-status'].forEach(id=>document.getElementById(id).value='');document.getElementById('f-search').value='';renderList();}
+
+// ============================================================
+// MASTER PAGE
+// ============================================================
+
+function renderMasterSkuSearch(q){
+  const el = document.getElementById('master-sku-results');
+  const statusEl = document.getElementById('sku-master-status-main');
+  if(statusEl){
+    statusEl.innerHTML = skuCache.length
+      ? `<span style="color:var(--green)">✓ ${skuCache.length}件読込済み（${skuLastUpdated}）</span>`
+      : '<span style="color:var(--amber)">未読込</span>';
+  }
+  if(!el) return;
+  if(!skuCache.length){
+    el.innerHTML='<div style="font-size:12px;color:var(--amber)">SKUマスタが未読込です</div>';
+    return;
+  }
+
+  // 表示対象を決定：検索ワードがあれば絞り込み、なければ全件
+  let results;
+  let headerText;
+  if(q && q.length >= 2){
+    results = skuSearch(q);
+    headerText = results.length
+      ? `「${q}」の検索結果：<strong>${results.length}件</strong>`
+      : `「${q}」に該当するSKUがありません`;
+  } else {
+    // 全件を日付降順で表示
+    results = [...skuCache].sort((a,b)=>(b.d||'')>(a.d||'')?1:-1);
+    headerText = `全SKU一覧：<strong>${results.length}件</strong>（登録日新しい順）`;
+  }
+
+  if(!results.length){
+    el.innerHTML=`<div style="font-size:12px;color:var(--gray-400)">${headerText}</div>`;
+    return;
+  }
+
+  // 種別バッジ色
+  const typeCls={FN:'st-single',YR:'st-pattern',RT:'st-double',UA:'st-fixed',UB:'st-fixed',SS:'sku-type',IN:'sku-type'};
+
+  el.innerHTML=`
+    <div style="font-size:12px;color:var(--gray-600);margin-bottom:8px">${headerText}</div>
+    <table class="tbl">
+      <thead><tr>
+        <th style="width:110px">SKUコード</th>
+        <th>SKU名称</th>
+        <th style="width:80px">カラー</th>
+        <th style="width:50px">種別</th>
+        <th style="width:80px">登録日</th>
+      </tr></thead>
+      <tbody>
+        ${results.map(s=>`<tr>
+          <td><span class="mono">${s.c}</span></td>
+          <td style="font-size:12px">${s.n||'—'}</td>
+          <td style="font-size:11px;text-align:center">
+            ${s.col?`<span style="background:var(--blue-lt);color:var(--blue);padding:1px 6px;border-radius:8px;font-size:10px">${s.col}</span>`:'<span style="color:var(--gray-400)">—</span>'}
+          </td>
+          <td style="text-align:center">
+            <span class="sku-type ${typeCls[s.t]||''}" style="font-size:10px">${s.t}</span>
+          </td>
+          <td style="font-size:11px;color:var(--gray-400)">${s.d||'—'}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+function renderMasterSkuTable(){ renderMasterSkuSearch(document.getElementById('master-sku-search')?.value||''); }
+
+function renderMasterAll(){
+  renderMasterSkuSearch('');renderMasterSkuTable();renderMasterColorList();renderMasterSizeList();
+  renderMasterStaffList();renderMasterGroupList();renderMasterShipList();renderMasterCampList();
+  renderGroupSelect();
+}
+function listItem(label,code,onDel){
+  return`<div style="display:flex;align-items:center;gap:8px;padding:5px 10px;background:var(--gray-50);border:1px solid var(--bd);border-radius:5px;margin-bottom:4px;font-size:12px">
+    ${code?`<span class="mono">${code}</span>`:''}
+    <span style="flex:1">${label}</span>
+    <button onclick="${onDel}" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px">×</button>
+  </div>`;
+}
+
+// SKUマスタ（マスタ管理ページ）
+
+function addSkuMasterFromPage(){
+  const g=document.getElementById('master-group-sel').value;
+  if(!g){alert('商品グループを選択してください');return;}
+  const code=document.getElementById('m-sku-code').value.trim();
+  const name=document.getElementById('m-sku-name').value.trim();
+  const color=document.getElementById('m-sku-color').value.trim();
+  const size=document.getElementById('m-sku-size').value.trim();
+  const type=document.getElementById('m-sku-type').value;
+  if(!code||!name){alert('SKUコードと名称は必須です');return;}
+  if(!skuMaster[g])skuMaster[g]=[];
+  skuMaster[g].push({code,name,color,size,type});
+  ['m-sku-code','m-sku-name','m-sku-color','m-sku-size'].forEach(id=>document.getElementById(id).value='');
+  renderMasterSkuTable();saveMaster();
+}
+function importSkuFromExcel(input){
+  const file=input.files[0];if(!file)return;
+  const g=document.getElementById('master-group-sel').value;
+  if(!g){alert('インポート先の商品グループを選択してください');input.value='';return;}
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      if(!skuMaster[g])skuMaster[g]=[];
+      let added=0;
+      rows.forEach((row,ri)=>{
+        if(ri===0)return; // ヘッダー行スキップ
+        const code=String(row[0]||'').trim();
+        const name=String(row[1]||'').trim();
+        const color=String(row[2]||'').trim();
+        const size=String(row[3]||'').trim();
+        const type=String(row[4]||'single').trim();
+        if(!code||!name)return;
+        if(!skuMaster[g].find(s=>s.code===code)){
+          skuMaster[g].push({code,name,color,size,type});added++;
+        }
+      });
+      renderMasterSkuTable();renderSkuMasterTable();saveMaster();
+      alert(`✅ ${added}件のSKUをインポートしました。`);
+    }catch(err){alert('インポートエラー: '+err.message);}
+    input.value='';
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// カラーマスタ
+function renderMasterColorList(){
+  const el=document.getElementById('master-color-list');
+  if(!el)return;
+  el.innerHTML=colorMaster.map((c,i)=>listItem(`${c.n}`,c.c,`colorMaster.splice(${i},1);saveMaster();renderMasterColorList();renderAll()`)).join('');
+}
+function addColorMaster(){
+  const n=document.getElementById('m-color-name').value.trim();
+  const c=document.getElementById('m-color-code').value.trim();
+  if(!n||!c)return;
+  if(colorMaster.find(x=>x.n===n)){alert('同じカラー名が既に登録されています');return;}
+  colorMaster.push({n,c});
+  document.getElementById('m-color-name').value='';document.getElementById('m-color-code').value='';
+  saveMaster();renderMasterColorList();resetWizardColors();
+}
+
+// サイズマスタ
+function renderMasterSizeList(){
+  const el=document.getElementById('master-size-list');
+  if(!el)return;
+  el.innerHTML=sizeMaster.map((s,i)=>listItem(`${s.n}`,s.c,`sizeMaster.splice(${i},1);saveMaster();renderMasterSizeList();renderAll()`)).join('');
+}
+function addSizeMaster(){
+  const n=document.getElementById('m-size-name').value.trim();
+  const c=document.getElementById('m-size-code').value.trim();
+  if(!n||!c)return;
+  if(sizeMaster.find(x=>x.n===n)){alert('同じサイズ名が既に登録されています');return;}
+  sizeMaster.push({n,c});
+  document.getElementById('m-size-name').value='';document.getElementById('m-size-code').value='';
+  saveMaster();renderMasterSizeList();resetWizardSizes();
+}
+
+// 担当者マスタ
+function renderMasterStaffList(){
+  const el=document.getElementById('master-staff-list');
+  if(!el)return;
+  el.innerHTML=staffList.map((s,i)=>listItem(s,'',`staffList.splice(${i},1);saveMaster();renderMasterStaffList();renderStaffSelect()`)).join('');
+}
+function addStaffMaster(){
+  const v=document.getElementById('m-staff-name').value.trim();
+  if(!v||staffList.includes(v))return;
+  staffList.push(v);
+  document.getElementById('m-staff-name').value='';
+  saveMaster();renderMasterStaffList();renderStaffSelect();
+}
+
+// 商品グループマスタ
+function renderMasterGroupList(){
+  const el=document.getElementById('master-group-list');
+  if(!el)return;
+  const cats=[...new Set(groupMaster.map(g=>g.cat))];
+  el.innerHTML=cats.map(cat=>`
+    <div style="font-size:11px;font-weight:700;color:var(--gray-400);padding:6px 0 3px;text-transform:uppercase">${cat}</div>
+    ${groupMaster.filter(g=>g.cat===cat).map((g,_)=>{
+      const gi=groupMaster.indexOf(g);
+      return listItem(`${g.name}`,g.code,`groupMaster.splice(${gi},1);saveMaster();renderMasterGroupList();renderGroupSelect()`);
+    }).join('')}`).join('');
+}
+function addGroupMaster(){
+  const code=document.getElementById('m-grp-code').value.trim().toUpperCase();
+  const name=document.getElementById('m-grp-name').value.trim();
+  const cat=document.getElementById('m-grp-cat').value.trim()||'その他';
+  if(!code||!name){alert('コードと商品名は必須です');return;}
+  if(groupMaster.find(g=>g.code===code)){alert(`「${code}」は既に登録されています`);return;}
+  if(!P2DB[code])P2DB[code]={oc:300,sc:900,cc:0.01,cod:0.01};
+  groupMaster.push({code,name,cat});
+  ['m-grp-code','m-grp-name','m-grp-cat'].forEach(id=>document.getElementById(id).value='');
+  saveMaster();renderMasterGroupList();renderGroupSelect();
+}
+
+// 送料マスタ
+function renderMasterShipList(){
+  const el=document.getElementById('master-ship-list');
+  if(!el)return;
+  el.innerHTML=shipOptions.map((s,i)=>listItem(`${s.label}（${s.fee===0?'無料':s.fee.toLocaleString()+'円'}）`,'',
+    `shipOptions.splice(${i},1);saveMaster();renderMasterShipList();renderPts()`)).join('');
+}
+function addShipMaster(){
+  const fee=parseInt(document.getElementById('m-ship-fee').value)||0;
+  const label=document.getElementById('m-ship-label').value.trim()||fee+'円';
+  if(shipOptions.find(s=>s.fee===fee)){alert('同じ金額の送料が既に登録されています');return;}
+  shipOptions.push({fee,label});shipOptions.sort((a,b)=>a.fee-b.fee);
+  document.getElementById('m-ship-fee').value='';document.getElementById('m-ship-label').value='';
+  saveMaster();renderMasterShipList();renderPts();
+}
+
+// 施策名マスタ
+function renderMasterCampList(){
+  const el=document.getElementById('master-camp-list');
+  if(!el)return;
+  el.innerHTML=campaignHistory.map((c,i)=>listItem(c,'',`campaignHistory.splice(${i},1);saveMaster();renderMasterCampList();renderCampaignDl()`)).join('');
+}
+function addCampaignMaster(){
+  const v=document.getElementById('m-camp-name').value.trim();
+  if(!v||campaignHistory.includes(v))return;
+  campaignHistory.unshift(v);
+  document.getElementById('m-camp-name').value='';
+  saveMaster();renderMasterCampList();renderCampaignDl();
+}
+
+// ============================================================
+// EXCEL EXPORT
+// ============================================================
+function exportExcel(mode){
+  if(!registeredList.length){alert('登録済みの品番がありません');return;}
+  const wb=XLSX.utils.book_new();
+
+  // ===== シート1：価格表（コミュニケーター参照用） =====
+  const priceRows=[
+    ['注文品番','注文品番名','販売価格（税抜）','販売価格（税込）','送料（税込）','返品期間','商品グループ','施策月','施策名','担当者','ステータス','SKU数','登録日']
+  ];
+  registeredList.forEach(r=>{
+    priceRows.push([
+      r.code,r.name,
+      r.price||0,Math.round((r.price||0)*1.1),
+      r.ship||0,'60日',
+      r.group,r.month||'',r.campaign||'',r.staff||'',
+      r.status||'取得OK',r.skuList.length,r.registeredAt||''
+    ]);
+  });
+  const ws1=XLSX.utils.aoa_to_sheet(priceRows);
+  ws1['!cols']=[{wch:13},{wch:46},{wch:16},{wch:16},{wch:10},{wch:8},{wch:8},{wch:7},{wch:16},{wch:8},{wch:12},{wch:6},{wch:11}];
+  XLSX.utils.book_append_sheet(wb,ws1,'価格表');
+
+  // ===== シート2：注文品番(BtoC) - Accessインポート形式 =====
+  const btocHeader=[
+    'No','注文品番','販売組織','注文品番名','返品不可区分','商品グループ','商品サブグループ',
+    'アソート数','アソート対象フラグ','明細書非表示フラグ','消費税区分','販売価格（税込）',
+    'バリューアップ価格（税込）','送料金額（税込）','有効開始日時','有効終了日時',
+    'お試し期間','返品可能期間','購入数量制限','翌日配送対象フラグ',
+    '翌日配送開始日時','翌日配送終了日時','定期商品種別','定期T2注文品番',
+    'まとめ買い商品種別','キャッシュバック対象フラグ','クレジット分割払い',
+    'デフォルトお届け間隔','デフォルトお届け間隔数','初期の間隔','ゆうパケフラグ',
+    '商品コード使用チャネル','キャッシュバック情報登録','キャッシュバック 受付期間',
+    'キャッシュバック 金額','キャッシュバック 単位','キャッシュバック 条件',
+    'AT/OM補正','継続商品の注文品番','継続商品の販売価格（税抜）','販売開始日','その他'
+  ];
+  const btocRows=[btocHeader];
+  registeredList.forEach((r,i)=>{
+    const sellIn=Math.round((r.price||0)*1.1);
+    // 返品可能期間：送料990円以下は39日、それ以外は60日
+    const returnDays=r.ship>990?60:39;
+    btocRows.push([
+      i+1,           // No
+      r.code,        // 注文品番
+      'Z01C',        // 販売組織（固定）
+      r.name,        // 注文品番名
+      '',            // 返品不可区分
+      r.group,       // 商品グループ
+      '',            // 商品サブグループ
+      '',            // アソート数
+      '',            // アソート対象フラグ
+      '',            // 明細書非表示フラグ
+      '1',           // 消費税区分（1=課税）
+      sellIn,        // 販売価格（税込）
+      '',            // バリューアップ価格
+      r.ship||0,     // 送料金額（税込）
+      '',            // 有効開始日時
+      '',            // 有効終了日時
+      '',            // お試し期間
+      returnDays,    // 返品可能期間
+      '',            // 購入数量制限
+      '',            // 翌日配送対象フラグ
+      '','',         // 翌日配送開始/終了日時
+      '','',         // 定期商品種別、定期T2
+      '','',         // まとめ買い、キャッシュバック
+      '','','','','', // クレジット、間隔×3、ゆうパケ
+      '','','','','','', // チャネル、CB情報×5
+      '','','','',   // AT/OM、継続品番、継続価格、販売開始日
+      ''             // その他
+    ]);
+  });
+  const ws2=XLSX.utils.aoa_to_sheet(btocRows);
+  ws2['!cols']=[{wch:5},{wch:13},{wch:6},{wch:46},{wch:8},{wch:8},{wch:8},{wch:6},{wch:8},{wch:8},
+               {wch:6},{wch:14},{wch:14},{wch:12},{wch:16},{wch:16},{wch:8},{wch:8},{wch:8},{wch:8},
+               {wch:16},{wch:16},{wch:8},{wch:14},{wch:8},{wch:8},{wch:8},{wch:8},{wch:8},{wch:8},
+               {wch:8},{wch:12},{wch:8},{wch:12},{wch:8},{wch:6},{wch:8},{wch:8},{wch:14},{wch:12},{wch:10},{wch:8}];
+  XLSX.utils.book_append_sheet(wb,ws2,'注文品番 (BtoC)');
+
+  // ===== シート3：構成_注文品番（品番×SKU紐づけ） =====
+  const compHeader=['No','注文品番','構成SKU品番','員数'];
+  const compRows=[compHeader];
+  let rowNo=1;
+  registeredList.forEach(r=>{
+    if(!r.skuList||!r.skuList.length){
+      // SKU未設定の場合でも注文品番行は出力
+      compRows.push([rowNo++,r.code,'',1]);
+    } else {
+      r.skuList.forEach(s=>{
+        compRows.push([rowNo++,r.code,s.code||'',s.qty||1]);
+      });
+    }
+  });
+  const ws3=XLSX.utils.aoa_to_sheet(compRows);
+  ws3['!cols']=[{wch:5},{wch:13},{wch:13},{wch:6}];
+  XLSX.utils.book_append_sheet(wb,ws3,'構成_注文品番');
+
+  const date=new Date().toISOString().slice(0,10).replace(/-/g,'');
+  XLSX.writeFile(wb,`品番取得_Access登録用_${date}.xlsx`);
+}
+
+
+function exportMasterHTML(){
+  const src=document.documentElement.outerHTML;
+  const esc=s=>JSON.stringify(s).replace(/</g,'\\u003c');
+  const updated=src
+    .replace(/let staffList\s*=\s*\[[\s\S]*?\];/,`let staffList = ${esc(staffList)};`)
+    .replace(/let groupMaster\s*=\s*\[[\s\S]*?\];/,`let groupMaster = ${esc(groupMaster)};`)
+    .replace(/let colorMaster\s*=\s*\[[\s\S]*?\];/,`let colorMaster = ${esc(colorMaster)};`)
+    .replace(/let sizeMaster\s*=\s*\[[\s\S]*?\];/,`let sizeMaster = ${esc(sizeMaster)};`)
+    .replace(/let shipOptions\s*=\s*\[[\s\S]*?\];/,`let shipOptions = ${esc(shipOptions)};`)
+    .replace(/let campaignHistory\s*=\s*\[[\s\S]*?\];/,`let campaignHistory = ${esc(campaignHistory)};`)
+    .replace(/let skuMaster\s*=\s*\{\};/,`let skuMaster = ${esc(skuMaster)};`);
+  const blob=new Blob([updated],{type:'text/html;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`hinban_app_${new Date().toISOString().slice(0,10).replace(/-/g,'')}.html`;a.click();
+}
+
+
+// ============================================================
+// SKU MASTER ENGINE
+// ============================================================
+// カラー辞書（長い名前優先・実データ由来）
+const COLOR_DICT_SORTED = [
+  'ｱｲｽｼﾙﾊﾞｰ','ﾘｯﾁｺﾞｰﾙﾄﾞ','ﾛｲﾔﾙﾌﾞﾗｯｸ','ﾊﾟｰﾙﾎﾜｲﾄ','ﾛｲﾔﾙﾌﾞﾙｰ',
+  'ﾌﾚｯｼｭｸﾞﾘｰﾝ','ｴﾀｰﾅﾙﾑｽｸ','ﾎﾜｲﾄﾌﾛｰﾗﾙ','ﾗｲﾄｸﾞﾚｰ','ﾀﾞｰｸｸﾞﾚｰ',
+  'ﾗｲﾄﾋﾟﾝｸ','ﾓｶﾍﾞｰｼﾞｭ','ｸﾛﾐ ﾊﾟｰﾌﾟﾙ','ﾏｲﾒﾛﾃﾞｨ ﾋﾟﾝｸ','ﾌﾞﾙｰｶﾊﾞｰ',
+  'ﾌﾞﾙｰｸﾞﾚｰ','ﾀｰｺｲｽﾞ','ﾗﾍﾞﾝﾀﾞｰ',
+  'ﾌﾞﾗｯｸ','ﾎﾜｲﾄ','ｸﾞﾚｰ','ﾋﾟﾝｸ','ﾈｲﾋﾞｰ','ﾌﾞﾙｰ','ﾚｯﾄﾞ',
+  'ﾍﾞｰｼﾞｭ','ｱｲﾎﾞﾘｰ','ｸﾞﾘｰﾝ','ｵﾚﾝｼﾞ','ﾊﾟｰﾌﾟﾙ',
+  'ｺﾞｰﾙﾄﾞ','ｼﾙﾊﾞｰ','ﾌﾞﾗｳﾝ','ﾓｶ','ｷｬﾒﾙ','ｲｴﾛｰ','ﾐﾝﾄ',
+  'BG','BK','BL','WH','WT','BE','AR',
+];
+const FALSE_COLORS = new Set(['SET','WS','NEW','QVC','SJ','TBS','SQM','STS','CD','KV','EGE','SA','NB']);
+const SHEET_CONFIG = {
+  'FN（商品）':   {header:10,code:0,name:2,date:3,prefix:'FN'},
+  'YR(延長保証）':{header:0, code:2,name:5,date:6,prefix:'YR'},
+  'RT(リピート商材=受発注専用商材）　':{header:10,code:0,name:2,date:3,prefix:'RT'},
+  'UA（中古品A）':{header:10,code:0,name:2,date:3,prefix:'UA'},
+  'UB（中古品B）':{header:10,code:0,name:2,date:3,prefix:'UB'},
+  'SS（サービス特殊）':{header:10,code:0,name:1,date:2,prefix:'SS'},
+  'IN（取説）':   {header:10,code:0,name:1,date:2,prefix:'IN'},
+};
+
+// インメモリSKUキャッシュ（更新ボタンで上書き）
+let skuCache = []; // [{c,n,d,col,t}]
+let skuLastUpdated = '';
+
+function extractColor(name){
+  if(!name) return '';
+  for(const c of COLOR_DICT_SORTED){ if(name.includes(c)) return c; }
+  const m = name.match(/\(([A-Z]{2,3})\)/);
+  if(m && !FALSE_COLORS.has(m[1])) return m[1];
+  return '';
+}
+
+function parseExcelDate(v){
+  if(!v && v !== 0) return '';
+  const s = String(v);
+  if(/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0,10);
+  const n = parseFloat(v);
+  if(n > 40000 && n < 60000){
+    const d = new Date(Math.round((n - 25569)*86400*1000));
+    return d.toISOString().slice(0,10);
+  }
+  return '';
+}
+
+function processSkuWorkbook(wb){
+  const all = [];
+  for(const [sheetName, cfg] of Object.entries(SHEET_CONFIG)){
+    if(!wb.SheetNames.includes(sheetName)) continue;
+    const ws = wb.Sheets[sheetName];
+    // header行をスキップしてデータ取得
+    const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:true});
+    const dataRows = rows.slice(cfg.header + 1);
+    let added = 0;
+    for(const row of dataRows){
+      const code = String(row[cfg.code]||'').trim();
+      if(!code.startsWith(cfg.prefix)) continue;
+      const name = String(row[cfg.name]||'').trim();
+      const dateRaw = row[cfg.date];
+      const dateStr = parseExcelDate(dateRaw);
+      const color = extractColor(name);
+      const finalColor = FALSE_COLORS.has(color) ? '' : color;
+      if(code) { all.push({c:code,n:name,d:dateStr,col:finalColor,t:cfg.prefix}); added++; }
+    }
+    console.log(`${cfg.prefix}: ${added}件`);
+  }
+  // 重複除去（同一名称・同一カラー → 日付新しい方）
+  const dedup = new Map();
+  for(const s of all){
+    const key = s.n + '|' + s.col;
+    const existing = dedup.get(key);
+    if(!existing || s.d > existing.d) dedup.set(key, s);
+  }
+  return [...dedup.values()];
+}
+
+// SKUマスタ更新（ファイル選択ダイアログ）
+function updateSkuMaster(){
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.xlsx,.xls';
+  input.onchange = e => {
+    const file = e.target.files[0];
+    if(!file) return;
+    const statusEl = document.getElementById('sku-update-status2');
+    if(statusEl) statusEl.textContent = '読み込み中...';
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try{
+        const wb = XLSX.read(ev.target.result, {type:'array', cellDates:false});
+        skuCache = processSkuWorkbook(wb);
+        skuLastUpdated = new Date().toLocaleString('ja-JP');
+        renderSkuStatus();
+        // カラーマスタも更新
+        const colorsFromSku = [...new Set(skuCache.filter(s=>s.col).map(s=>s.col))];
+        colorsFromSku.forEach(cn=>{
+          if(!colorMaster.find(c=>c.n===cn)){
+            colorMaster.push({n:cn, c:cn.replace(/[^\x21-\x7E]/g,'').substring(0,3)||cn.substring(0,2)});
+          }
+        });
+        saveMaster();
+        alert(`✅ SKUマスタを更新しました\n取込件数：${skuCache.length}件\nカラー判定：${skuCache.filter(s=>s.col).length}件`);
+      }catch(err){
+        alert('読み込みエラー: ' + err.message);
+        if(statusEl) statusEl.textContent = 'エラー';
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+  input.click();
+}
+
+function renderSkuStatus(){
+  const el = document.getElementById('sku-update-status2');
+  if(!el) return;
+  if(skuCache.length){
+    el.innerHTML = `<span style="color:var(--green)">✓ ${skuCache.length}件読込済み</span> <span style="color:var(--gray-400);font-size:11px">（${skuLastUpdated}）</span>`;
+  } else {
+    el.innerHTML = '<span style="color:var(--amber)">未読込 — ボタンを押してSKUマスタExcelを選択してください</span>';
+  }
+}
+
+// カラー×商品グループ→SKU候補を検索
+function searchSkus(colorName, groupCode){
+  if(!skuCache.length) return [];
+  const results = skuCache.filter(s => {
+    const colorMatch = !colorName || s.col === colorName || s.n.includes(colorName);
+    // 商品グループコードがSKU名称に含まれるか、または関連ありそうなもの
+    const groupMatch = !groupCode || s.n.toUpperCase().includes(groupCode.toUpperCase()) ||
+                       s.c.toUpperCase().includes(groupCode.toUpperCase());
+    return colorMatch;
+  });
+  // 日付降順でソート
+  return results.sort((a,b) => (b.d||'') > (a.d||'') ? 1 : -1).slice(0,50);
+}
+
+// インクリメンタルSKU検索
+function skuSearch(query){
+  if(!query || query.length < 2) return [];
+  const q = query.toLowerCase();
+  return skuCache.filter(s =>
+    s.c.toLowerCase().includes(q) || s.n.toLowerCase().includes(q)
+  ).sort((a,b)=>(b.d||'')>(a.d||'')?1:-1).slice(0,20);
+}
+
+
+// ============================================================
+// INIT PAGE
+// ============================================================
+function renderInitStatus(){
+  const countEl=document.getElementById('init-sku-count');
+  const dateEl=document.getElementById('init-sku-date');
+  const statusEl=document.getElementById('init-sku-status');
+  const regEl=document.getElementById('init-reg-count');
+  if(countEl) countEl.textContent = skuCache.length ? skuCache.length.toLocaleString('ja-JP')+'件' : '未読込';
+  if(countEl) countEl.style.color = skuCache.length ? 'var(--green)' : 'var(--amber)';
+  if(dateEl) dateEl.textContent = skuLastUpdated ? '更新：'+skuLastUpdated : '';
+  if(statusEl) statusEl.innerHTML = skuCache.length
+    ? `<span style="color:var(--green);font-weight:600">✓ ${skuCache.length.toLocaleString('ja-JP')}件読込済み（${skuLastUpdated}）</span>`
+    : '<span style="color:var(--amber)">未読込 — 上のボタンを押してExcelを選択してください</span>';
+  if(regEl) regEl.textContent = registeredList.length+'件';
+}
+
+function updateSkuMasterAndProceed(){
+  const input=document.createElement('input');
+  input.type='file';input.accept='.xlsx,.xls';
+  input.onchange=e=>{
+    const file=e.target.files[0];if(!file)return;
+    const statusEl=document.getElementById('init-sku-status');
+    if(statusEl) statusEl.innerHTML='<span style="color:var(--blue)">⏳ 読み込み中...</span>';
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      try{
+        const wb=XLSX.read(ev.target.result,{type:'array',cellDates:false});
+        skuCache=processSkuWorkbook(wb);
+        skuLastUpdated=new Date().toLocaleString('ja-JP');
+        // 商品グループを自動抽出・更新
+        extractGroupsFromSkuCache();
+        // カラーマスタも更新
+        const skuColors=[...new Set(skuCache.filter(s=>s.col).map(s=>s.col))];
+        skuColors.forEach(cn=>{
+          if(!colorMaster.find(c=>c.n===cn)){
+            colorMaster.push({n:cn,c:cn.replace(/[^!-~]/g,'').substring(0,3)||'—'});
+          }
+        });
+        saveMaster();
+        renderInitStatus();
+        renderSkuStatus();
+        // 完了後にウィザードへ自動遷移
+        setTimeout(()=>{
+          showPage('wizard');
+          alert(`✅ SKUマスタを更新しました\n読込：${skuCache.length.toLocaleString('ja-JP')}件\n商品グループ：${groupMaster.length}件\nカラー：${colorMaster.length}種類`);
+        }, 300);
+      }catch(err){
+        if(statusEl) statusEl.innerHTML='<span style="color:var(--red)">エラー: '+err.message+'</span>';
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+  input.click();
+}
+
+function proceedWithoutUpdate(){
+  if(!skuCache.length){
+    if(!confirm('SKUマスタが未読込です。\nSKUが自動設定されない状態で続けますか？')) return;
+  }
+  showPage('wizard');
+}
+
+// SKU名称から商品グループを自動抽出
+function extractGroupsFromSkuCache(){
+  // SKU名称に含まれるグループキーワードと正式グループコードのマッピング
+  const GROUP_KEYWORDS = [
+    // キーワード, コード, 名称, カテゴリ
+    ['ﾄｩﾙｰｽﾘｰﾊﾟｰ ﾌﾟﾚﾐｱﾘｯﾁ','TRR3','ﾌﾟﾚﾐｱﾘｯﾁ pr.3','ﾄｩﾙｰｽﾘｰﾊﾟｰ'],
+    ['TRSﾌﾟﾚﾐｱﾑ','TRR3','ﾌﾟﾚﾐｱﾘｯﾁ pr.3','ﾄｩﾙｰｽﾘｰﾊﾟｰ'],
+    ['TRAF','TRAF','ｴｱﾌﾘｰ','ﾄｩﾙｰｽﾘｰﾊﾟｰ'],
+    ['TR7','TR7A','ﾄｩﾙｰｽﾘｰﾊﾟｰ7','ﾄｩﾙｰｽﾘｰﾊﾟｰ'],
+    ['Invictus One V3','INV1','Invictus One V3','健康・美容'],
+    ['Invictus One Lite','INV2','Invictus One Lite','健康・美容'],
+    ['Invictus ｴｱﾃｯｸ','INVA','Invictus ｴｱﾃｯｸﾄﾞﾗｲﾔｰ','健康・美容'],
+    ['INV Boost','INV3','INV Boost','健康・美容'],
+    ['ﾏｲｷｭｯﾄ','MQT','ﾏｲｷｭｯﾄ','健康・美容'],
+    ['RAH','RAH','楽ちんﾋｱﾘﾝｸﾞ','健康・美容'],
+    ['ここひえ','CCH7','ここひえ','ｷｯﾁﾝ家電'],
+    ['COCODAN','CODN','COCODAN','ｷｯﾁﾝ家電'],
+    ['Bullseye','BSEY','Bullseye Pocket Air','ｽﾎﾟｰﾂ・その他'],
+    ['ｵｰﾗﾙｽﾏｲﾙ','ORAL','ｵｰﾗﾙｽﾏｲﾙ','健康・美容'],
+  ];
+
+  GROUP_KEYWORDS.forEach(([kw, code, name, cat])=>{
+    // SKUキャッシュにこのキーワードを含むものがある
+    const exists = skuCache.some(s=>s.n.includes(kw));
+    if(exists && !groupMaster.find(g=>g.code===code)){
+      groupMaster.push({code, name, cat});
+      if(!P2DB[code]) P2DB[code]={oc:300,sc:900,cc:0.01,cod:0.01};
+    }
+  });
+  renderGroupSelect();
+}
+
+
+// ============================================================
+// 常時SKUパネル（全ステップ共通）
+// ============================================================
+let spSkuList = []; // [{code,name,qty,role}]
+let spOpen = false;
+
+function toggleSkuPanel(){
+  spOpen = !spOpen;
+  document.getElementById('sku-panel-body').style.display = spOpen ? 'block' : 'none';
+  document.getElementById('sku-panel-arrow').style.transform = spOpen ? 'rotate(180deg)' : '';
+}
+
+function renderSpPanel(){
+  const badge = document.getElementById('sku-panel-badge');
+  const listEl = document.getElementById('sp-list');
+  const applyEl = document.getElementById('sp-apply-area');
+  const ptBtns = document.getElementById('sp-pt-btns');
+
+  if(badge){
+    if(spSkuList.length){
+      badge.textContent = spSkuList.length + '件登録済み';
+      badge.style.background = 'var(--green-lt)';
+      badge.style.color = 'var(--green)';
+    } else {
+      badge.textContent = '未設定';
+      badge.style.background = 'var(--gray-100)';
+      badge.style.color = 'var(--gray-400)';
+    }
+  }
+
+  if(!listEl) return;
+
+  if(!spSkuList.length){
+    listEl.innerHTML = '<div style="font-size:12px;color:var(--gray-400);padding:4px 0">SKUが追加されていません</div>';
+    if(applyEl) applyEl.style.display = 'none';
+    return;
+  }
+
+  listEl.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:4px">
+    <thead><tr style="border-bottom:2px solid var(--bd)">
+      <th style="padding:5px 8px;text-align:left;font-size:11px;color:var(--gray-400);width:120px">SKUコード</th>
+      <th style="padding:5px 8px;text-align:left;font-size:11px;color:var(--gray-400)">SKU名称</th>
+      <th style="padding:5px 8px;text-align:left;font-size:11px;color:var(--gray-400);width:90px">役割</th>
+      <th style="padding:5px 8px;text-align:center;font-size:11px;color:var(--gray-400);width:50px">数量</th>
+      <th style="width:30px"></th>
+    </tr></thead>
+    <tbody>
+      ${spSkuList.map((s,i) => `<tr style="border-bottom:1px solid var(--bd)">
+        <td style="padding:5px 8px"><span class="mono">${s.code||'—'}</span></td>
+        <td style="padding:5px 8px;color:var(--gray-800)">${s.name||'—'}</td>
+        <td style="padding:5px 8px">
+          <input type="text" value="${s.role||''}" onchange="spSkuList[${i}].role=this.value"
+            style="border:1px solid var(--bd);border-radius:4px;padding:2px 6px;font-size:11px;width:86px">
+        </td>
+        <td style="padding:5px 8px;text-align:center">
+          <input type="number" value="${s.qty||1}" min="1" onchange="spSkuList[${i}].qty=+this.value"
+            style="width:44px;border:1px solid var(--bd);border-radius:4px;padding:2px 4px;font-size:11px;text-align:right">
+        </td>
+        <td style="padding:2px 4px">
+          <button onclick="removeSpSku(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:18px;line-height:1">×</button>
+        </td>
+      </tr>`).join('')}
+    </tbody>
+  </table>`;
+
+  if(applyEl) applyEl.style.display = 'block';
+  if(ptBtns){
+    ptBtns.innerHTML = patterns.map(p =>
+      `<button class="btn" onclick="spApplyToPattern(${p.id})" style="font-size:12px">「${p.label}」のみ</button>`
+    ).join('');
+  }
+}
+
+function removeSpSku(i){
+  spSkuList.splice(i,1);
+  renderSpPanel();
+  // 生成済みなら即反映
+  if(generated.length) spApplyAll(true);
+}
+
+// SKUコード入力時 → マスタから名称を自動取得して確認表示
+function onSpCodeInput(code){
+  code = code.trim();
+  const conf = document.getElementById('sp-name-confirm');
+  const nameInput = document.getElementById('sp-name-manual');
+  if(!conf) return;
+  if(!code){ conf.style.display='none'; return; }
+
+  // skuCacheから検索
+  const found = skuCache.find(s => s.c.toUpperCase() === code.toUpperCase());
+  if(found){
+    conf.style.display = 'block';
+    conf.innerHTML = `✓ マスタに見つかりました：<strong>${found.n}</strong><br>
+      <span style="font-size:11px;opacity:.8">クリックで名称を自動入力（確定）</span>`;
+    conf.dataset.name = found.n;
+    if(nameInput) nameInput.value = found.n;
+  } else if(code.length >= 7){
+    conf.style.display = 'block';
+    conf.style.background = 'var(--amber-lt)';
+    conf.style.color = 'var(--amber)';
+    conf.innerHTML = `⚠ マスタに見つかりません。名称を手動で入力してください。`;
+    conf.dataset.name = '';
+  } else {
+    conf.style.display = 'none';
+  }
+}
+
+function confirmSpName(){
+  const conf = document.getElementById('sp-name-confirm');
+  const nameInput = document.getElementById('sp-name-manual');
+  if(conf && conf.dataset.name && nameInput){
+    nameInput.value = conf.dataset.name;
+  }
+}
+
+// 検索ドロップダウン
+function onSpSearch(q){
+  const dd = document.getElementById('sp-dropdown');
+  if(!q || q.length < 2){ dd.style.display='none'; return; }
+  const results = skuSearch(q).slice(0,12);
+  if(!results.length){ dd.style.display='none'; return; }
+  // innerHTML使わずDOMで構築（エスケープ問題を回避）
+  dd.innerHTML = '';
+  results.forEach(s=>{
+    const div = document.createElement('div');
+    div.style.cssText = 'padding:7px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--bd);display:flex;gap:10px;align-items:center';
+    div.addEventListener('mouseover',()=>div.style.background='var(--gray-50)');
+    div.addEventListener('mouseout',()=>div.style.background='');
+    div.addEventListener('click',()=>selectSpSku(s.c, s.n));
+    const codeSpan = document.createElement('span');
+    codeSpan.style.cssText = 'font-family:monospace;color:var(--blue);flex-shrink:0;width:90px';
+    codeSpan.textContent = s.c;
+    const nameSpan = document.createElement('span');
+    nameSpan.style.cssText = 'flex:1;color:var(--gray-600)';
+    nameSpan.textContent = s.n;
+    div.appendChild(codeSpan);
+    div.appendChild(nameSpan);
+    if(s.col){
+      const colSpan = document.createElement('span');
+      colSpan.style.cssText = 'font-size:10px;padding:1px 6px;border-radius:8px;background:var(--blue-lt);color:var(--blue);flex-shrink:0';
+      colSpan.textContent = s.col;
+      div.appendChild(colSpan);
+    }
+    dd.appendChild(div);
+  });
+  dd.style.display = 'block';
+}
+
+function selectSpSku(code, name){
+  document.getElementById('sp-code').value = code;
+  document.getElementById('sp-name-manual').value = name;
+  document.getElementById('sp-search').value = code + '  ' + name;
+  document.getElementById('sp-dropdown').style.display = 'none';
+  // 確認表示も更新
+  onSpCodeInput(code);
+}
+
+function addSpSku(){
+  const code = document.getElementById('sp-code').value.trim();
+  const name = document.getElementById('sp-name-manual').value.trim();
+  const qty  = parseInt(document.getElementById('sp-qty').value)||1;
+  if(!code && !name){ alert('SKUコードまたは名称を入力してください'); return; }
+
+  // 役割を自動推定
+  let role = 'セット構成';
+  if(code.startsWith('YR')) role = '延長保証';
+  else if(code.startsWith('IN')) role = '取説';
+  else if(code.startsWith('LT')) role = '特典';
+  else if(code.startsWith('RT')) role = 'リピート商材';
+
+  spSkuList.push({code, name, qty, role});
+
+  // 入力クリア
+  ['sp-code','sp-name-manual','sp-search'].forEach(id=>{
+    const e=document.getElementById(id); if(e) e.value='';
+  });
+  document.getElementById('sp-qty').value='1';
+  const conf=document.getElementById('sp-name-confirm');
+  if(conf) conf.style.display='none';
+
+  renderSpPanel();
+
+  // 生成済みなら即反映
+  if(generated.length) spApplyAll(true);
+}
+
+function spApplyAll(silent){
+  if(!generated.length) return;
+  generated.forEach(h=>{
+    // 既存のspSku（前回反映分）を除去して再追加
+    h.skuList = h.skuList.filter(s=>!s._fromSp);
+    spSkuList.forEach(s=>h.skuList.push({...s,_fromSp:true}));
+  });
+  if(!silent) alert('✅ 全'+generated.length+'件の品番にSKU'+spSkuList.length+'件を反映しました');
+  if(document.getElementById('p4').classList.contains('on')) renderPriceMatrix();
+  if(document.getElementById('p5').classList.contains('on')) buildConfirm();
+}
+
+function spApplyToPattern(ptId){
+  if(!generated.length){ alert('品番を先に生成してください'); return; }
+  const targets=generated.filter(h=>h.pt.id===ptId);
+  targets.forEach(h=>{
+    h.skuList=h.skuList.filter(s=>!s._fromSp);
+    spSkuList.forEach(s=>h.skuList.push({...s,_fromSp:true}));
+  });
+  const ptName=patterns.find(p=>p.id===ptId)?.label||'';
+  alert('✅ 「'+ptName+'」'+targets.length+'件にSKU反映しました');
+  if(document.getElementById('p4').classList.contains('on')) renderPriceMatrix();
+  if(document.getElementById('p5').classList.contains('on')) buildConfirm();
+}
+
+// ドロップダウンを外クリックで閉じる
+document.addEventListener('click',e=>{
+  const dd=document.getElementById('sp-dropdown');
+  if(dd&&!e.target.closest('#sp-search')&&!e.target.closest('#sp-dropdown'))
+    dd.style.display='none';
+});
+
+// ============================================================
+// INIT
+// ============================================================
+renderAll();
+loadMaster().then(()=>{
+  // 起動時は初期設定ページを表示
+  showPage('init');
+});
+</script>
+</body>
+</html>
