@@ -163,7 +163,6 @@ body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sa
 .spinner{width:44px;height:44px;border:4px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .loading-text{color:#fff;font-size:15px;font-weight:600;letter-spacing:.05em}
-.update-badge{font-size:10px;opacity:.6;margin-left:8px;font-weight:400}
 </style>
 </head>
 <body>
@@ -176,7 +175,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sa
   <div class="loading-text" id="loading-text">処理中...</div>
 </div>
 <div class="navbar">
-  <div class="n-brand"><span class="dot"></span>品番取得システム<span class="update-badge" id="update-time"></span></div>
+  <div class="n-brand"><span class="dot"></span>品番取得システム<span id="update-time" style="font-size:10px;opacity:.6;margin-left:8px;font-weight:400"></span></div>
   <div class="n-tabs">
     <div class="n-tab on" id="nav-init" onclick="showPage('init')"><span class="ico">⚙</span>初期設定</div>
     <div class="n-tab" id="nav-wizard" onclick="showPage('wizard')"><span class="ico">✦</span>新規品番取得</div>
@@ -257,42 +256,15 @@ body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sa
     <div class="card-title">📣 施策情報</div>
     <div class="g2" style="margin-bottom:10px">
       <div class="f"><label>施策月 <span class="req">*</span></label>
-        <select id="s-month">
-          <option value="">選択してください</option>
-          <option value="2026年1月">2026年1月</option>
-          <option value="2026年2月">2026年2月</option>
-          <option value="2026年3月">2026年3月</option>
-          <option value="2026年4月">2026年4月</option>
-          <option value="2026年5月">2026年5月</option>
-          <option value="2026年6月">2026年6月</option>
-          <option value="2026年7月">2026年7月</option>
-          <option value="2026年8月">2026年8月</option>
-          <option value="2026年9月">2026年9月</option>
-          <option value="2026年10月">2026年10月</option>
-          <option value="2026年11月">2026年11月</option>
-          <option value="2026年12月">2026年12月</option>
-          <option value="2027年1月">2027年1月</option>
-          <option value="2027年2月">2027年2月</option>
-          <option value="2027年3月">2027年3月</option>
-          <option value="2027年4月">2027年4月</option>
-          <option value="2027年5月">2027年5月</option>
-          <option value="2027年6月">2027年6月</option>
-          <option value="2027年7月">2027年7月</option>
-          <option value="2027年8月">2027年8月</option>
-          <option value="2027年9月">2027年9月</option>
-          <option value="2027年10月">2027年10月</option>
-          <option value="2027年11月">2027年11月</option>
-          <option value="2027年12月">2027年12月</option>
-        </select></div>
+        <select id="s-month"></select></div>
       <div class="f"><label>施策名 <span class="req">*</span></label>
-        <input type="text" id="s-name" list="campaign-dl" placeholder="例：TRS下取りDM春号" onchange="onCampaignInput(this.value)" autocomplete="off">
-        <datalist id="campaign-dl"></datalist></div>
+        <input type="text" id="s-name" placeholder="例：TRS下取りDM春号"></div>
     </div>
     <div class="g2">
       <div class="f"><label>商品グループ <span class="req">*</span></label>
         <select id="s-group" onchange="onGroup()"><option value="">選択してください</option></select></div>
       <div class="f"><label>担当者 <span class="req">*</span></label>
-        <select id="s-staff"><option value="">選択</option></select></div>
+        <input type="text" id="s-staff" placeholder="担当者名を入力"></div>
     </div>
     <div id="group-info"></div>
   </div>
@@ -696,13 +668,35 @@ function showMasterTab(id){
 // RENDER ALL
 // ============================================================
 function renderAll(){
-  renderGroupSelect();renderStaffSelect();renderCampaignDl();
+  renderMonthSelect();
+  renderGroupSelect();
   resetWizardColors();resetWizardSizes();
   renderPts();
   renderSpPanel();
   renderInitStatus();
-  const el=document.getElementById('update-time');
-  if(el) el.textContent='最終更新: '+new Date(document.lastModified).toLocaleString('ja-JP');
+  const utEl=document.getElementById('update-time');
+  if(utEl){
+    const d=new Date(document.lastModified);
+    utEl.textContent='更新: '+d.getFullYear()+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getDate()).padStart(2,'0')+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+  }
+}
+
+function renderMonthSelect(){
+  const sel=document.getElementById('s-month');
+  if(!sel) return;
+  const now=new Date();
+  const start=new Date(now.getFullYear(),now.getMonth()-2,1);
+  const end=new Date(now.getFullYear(),now.getMonth()+7,1);
+  sel.innerHTML='<option value="">選択してください</option>';
+  const d=new Date(start);
+  while(d<end){
+    const label=d.getFullYear()+'年'+(d.getMonth()+1)+'月';
+    const opt=document.createElement('option');
+    opt.value=label;
+    opt.textContent=label;
+    sel.appendChild(opt);
+    d.setMonth(d.getMonth()+1);
+  }
 }
 
 // ============================================================
@@ -711,12 +705,13 @@ function renderAll(){
 function renderGroupSelect(){
   const sel=document.getElementById('s-group');
   if(!sel) return;
+  const sorted=[...groupMaster].sort((a,b)=>a.code.localeCompare(b.code));
   sel.innerHTML='<option value="">選択してください</option>'+
-    groupMaster.map(g=>`<option value="${g.code}">${g.code}</option>`).join('');
+    sorted.map(g=>`<option value="${g.code}">${g.code}</option>`).join('');
 }
 function renderStaffSelect(){
   const sel=document.getElementById('s-staff');
-  if(!sel)return;
+  if(!sel||sel.tagName!=='SELECT')return;
   const cur=sel.value;
   sel.innerHTML='<option value="">選択</option>'+staffList.map(s=>`<option${cur===s?' selected':''}>${s}</option>`).join('');
 }
