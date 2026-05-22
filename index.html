@@ -244,8 +244,8 @@ body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sa
 <div class="steps">
   <div class="stab on" id="t1" onclick="go(1)"><span class="sn">1</span>施策設定</div>
   <div class="stab" id="t2" onclick="go(2)"><span class="sn">2</span>サイズ・カラー</div>
-  <div class="stab" id="t3" onclick="go(3)"><span class="sn">3</span>SKU割り当て</div>
-  <div class="stab" id="t4" onclick="go(4)"><span class="sn">4</span>購入パターン</div>
+  <div class="stab" id="t3" onclick="go(3)"><span class="sn">3</span>購入パターン</div>
+  <div class="stab" id="t4" onclick="go(4)"><span class="sn">4</span>SKU割り当て</div>
   <div class="stab" id="t5" onclick="go(5)"><span class="sn">5</span>価格入力</div>
   <div class="stab" id="t6" onclick="go(6)"><span class="sn">6</span>確認・登録</div>
 </div>
@@ -298,11 +298,26 @@ body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sa
   </div>
 </div>
 
-<!-- S3 -->
+<!-- S3 購入パターン -->
 <div class="panel" id="p3">
   <div class="card">
+    <div class="card-title">📋 購入パターン設定</div>
+    <div class="info-box">ℹ️ 枚数パターンごとに送料・特典を設定します。</div>
+    <div id="pt-list"></div>
+    <button class="btn btn-ghost" onclick="addPt()" style="margin-top:6px;font-size:12px;width:100%">＋ パターン追加</button>
+    <div id="gen-count" style="margin-top:12px"></div>
+  </div>
+  <div class="nav-btns">
+    <button class="btn" onclick="go(2)">← 戻る</button>
+    <button class="btn btn-p" onclick="generate()">🪄 品番を自動生成 →</button>
+  </div>
+</div>
+
+<!-- S4 SKU割り当て -->
+<div class="panel" id="p4">
+  <div class="card">
     <div class="card-title">📦 SKU割り当て（カラー × サイズ）</div>
-    <div class="info-box">ℹ️ カラーとサイズの組み合わせごとにSKUコードを入力してください。コードを入力するとマスタから名称を自動取得します。</div>
+    <div class="info-box">ℹ️ カラーとサイズの組み合わせごとにSKUコードを入力してください。Excelから複数行をコピーして貼り付けできます。</div>
     <div id="sku-assign-table"></div>
   </div>
   <div class="card">
@@ -321,26 +336,8 @@ body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sa
     <div id="csku-confirm" style="display:none;margin-top:6px;font-size:12px;padding:6px 10px;background:var(--blue-lt);border-radius:var(--r);color:var(--blue-dk)"></div>
   </div>
   <div class="nav-btns">
-    <button class="btn" onclick="go(2)">← 戻る</button>
-    <button class="btn btn-p" onclick="go(4)">次へ →</button>
-  </div>
-</div>
-
-<!-- S4 -->
-<div class="panel" id="p4">
-
-  <!-- 購入パターン設定 -->
-  <div class="card">
-    <div class="card-title">📋 購入パターン設定</div>
-    <div class="info-box">ℹ️ 枚数パターンごとに送料・特典を設定します。</div>
-    <div id="pt-list"></div>
-    <button class="btn btn-ghost" onclick="addPt()" style="margin-top:6px;font-size:12px;width:100%">＋ パターン追加</button>
-    <div id="gen-count" style="margin-top:12px"></div>
-  </div>
-
-  <div class="nav-btns">
     <button class="btn" onclick="go(3)">← 戻る</button>
-    <button class="btn btn-p" onclick="generate()">🪄 品番を自動生成 →</button>
+    <button class="btn btn-p" onclick="go(5)">次へ →</button>
   </div>
 </div>
 
@@ -602,6 +599,7 @@ let colors=[], sizes=[], patterns=[
   {id:2,label:'2枚セット',sheets:2,shipFee:0,bonus:true,colorMode:'set',patternSkuIds:[]},
 ];
 let generated=[], registeredList=[], seqCounters={};
+let skuAssignMap={}, commonSkus=[];
 
 // ============================================================
 // STORAGE
@@ -648,14 +646,15 @@ function showPage(id){
   if(id==='wizard'){renderSpPanel();}
 }
 function go(n){
-  if(n===6)buildConfirm();
-  for(let i=1;i<=6;i++){
-    const p=document.getElementById('p'+i);
-    const t=document.getElementById('t'+i);
+  if(n===6) buildConfirm();
+  for(var i=1;i<=6;i++){
+    var p=document.getElementById('p'+i);
+    var t=document.getElementById('t'+i);
     if(p) p.className='panel'+(i===n?' on':'');
     if(t) t.className='stab'+(i===n?' on':i<n?' done':'');
   }
-  if(n===3) renderSkuAssignTable();
+  if(n===4) setTimeout(renderSkuAssignTable, 50);
+  if(n===5){ refreshGeneratedSkus(); renderPriceMatrix(); }
 }
 function showMasterTab(id){
   document.querySelectorAll('.msec').forEach(s=>s.classList.remove('on'));
@@ -991,7 +990,7 @@ function applySkuToPattern(ptId){
   });
   const ptName = patterns.find(p=>p.id===ptId)?.label||'';
   alert(`✅ 「${ptName}」の${targets.length}件にSKU${sku3List.length}件を反映しました`);
-  if(document.getElementById('p4').classList.contains('on')) renderPriceMatrix();
+  if(document.getElementById('p5').classList.contains('on')) renderPriceMatrix();
 }
 
 // ドロップダウンを外クリックで閉じる
@@ -1124,6 +1123,55 @@ function makeName(grpName,colorLabel,sizeName,ptLabel,shipFee,colorAbbr){
   const baseShort=grpName+clShort+sp+' '+ptLabel;
   return zenToHan((baseShort+suf).substring(0,40-suf.length)+suf);
 }
+function getAssignSkus(entry){
+  if(!entry) return [];
+  if(entry.skus && entry.skus.length) return entry.skus.filter(function(s){ return s && s.code; });
+  if(entry.code) return [{code:entry.code, name:entry.name||''}];
+  return [];
+}
+function pushSkusFromAssign(skuList, assigned, col, sz, pt, isOverride){
+  const skus=getAssignSkus(assigned);
+  if(!skus.length) return false;
+  skus.forEach(function(s, idx){
+    skuList.push({
+      code:s.code,
+      name:s.name||s.code,
+      qty:isOverride ? 1 : (skus.length===1 ? (pt.sheets||1) : 1),
+      role:col.n+(sz.c!=='—'?' '+sz.n:'')+(isOverride?'('+pt.label+'専用)':'')
+    });
+  });
+  return true;
+}
+function buildSkuListForCombo(cg, szg, pt){
+  const skuList=[];
+  cg.forEach(function(col){
+    szg.forEach(function(sz){
+      const baseKey=col.c+'_'+sz.c;
+      const overKey=baseKey+'_pt'+pt.id;
+      const overAssigned=skuAssignMap[overKey];
+      const baseAssigned=skuAssignMap[baseKey];
+      if(pushSkusFromAssign(skuList, overAssigned, col, sz, pt, true)) return;
+      if(pushSkusFromAssign(skuList, baseAssigned, col, sz, pt, false)) return;
+      skuList.push({
+        code:'['+col.n+'/'+(sz.n||sz.c)+'未設定]',
+        name:col.n+' '+(sz.n||sz.c),
+        qty:pt.sheets||1,
+        role:'ﾒｲﾝ'
+      });
+    });
+  });
+  commonSkus.forEach(function(s){ skuList.push({...s}); });
+  if(pt.bonus && bonuses.length){
+    bonuses.forEach(function(b){ skuList.push({code:b.code||'',name:b.name||'特典',qty:1,role:'特典'}); });
+  }
+  return skuList;
+}
+function refreshGeneratedSkus(){
+  if(!generated.length) return;
+  generated.forEach(function(h){
+    if(h.cg && h.szg) h.skuList=buildSkuListForCombo(h.cg, h.szg, h.pt);
+  });
+}
 function generate(){
   const g=document.getElementById('s-group').value;
   const selS=sizes.filter(s=>s.on),selC=colors.filter(c=>c.on);
@@ -1174,54 +1222,10 @@ function generateCore(){
 
         const name=makeName(grpName,colorLabel,sizeLabel,pt.label,pt.shipFee,colorAbbr);
 
-        // SKUリスト構築（上書きSKU対応）
-        const skuList=[];
-
-        // ①カラー×サイズ×パターンでSKUを決定
-        cg.forEach(col=>{
-          szg.forEach(sz=>{
-            const baseKey  = col.c+'_'+sz.c;
-            const overKey  = baseKey+'_pt'+pt.id;
-            const baseAssigned = skuAssignMap[baseKey];
-            const overAssigned = skuAssignMap[overKey];
-
-            if(overAssigned && overAssigned.code){
-              // パターン別上書きSKUがある場合
-              skuList.push({
-                code:overAssigned.code,
-                name:overAssigned.name||overAssigned.code,
-                qty:1,
-                role:col.n+(sz.c!=='—'?' '+sz.n:'')+'('+pt.label+'専用)'
-              });
-            } else if(baseAssigned && baseAssigned.code){
-              // メインSKU×枚数
-              skuList.push({
-                code:baseAssigned.code,
-                name:baseAssigned.name||baseAssigned.code,
-                qty:pt.sheets||1,
-                role:col.n+(sz.c!=='—'?' '+sz.n:'')
-              });
-            } else {
-              skuList.push({
-                code:`[${col.n}/${sz.n||sz.c}未設定]`,
-                name:`${col.n} ${sz.n||sz.c}`,
-                qty:pt.sheets||1,
-                role:'ﾒｲﾝ'
-              });
-            }
-          });
-        });
-
-        // ②共通SKU（延長保証・特典等）
-        commonSkus.forEach(s=>skuList.push({...s}));
-
-        // ③施策特典SKU
-        if(pt.bonus && bonuses.length){
-          bonuses.forEach(b=>skuList.push({code:b.code||'',name:b.name||'特典',qty:1,role:'特典'}));
-        }
+        const skuList=buildSkuListForCombo(cg, szg, pt);
 
         generated.push({
-          code,name,group:g,szg,sz:szg[0],pt,skuList,
+          code,name,group:g,cg,szg,sz:szg[0],pt,skuList,
           ship:pt.shipFee,price:0,
           month:document.getElementById('s-month').value,
           campaign:document.getElementById('s-name').value,
@@ -1231,7 +1235,7 @@ function generateCore(){
       });
     });
   });
-  hideLoading();renderPriceMatrix();go(4);
+  hideLoading();go(4);
 }
 
 
@@ -2271,7 +2275,7 @@ function spApplyAll(silent){
     spSkuList.forEach(s=>h.skuList.push({...s,_fromSp:true}));
   });
   if(!silent) alert('✅ 全'+generated.length+'件の品番にSKU'+spSkuList.length+'件を反映しました');
-  if(document.getElementById('p4').classList.contains('on')) renderPriceMatrix();
+  if(document.getElementById('p5').classList.contains('on')) renderPriceMatrix();
   if(document.getElementById('p6').classList.contains('on')) buildConfirm();
 }
 
@@ -2284,7 +2288,7 @@ function spApplyToPattern(ptId){
   });
   const ptName=patterns.find(p=>p.id===ptId)?.label||'';
   alert('✅ 「'+ptName+'」'+targets.length+'件にSKU反映しました');
-  if(document.getElementById('p4').classList.contains('on')) renderPriceMatrix();
+  if(document.getElementById('p5').classList.contains('on')) renderPriceMatrix();
   if(document.getElementById('p6').classList.contains('on')) buildConfirm();
 }
 
@@ -2298,93 +2302,148 @@ document.addEventListener('click',e=>{
 
 
 // ============================================================
-// STEP3: SKU割り当て表
+// STEP4: SKU割り当て表
 // ============================================================
+function ensureAssignSkus(key){
+  if(!skuAssignMap[key]) skuAssignMap[key]={skus:[]};
+  if(!skuAssignMap[key].skus){
+    if(skuAssignMap[key].code){
+      skuAssignMap[key].skus=[{code:skuAssignMap[key].code,name:skuAssignMap[key].name||''}];
+    } else {
+      skuAssignMap[key].skus=[{code:'',name:''}];
+    }
+  }
+  if(!skuAssignMap[key].skus.length) skuAssignMap[key].skus.push({code:'',name:''});
+}
+function normalizeSkuCode(code){
+  return (code||'').replace(/[Ａ-Ｚａ-ｚ０-９]/g,function(c){return String.fromCharCode(c.charCodeAt(0)-0xFEE0);}).toUpperCase().replace(/[^A-Z0-9]/g,'');
+}
+function handleSkuPaste(e, key, startIdx){
+  e.preventDefault();
+  const text=(e.clipboardData||window.clipboardData).getData('text');
+  const lines=text.split(/\r?\n/).map(function(s){return s.trim();}).filter(function(s){return s.length>0;});
+  if(!lines.length) return;
+  if(!skuAssignMap[key]) skuAssignMap[key]={skus:[]};
+  if(!skuAssignMap[key].skus) skuAssignMap[key].skus=[];
+  lines.forEach(function(code, i){
+    const idx=startIdx+i;
+    while(skuAssignMap[key].skus.length<=idx){
+      skuAssignMap[key].skus.push({code:'',name:''});
+    }
+    const clean=normalizeSkuCode(code);
+    skuAssignMap[key].skus[idx].code=clean;
+    const found=skuCache.find(function(s){return s.c.toUpperCase()===clean.toUpperCase();});
+    if(found) skuAssignMap[key].skus[idx].name=found.n;
+  });
+  renderSkuAssignTable();
+}
+function makeCell(key, i, isOverride, sheets){
+  ensureAssignSkus(key);
+  const sku=skuAssignMap[key].skus[i]||{code:'',name:''};
+  const wrap=document.createElement('div');
+  wrap.style.marginBottom=i>0?'6px':'0';
+  const inp=document.createElement('input');
+  inp.type='text';
+  inp.value=sku.code||'';
+  inp.placeholder=i===0?(isOverride?'空欄=メインSKU×'+(sheets||2):'SKUコード'):'追加SKU';
+  inp.style.cssText='width:100%;padding:4px 7px;border:1px solid var(--bd);border-radius:4px;font-size:12px;font-family:monospace;margin-bottom:2px';
+  inp.addEventListener('input',function(){
+    const clean=normalizeSkuCode(inp.value);
+    skuAssignMap[key].skus[i].code=clean;
+    const found=skuCache.find(function(s){return s.c.toUpperCase()===clean.toUpperCase();});
+    if(found){
+      skuAssignMap[key].skus[i].name=found.n;
+      nameDiv.textContent='✓ '+found.n;
+      nameDiv.style.color=isOverride?'var(--amber)':'var(--green)';
+    } else if(clean.length>=7){
+      nameDiv.textContent='⚠ マスタに見つかりません';
+      nameDiv.style.color='var(--amber)';
+    } else {
+      skuAssignMap[key].skus[i].name='';
+      nameDiv.textContent='';
+    }
+  });
+  inp.addEventListener('paste',(function(k,ix){
+    return function(e){ handleSkuPaste(e, k, ix); };
+  })(key, i));
+  const nameDiv=document.createElement('div');
+  nameDiv.style.cssText='font-size:11px;min-height:14px;color:'+(isOverride?'var(--amber)':'var(--green)');
+  if(sku.name) nameDiv.textContent='✓ '+sku.name;
+  wrap.appendChild(inp);
+  wrap.appendChild(nameDiv);
+  return wrap;
+}
+function makeCellTd(key, isOverride, sheets){
+  ensureAssignSkus(key);
+  const hasCode=skuAssignMap[key].skus.some(function(s){return s.code;});
+  const td=document.createElement('td');
+  td.style.cssText='padding:6px 8px;border:1px solid var(--bd);vertical-align:top'+(isOverride&&hasCode?'background:var(--amber-lt)':'');
+  skuAssignMap[key].skus.forEach(function(_, i){
+    td.appendChild(makeCell(key, i, isOverride, sheets));
+  });
+  return td;
+}
 function renderSkuAssignTable(){
-  const el = document.getElementById('sku-assign-table');
+  const el=document.getElementById('sku-assign-table');
   if(!el) return;
-  const selC = colors.filter(c=>c.on);
-  const selS = sizes.filter(s=>s.on);
-
+  const selC=colors.filter(function(c){return c.on;});
+  const selS=sizes.filter(function(s){return s.on;});
   if(!selC.length && !selS.length){
     el.innerHTML='<div style="font-size:12px;color:var(--gray-400)">STEP2でカラーとサイズを選択してください</div>';
     return;
   }
-
-  // 行：カラー×サイズの組み合わせ
-  const rows = [];
+  const rows=[];
   if(selC.length && selS.length){
-    selC.forEach(c=>selS.forEach(s=>rows.push({label:`${c.n} / ${s.n}`,ck:c.c,sk:s.c,cn:c.n,sn:s.n})));
+    selC.forEach(function(c){selS.forEach(function(s){rows.push({label:c.n+' / '+s.n,ck:c.c,sk:s.c});});});
   } else if(selC.length){
-    selC.forEach(c=>rows.push({label:c.n,ck:c.c,sk:'',cn:c.n,sn:''}));
+    selC.forEach(function(c){rows.push({label:c.n,ck:c.c,sk:''});});
   } else {
-    selS.forEach(s=>rows.push({label:s.n,ck:'',sk:s.c,cn:'',sn:s.n}));
+    selS.forEach(function(s){rows.push({label:s.n,ck:'',sk:s.c});});
   }
-
-  let t = `<div style="font-size:12px;color:var(--gray-600);margin-bottom:8px">
-    💡 <strong>基本：</strong>1枚用SKUを入力すると2枚以上は自動で×数量になります。
-    2枚用に別SKUがある場合のみ上書き入力してください。
-  </div>`;
-  t += '<div class="tbl-wrap"><table style="border-collapse:collapse;font-size:12px;width:100%"><thead><tr>';
-  t += '<th style="padding:8px 12px;background:var(--blue-lt);border:1px solid var(--blue-bd);font-size:11px;color:var(--blue-dk);min-width:120px">カラー / サイズ</th>';
-  // 1枚用列
-  t += '<th style="padding:8px 12px;background:var(--blue-lt);border:1px solid var(--blue-bd);font-size:11px;color:var(--blue-dk);min-width:180px">メインSKU<br><span style="font-weight:400;opacity:.75">（1枚基準・全パターン共通）</span></th>';
-  // パターン別上書き列
-  patterns.filter(p=>p.sheets>1).forEach(p=>{
-    t += `<th style="padding:8px 12px;background:var(--amber-lt);border:1px solid var(--blue-bd);font-size:11px;color:var(--amber);min-width:180px">${p.label}の上書きSKU<br><span style="font-weight:400;opacity:.75">（別SKUある場合のみ）</span></th>`;
+  el.innerHTML='';
+  const hint=document.createElement('div');
+  hint.style.cssText='font-size:12px;color:var(--gray-600);margin-bottom:8px';
+  hint.innerHTML='💡 <strong>基本：</strong>1枚用SKUを入力すると2枚以上は自動で×数量になります。Excelから複数行をコピーして貼り付けできます。';
+  el.appendChild(hint);
+  const wrap=document.createElement('div');
+  wrap.className='tbl-wrap';
+  const table=document.createElement('table');
+  table.style.cssText='border-collapse:collapse;font-size:12px;width:100%';
+  const thead=document.createElement('thead');
+  const hr=document.createElement('tr');
+  function addTh(text, style){
+    const th=document.createElement('th');
+    th.style.cssText=style;
+    th.innerHTML=text;
+    hr.appendChild(th);
+  }
+  addTh('カラー / サイズ','padding:8px 12px;background:var(--blue-lt);border:1px solid var(--blue-bd);font-size:11px;color:var(--blue-dk);min-width:120px');
+  addTh('メインSKU<br><span style="font-weight:400;opacity:.75">（1枚基準・全パターン共通）</span>','padding:8px 12px;background:var(--blue-lt);border:1px solid var(--blue-bd);font-size:11px;color:var(--blue-dk);min-width:180px');
+  patterns.filter(function(p){return p.sheets>1;}).forEach(function(p){
+    addTh(p.label+'の上書きSKU<br><span style="font-weight:400;opacity:.75">（別SKUある場合のみ）</span>','padding:8px 12px;background:var(--amber-lt);border:1px solid var(--blue-bd);font-size:11px;color:var(--amber);min-width:180px');
   });
-  t += '</tr></thead><tbody>';
-
-  rows.forEach(row=>{
-    const baseKey = row.ck+'_'+row.sk;
-    const baseAssigned = skuAssignMap[baseKey] || {code:'',name:''};
-    t += `<tr>
-      <td style="padding:8px 12px;background:var(--gray-50);border:1px solid var(--bd);font-weight:600;white-space:nowrap">${row.label}</td>
-      <td style="padding:6px 8px;border:1px solid var(--bd);vertical-align:top">
-        <input type="text" value="${baseAssigned.code}" placeholder="SKUコード"
-          oninput="onSkuAssignInput('${baseKey}',this.value)"
-          id="sa-code-${baseKey}"
-          style="width:100%;padding:4px 7px;border:1px solid var(--bd);border-radius:4px;font-size:12px;font-family:monospace;margin-bottom:2px">
-        <div id="sa-name-${baseKey}" style="font-size:11px;min-height:14px;color:var(--green)">${baseAssigned.name?'✓ '+baseAssigned.name:''}</div>
-      </td>`;
-    // パターン別上書き
-    patterns.filter(p=>p.sheets>1).forEach(p=>{
-      const overKey = baseKey+'_pt'+p.id;
-      const overAssigned = skuAssignMap[overKey] || {code:'',name:''};
-      t += `<td style="padding:6px 8px;border:1px solid var(--bd);vertical-align:top;background:${overAssigned.code?'var(--amber-lt)':'#fff'}">
-        <input type="text" value="${overAssigned.code}" placeholder="空欄=メインSKU×${p.sheets}"
-          oninput="onSkuAssignInput('${overKey}',this.value)"
-          id="sa-code-${overKey}"
-          style="width:100%;padding:4px 7px;border:1px solid var(--bd);border-radius:4px;font-size:12px;font-family:monospace;margin-bottom:2px">
-        <div id="sa-name-${overKey}" style="font-size:11px;min-height:14px;color:var(--amber)">${overAssigned.name?'✓ '+overAssigned.name:''}</div>
-      </td>`;
+  thead.appendChild(hr);
+  table.appendChild(thead);
+  const tbody=document.createElement('tbody');
+  rows.forEach(function(row){
+    const baseKey=row.ck+'_'+row.sk;
+    ensureAssignSkus(baseKey);
+    const tr=document.createElement('tr');
+    const labelTd=document.createElement('td');
+    labelTd.style.cssText='padding:8px 12px;background:var(--gray-50);border:1px solid var(--bd);font-weight:600;white-space:nowrap';
+    labelTd.textContent=row.label;
+    tr.appendChild(labelTd);
+    tr.appendChild(makeCellTd(baseKey, false, 1));
+    patterns.filter(function(p){return p.sheets>1;}).forEach(function(p){
+      const overKey=baseKey+'_pt'+p.id;
+      tr.appendChild(makeCellTd(overKey, true, p.sheets));
     });
-    t += '</tr>';
+    tbody.appendChild(tr);
   });
-  t += '</tbody></table></div>';
-  el.innerHTML = t;
+  table.appendChild(tbody);
+  wrap.appendChild(table);
+  el.appendChild(wrap);
   renderCommonSkuList();
-}
-
-function onSkuAssignInput(key, code){
-  code = code.trim();
-  skuAssignMap[key] = skuAssignMap[key] || {code:'', name:''};
-  skuAssignMap[key].code = code;
-  const nameEl = document.getElementById('sa-name-' + key);
-  if(!nameEl) return;
-  if(!code){ nameEl.textContent = ''; return; }
-  // マスタ検索
-  const found = skuCache.find(s => s.c.toUpperCase() === code.toUpperCase());
-  if(found){
-    skuAssignMap[key].name = found.n;
-    nameEl.textContent = '✓ ' + found.n;
-    nameEl.style.color = 'var(--green)';
-  } else if(code.length >= 7){
-    nameEl.textContent = '⚠ マスタに見つかりません';
-    nameEl.style.color = 'var(--amber)';
-  } else {
-    nameEl.textContent = '';
-  }
 }
 
 // 共通SKU
