@@ -166,6 +166,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sa
 .spinner{width:44px;height:44px;border:4px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .loading-text{color:#fff;font-size:15px;font-weight:600;letter-spacing:.05em}
+#build-info{position:fixed;bottom:12px;right:12px;background:rgba(0,0,0,0.75);color:#fff;font-size:11px;padding:4px 12px;border-radius:12px;z-index:99999;font-family:monospace;pointer-events:none}
 </style>
 </head>
 <body>
@@ -1179,68 +1180,106 @@ function refreshGeneratedSkus(){
 }
 function generate(){
   const g=document.getElementById('s-group').value;
-  const selS=sizes.filter(s=>s.on),selC=colors.filter(c=>c.on);
-  if(!g){alert('商品グループを選択してください');return;}
-  if(!selS.length){alert('サイズを1つ以上選択してください');return;}
+  const selS=sizes.filter(s=>s.on);
+  const selC=colors.filter(c=>c.on);
+  if(!g){ alert('商品グループを選択してください'); return; }
+  if(!selS.length){ alert('サイズを1つ以上選択してください'); return; }
+
   showLoading('品番を生成中...');
-  setTimeout(()=>{ generateCore(); }, 50);
-}
-function generateCore(){
-  const g=document.getElementById('s-group').value;
-  const selS=sizes.filter(s=>s.on),selC=colors.filter(c=>c.on);
-  generated=[];
-  const opt=document.querySelector(`#s-group option[value="${g}"]`);
-  const grpName=opt?zenToHan(opt.textContent.replace(g+' ','')):g;
 
-  patterns.forEach(pt=>{
-    const mode=pt.colorMode||'single', sh=pt.sheets||1;
+  setTimeout(function(){
+    try {
+      generated=[];
+      const grpName=g;
 
-    // カラーグループ（自動）
-    // 1枚=カラー別個別、2枚以上=重複あり全組み合わせ（同色含む）
-    let cgs=[];
-    if(!selC.length) cgs=[[]];
-    else if(sh<=1) cgs=selC.map(c=>[c]);
-    else cgs=getCombinationsWithRep(selC,sh);
+      patterns.forEach(function(pt){
+        const sh=pt.sheets||1;
 
-    // サイズグループ：1枚=個別、2枚以上=全組み合わせ（同サイズ含む）
-    let szGroups=[];
-    if(sh<=1){
-      szGroups=selS.map(s=>[s]);
-    } else {
-      // 同サイズ×同サイズ（シングル×シングル等）も含む全組み合わせ
-      szGroups=getCombinationsWithRep(selS,sh);
-      if(!szGroups.length) szGroups=selS.map(s=>[s,s]);
-    }
+        let cgs=[];
+        if(!selC.length){
+          cgs=[[]];
+        } else if(sh<=1){
+          cgs=selC.map(function(c){ return [c]; });
+        } else {
+          cgs=getCombinationsWithRep(selC, sh);
+        }
 
-    cgs.forEach(cg=>{
-      szGroups.forEach(szg=>{
-        const code=getNextCode(g);
+        let szGroups=[];
+        if(sh<=1){
+          szGroups=selS.map(function(s){ return [s]; });
+        } else {
+          szGroups=getCombinationsWithRep(selS, sh);
+          if(!szGroups.length) szGroups=selS.map(function(s){ return [s]; });
+        }
 
-        // カラーラベルとアルファベット略称
-        const colorLabel=cg.length===0?'':cg.length===1?cg[0].n:cg.map(c=>c.n).join('×');
-        const colorAbbr=cg.length===0?'':cg.length===1?cg[0].c:cg.map(c=>c.c).join('×');
+        cgs.forEach(function(cg){
+          szGroups.forEach(function(szg){
+            const code=getNextCode(g);
+            const rawCL=cg.length===0?'':cg.length===1?cg[0].n:cg.map(function(c){return c.n;}).join('×');
+            const colorLabel=(rawCL==='カラーなし'||rawCL==='—')?'':rawCL;
+            const colorAbbr=cg.length===0?'':cg.length===1?cg[0].c:cg.map(function(c){return c.c;}).join('×');
+            const sizeLabel=szg.length===1?(szg[0].c==='—'?'':szg[0].n):szg.map(function(s){return s.c==='—'?'':s.n;}).filter(Boolean).join('×');
+            const name=makeName(grpName, colorLabel, sizeLabel, pt.label, pt.shipFee, colorAbbr);
 
-        // サイズラベル
-        const sizeLabel=szg.length===1
-          ?(szg[0].c==='—'?'':szg[0].n)
-          :szg.map(s=>s.c==='—'?'':s.n).filter(Boolean).join('×');
+            const skuList=[];
+            const activeCg=(cg.length && cg[0] && cg[0].c && cg[0].c!=='—')?cg:[null];
+            activeCg.forEach(function(col){
+              szg.forEach(function(sz){
+                const ck=(col && col.c && col.c!=='—')?col.c:'';
+                const sk=(sz.c && sz.c!=='—')?sz.c:'';
+                const bKey=ck+'_'+sk;
+                const oKey=bKey+'_pt'+pt.id;
+                const bA=skuAssignMap[bKey];
+                const oA=skuAssignMap[oKey];
+                const colN=col?col.n:'';
+                const szN=(sz.n && sz.n!=='—')?sz.n:'';
+                const rBase=[colN, szN].filter(function(x){ return x && x!=='カラーなし'; }).join(' ');
+                const oSkus=(oA && oA.skus)?oA.skus.filter(function(s){ return s.code; }):[];
+                const bSkus=(bA && bA.skus)?bA.skus.filter(function(s){ return s.code; }):[];
+                if(oSkus.length){
+                  oSkus.forEach(function(s){ skuList.push({code:s.code, name:s.name||s.code, qty:1, role:rBase+'('+pt.label+'専用)'}); });
+                } else if(bSkus.length){
+                  bSkus.forEach(function(s){ skuList.push({code:s.code, name:s.name||s.code, qty:sh, role:rBase}); });
+                } else {
+                  skuList.push({code:'['+(rBase||'—')+'未設定]', name:rBase||'本体', qty:sh, role:'ﾒｲﾝ'});
+                }
+              });
+            });
+            commonSkus.forEach(function(s){ skuList.push(Object.assign({}, s)); });
 
-        const name=makeName(grpName,colorLabel,sizeLabel,pt.label,pt.shipFee,colorAbbr);
-
-        const skuList=buildSkuListForCombo(cg, szg, pt);
-
-        generated.push({
-          code,name,group:g,cg,szg,sz:szg[0],pt,skuList,
-          ship:pt.shipFee,price:0,
-          month:document.getElementById('s-month').value,
-          campaign:document.getElementById('s-name').value,
-          staff:document.getElementById('s-staff').value,
-          status:'取得OK',colorLabel,colorAbbr,sizeLabel,
+            generated.push({
+              code:code,
+              name:name,
+              group:g,
+              cg:cg,
+              szg:szg,
+              sz:szg[0],
+              pt:pt,
+              skuList:skuList,
+              ship:pt.shipFee,
+              price:0,
+              month:document.getElementById('s-month').value,
+              campaign:document.getElementById('s-name').value,
+              staff:document.getElementById('s-staff').value,
+              status:'取得OK',
+              colorLabel:colorLabel,
+              colorAbbr:colorAbbr,
+              sizeLabel:sizeLabel
+            });
+          });
         });
       });
-    });
-  });
-  hideLoading();go(4);
+
+      renderPriceMatrix();
+      go(4);
+
+    } catch(e) {
+      alert('エラーが発生しました: '+e.message);
+      console.error(e);
+    } finally {
+      hideLoading();
+    }
+  }, 80);
 }
 
 
@@ -2528,5 +2567,6 @@ loadMaster().then(()=>{
   showPage('init');
 });
 </script>
+<div id="build-info">2026/05/22 14:48 JST</div>
 </body>
 </html>
