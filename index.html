@@ -1124,47 +1124,46 @@ function getAssignSkus(entry){
   if(entry.code) return [{code:entry.code, name:entry.name||''}];
   return [];
 }
-function pushSkusFromAssign(skuList, assigned, col, sz, pt, isOverride){
-  const skus=getAssignSkus(assigned);
-  if(!skus.length) return false;
-  skus.forEach(function(s, idx){
-    skuList.push({
-      code:s.code,
-      name:s.name||s.code,
-      qty:isOverride ? 1 : (skus.length===1 ? (pt.sheets||1) : 1),
-      role:col.n+(sz.c!=='—'?' '+sz.n:'')+(isOverride?'('+pt.label+'専用)':'')
-    });
-  });
-  return true;
-}
-function buildSkuListForCombo(cg, szg, pt){
-  const skuList=[];
-  cg.forEach(function(col){
+function buildSkuListForAssign(cg, szg, pt){
+  var skuList = [];
+  var sh = pt.sheets || 1;
+  var activeCg = (cg.length && cg[0] && cg[0].c && cg[0].c !== '—') ? cg : [null];
+  activeCg.forEach(function(col){
     szg.forEach(function(sz){
-      const baseKey=col.c+'_'+sz.c;
-      const overKey=baseKey+'_pt'+pt.id;
-      const overAssigned=skuAssignMap[overKey];
-      const baseAssigned=skuAssignMap[baseKey];
-      if(pushSkusFromAssign(skuList, overAssigned, col, sz, pt, true)) return;
-      if(pushSkusFromAssign(skuList, baseAssigned, col, sz, pt, false)) return;
-      skuList.push({
-        code:'['+col.n+'/'+(sz.n||sz.c)+'未設定]',
-        name:col.n+' '+(sz.n||sz.c),
-        qty:pt.sheets||1,
-        role:'ﾒｲﾝ'
-      });
+      var ck = (col && col.c && col.c !== '—') ? col.c : '';
+      var sk = (sz.c && sz.c !== '—') ? sz.c : '';
+      var bKey = ck + '_' + sk;
+      var oKey = bKey + '_pt' + pt.id;
+      var bA = skuAssignMap[bKey];
+      var oA = skuAssignMap[oKey];
+      var colN = col ? col.n : '';
+      var szN = (sz.n && sz.n !== '—') ? sz.n : '';
+      var rBase = [colN, szN].filter(function(x){ return x && x !== 'カラーなし'; }).join(' ');
+      var oSkus = (oA && oA.skus) ? oA.skus.filter(function(s){ return s.code; }) : [];
+      var bSkus = (bA && bA.skus) ? bA.skus.filter(function(s){ return s.code; }) : [];
+      if(oSkus.length){
+        oSkus.forEach(function(s){
+          skuList.push({code: s.code, name: s.name || s.code, qty: 1, role: rBase + '(' + pt.label + '専用)'});
+        });
+      } else if(bSkus.length){
+        bSkus.forEach(function(s){
+          skuList.push({code: s.code, name: s.name || s.code, qty: sh, role: rBase});
+        });
+      } else {
+        skuList.push({code: '[' + (rBase || '—') + '未設定]', name: rBase || '本体', qty: sh, role: 'ﾒｲﾝ'});
+      }
     });
   });
-  commonSkus.forEach(function(s){ skuList.push({...s}); });
+  commonSkus.forEach(function(s){ skuList.push(Object.assign({}, s)); });
   if(pt.bonus && bonuses.length){
-    bonuses.forEach(function(b){ skuList.push({code:b.code||'',name:b.name||'特典',qty:1,role:'特典'}); });
+    bonuses.forEach(function(b){ skuList.push({code: b.code || '', name: b.name || '特典', qty: 1, role: '特典'}); });
   }
   return skuList;
 }
 function refreshGeneratedSkus(){
   if(!generated.length) return;
   generated.forEach(function(h){
-    if(h.cg && h.szg) h.skuList=buildSkuListForCombo(h.cg, h.szg, h.pt);
+    if(h.szg) h.skuList = buildSkuListForAssign(h.cg || [], h.szg, h.pt);
   });
 }
 function generate(){
@@ -1210,31 +1209,7 @@ function generate(){
             const sizeLabel=szg.length===1?(szg[0].c==='—'?'':szg[0].n):szg.map(function(s){return s.c==='—'?'':s.n;}).filter(Boolean).join('×');
             const name=makeName(grpName, colorLabel, sizeLabel, pt.label, pt.shipFee, colorAbbr);
 
-            const skuList=[];
-            const activeCg=(cg.length && cg[0] && cg[0].c && cg[0].c!=='—')?cg:[null];
-            activeCg.forEach(function(col){
-              szg.forEach(function(sz){
-                const ck=(col && col.c && col.c!=='—')?col.c:'';
-                const sk=(sz.c && sz.c!=='—')?sz.c:'';
-                const bKey=ck+'_'+sk;
-                const oKey=bKey+'_pt'+pt.id;
-                const bA=skuAssignMap[bKey];
-                const oA=skuAssignMap[oKey];
-                const colN=col?col.n:'';
-                const szN=(sz.n && sz.n!=='—')?sz.n:'';
-                const rBase=[colN, szN].filter(function(x){ return x && x!=='カラーなし'; }).join(' ');
-                const oSkus=(oA && oA.skus)?oA.skus.filter(function(s){ return s.code; }):[];
-                const bSkus=(bA && bA.skus)?bA.skus.filter(function(s){ return s.code; }):[];
-                if(oSkus.length){
-                  oSkus.forEach(function(s){ skuList.push({code:s.code, name:s.name||s.code, qty:1, role:rBase+'('+pt.label+'専用)'}); });
-                } else if(bSkus.length){
-                  bSkus.forEach(function(s){ skuList.push({code:s.code, name:s.name||s.code, qty:sh, role:rBase}); });
-                } else {
-                  skuList.push({code:'['+(rBase||'—')+'未設定]', name:rBase||'本体', qty:sh, role:'ﾒｲﾝ'});
-                }
-              });
-            });
-            commonSkus.forEach(function(s){ skuList.push(Object.assign({}, s)); });
+            const skuList=buildSkuListForAssign(cg, szg, pt);
 
             generated.push({
               code:code,
@@ -2405,6 +2380,14 @@ function handleSkuPaste(e, key, startIdx){
   });
   renderSkuAssignTable();
 }
+function removeSkuRow(key, idx){
+  if(!skuAssignMap[key] || !skuAssignMap[key].skus) return;
+  skuAssignMap[key].skus.splice(idx, 1);
+  if(skuAssignMap[key].skus.length === 0){
+    skuAssignMap[key].skus = [{code:'', name:''}];
+  }
+  renderSkuAssignTable();
+}
 function skuInputs(key, isOverride, sheets){
   ensureAssignSkus(key);
   var container = document.createElement('div');
@@ -2432,8 +2415,14 @@ function skuInputs(key, isOverride, sheets){
         skuAssignMap[key].skus[i].name = nameInp.value;
       }
     });
+    var btn_del = document.createElement('button');
+    btn_del.type = 'button';
+    btn_del.textContent = '×';
+    btn_del.style.cssText = 'background:none;border:none;color:var(--red);font-size:18px;cursor:pointer;padding:0 4px;flex-shrink:0';
+    btn_del.addEventListener('click', (function(k, ix){ return function(){ removeSkuRow(k, ix); }; })(key, i));
     row.appendChild(codeInp);
     row.appendChild(nameInp);
+    row.appendChild(btn_del);
     container.appendChild(row);
     if(sku.code) onSkuAssignInput(key, i, sku.code, codeInp);
     else if(sku.name && !sku.code){
@@ -2503,7 +2492,9 @@ function renderSkuAssignTable(){
   table.appendChild(thead);
   const tbody=document.createElement('tbody');
   rows.forEach(function(row){
-    const baseKey=row.ck+'_'+row.sk;
+    var ck = (row.ck && row.ck !== '—') ? row.ck : '';
+    var sk = (row.sk && row.sk !== '—') ? row.sk : '';
+    const baseKey = ck + '_' + sk;
     ensureAssignSkus(baseKey);
     const tr=document.createElement('tr');
     const labelTd=document.createElement('td');
