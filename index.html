@@ -726,9 +726,7 @@ function onGroup(){
   const g=document.getElementById('s-group').value;
   const el=document.getElementById('group-info');
   if(!g){el.innerHTML='';return;}
-  const gl=g.length,digits=8-gl,max=(Math.pow(10,digits)-1).toLocaleString('ja-JP');
-  const gObj=groupMaster.find(x=>x.code===g);
-  el.innerHTML=`<div class="info-box" style="margin-top:8px">ℹ️ <strong>${g} ${gObj?gObj.name:''}</strong> → 連番${digits}桁。最大 ${max} 品番。例：<span style="font-family:monospace">${g}${'0'.repeat(digits-1)}1</span></div>`;
+  el.innerHTML=`<div class="info-box" style="margin-top:8px">例：${g}001</div>`;
   renderSkuMasterTable();
   renderColorsFromMaster();
 }
@@ -2350,72 +2348,116 @@ function ensureAssignSkus(key){
   }
   if(!skuAssignMap[key].skus.length) skuAssignMap[key].skus.push({code:'',name:''});
 }
-function normalizeSkuCode(code){
-  return (code||'').replace(/[Ａ-Ｚａ-ｚ０-９]/g,function(c){return String.fromCharCode(c.charCodeAt(0)-0xFEE0);}).toUpperCase().replace(/[^A-Z0-9]/g,'');
+function onSkuAssignInput(key, idx, code, inputEl){
+  var clean=(code||'').replace(/[Ａ-Ｚａ-ｚ０-９]/g, function(c){
+    return String.fromCharCode(c.charCodeAt(0) - 0xFEE0);
+  }).toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if(inputEl && clean !== code) inputEl.value = clean;
+  code = clean;
+  if(!skuAssignMap[key]) skuAssignMap[key] = {skus: [{code:'', name:''}]};
+  if(!skuAssignMap[key].skus) skuAssignMap[key].skus = [{code:'', name:''}];
+  while(skuAssignMap[key].skus.length <= idx) skuAssignMap[key].skus.push({code:'', name:''});
+  skuAssignMap[key].skus[idx].code = code;
+  var nameEl = document.getElementById('sa-name-' + key + '-' + idx);
+  if(!nameEl) return;
+  if(!code){
+    nameEl.value = '';
+    nameEl.style.background = 'var(--gray-50)';
+    nameEl.style.color = '';
+    nameEl.removeAttribute('readonly');
+    return;
+  }
+  var found = skuCache.find(function(s){ return s.c.toUpperCase() === code.toUpperCase(); });
+  if(found){
+    skuAssignMap[key].skus[idx].name = found.n;
+    nameEl.value = found.n;
+    nameEl.style.background = 'var(--green-lt)';
+    nameEl.style.color = 'var(--green)';
+    nameEl.setAttribute('readonly', '');
+  } else if(code.length >= 6){
+    nameEl.value = '';
+    nameEl.placeholder = '手動入力';
+    nameEl.style.background = 'var(--amber-lt)';
+    nameEl.style.color = 'var(--amber)';
+    nameEl.removeAttribute('readonly');
+  } else {
+    nameEl.value = '';
+    nameEl.style.background = 'var(--gray-50)';
+    nameEl.style.color = '';
+  }
 }
 function handleSkuPaste(e, key, startIdx){
   e.preventDefault();
-  const text=(e.clipboardData||window.clipboardData).getData('text');
-  const lines=text.split(/\r?\n/).map(function(s){return s.trim();}).filter(function(s){return s.length>0;});
+  var text = (e.clipboardData || window.clipboardData).getData('text');
+  var lines = text.split(/\r?\n/).map(function(s){ return s.trim(); }).filter(function(s){ return s.length > 0; });
   if(!lines.length) return;
-  if(!skuAssignMap[key]) skuAssignMap[key]={skus:[]};
-  if(!skuAssignMap[key].skus) skuAssignMap[key].skus=[];
+  if(!skuAssignMap[key]) skuAssignMap[key] = {skus: []};
+  if(!skuAssignMap[key].skus) skuAssignMap[key].skus = [];
   lines.forEach(function(code, i){
-    const idx=startIdx+i;
-    while(skuAssignMap[key].skus.length<=idx){
-      skuAssignMap[key].skus.push({code:'',name:''});
-    }
-    const clean=normalizeSkuCode(code);
-    skuAssignMap[key].skus[idx].code=clean;
-    const found=skuCache.find(function(s){return s.c.toUpperCase()===clean.toUpperCase();});
-    if(found) skuAssignMap[key].skus[idx].name=found.n;
+    var idx = startIdx + i;
+    while(skuAssignMap[key].skus.length <= idx) skuAssignMap[key].skus.push({code:'', name:''});
+    var clean = (code||'').replace(/[Ａ-Ｚａ-ｚ０-９]/g, function(c){
+      return String.fromCharCode(c.charCodeAt(0) - 0xFEE0);
+    }).toUpperCase().replace(/[^A-Z0-9]/g, '');
+    skuAssignMap[key].skus[idx].code = clean;
+    var found = skuCache.find(function(s){ return s.c.toUpperCase() === clean.toUpperCase(); });
+    if(found) skuAssignMap[key].skus[idx].name = found.n;
   });
   renderSkuAssignTable();
 }
-function makeCell(key, i, isOverride, sheets){
+function skuInputs(key, isOverride, sheets){
   ensureAssignSkus(key);
-  const sku=skuAssignMap[key].skus[i]||{code:'',name:''};
-  const wrap=document.createElement('div');
-  wrap.style.marginBottom=i>0?'6px':'0';
-  const inp=document.createElement('input');
-  inp.type='text';
-  inp.value=sku.code||'';
-  inp.placeholder=i===0?(isOverride?'空欄=メインSKU×'+(sheets||2):'SKUコード'):'追加SKU';
-  inp.style.cssText='width:100%;padding:4px 7px;border:1px solid var(--bd);border-radius:4px;font-size:12px;font-family:monospace;margin-bottom:2px';
-  inp.addEventListener('input',function(){
-    const clean=normalizeSkuCode(inp.value);
-    skuAssignMap[key].skus[i].code=clean;
-    const found=skuCache.find(function(s){return s.c.toUpperCase()===clean.toUpperCase();});
-    if(found){
-      skuAssignMap[key].skus[i].name=found.n;
-      nameDiv.textContent='✓ '+found.n;
-      nameDiv.style.color=isOverride?'var(--amber)':'var(--green)';
-    } else if(clean.length>=7){
-      nameDiv.textContent='⚠ マスタに見つかりません';
-      nameDiv.style.color='var(--amber)';
-    } else {
-      skuAssignMap[key].skus[i].name='';
-      nameDiv.textContent='';
+  var container = document.createElement('div');
+  skuAssignMap[key].skus.forEach(function(sku, i){
+    var row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:6px;align-items:center;margin-bottom:4px';
+    var codeInp = document.createElement('input');
+    codeInp.type = 'text';
+    codeInp.value = sku.code || '';
+    codeInp.placeholder = i === 0 ? (isOverride ? '空欄=メインSKU×' + (sheets || 2) : 'SKUコード') : 'SKUコード';
+    codeInp.style.cssText = 'font-family:monospace;padding:5px 8px;width:130px;border:1px solid var(--bd);border-radius:4px;font-size:12px;flex-shrink:0';
+    codeInp.addEventListener('input', function(){
+      onSkuAssignInput(key, i, codeInp.value, codeInp);
+    });
+    codeInp.addEventListener('paste', function(e){
+      handleSkuPaste(e, key, i);
+    });
+    var nameInp = document.createElement('input');
+    nameInp.type = 'text';
+    nameInp.id = 'sa-name-' + key + '-' + i;
+    nameInp.value = sku.name || '';
+    nameInp.style.cssText = 'flex:1;padding:5px 8px;border:1px solid var(--bd);border-radius:4px;font-size:12px;background:var(--gray-50)';
+    nameInp.addEventListener('input', function(){
+      if(!nameInp.hasAttribute('readonly')){
+        skuAssignMap[key].skus[i].name = nameInp.value;
+      }
+    });
+    row.appendChild(codeInp);
+    row.appendChild(nameInp);
+    container.appendChild(row);
+    if(sku.code) onSkuAssignInput(key, i, sku.code, codeInp);
+    else if(sku.name && !sku.code){
+      nameInp.value = sku.name;
+      nameInp.style.background = 'var(--gray-50)';
     }
   });
-  inp.addEventListener('paste',(function(k,ix){
-    return function(e){ handleSkuPaste(e, k, ix); };
-  })(key, i));
-  const nameDiv=document.createElement('div');
-  nameDiv.style.cssText='font-size:11px;min-height:14px;color:'+(isOverride?'var(--amber)':'var(--green)');
-  if(sku.name) nameDiv.textContent='✓ '+sku.name;
-  wrap.appendChild(inp);
-  wrap.appendChild(nameDiv);
-  return wrap;
+  var addBtn = document.createElement('button');
+  addBtn.type = 'button';
+  addBtn.textContent = '＋SKU追加';
+  addBtn.style.cssText = 'width:100%;border:1px dashed var(--blue);color:var(--blue);background:none;font-size:11px;margin-top:4px;cursor:pointer;border-radius:4px;padding:5px 8px;font-family:inherit';
+  addBtn.addEventListener('click', function(){
+    skuAssignMap[key].skus.push({code:'', name:''});
+    renderSkuAssignTable();
+  });
+  container.appendChild(addBtn);
+  return container;
 }
 function makeCellTd(key, isOverride, sheets){
   ensureAssignSkus(key);
-  const hasCode=skuAssignMap[key].skus.some(function(s){return s.code;});
-  const td=document.createElement('td');
-  td.style.cssText='padding:6px 8px;border:1px solid var(--bd);vertical-align:top'+(isOverride&&hasCode?'background:var(--amber-lt)':'');
-  skuAssignMap[key].skus.forEach(function(_, i){
-    td.appendChild(makeCell(key, i, isOverride, sheets));
-  });
+  var hasCode = skuAssignMap[key].skus.some(function(s){ return s.code; });
+  var td = document.createElement('td');
+  td.style.cssText = 'padding:6px 8px;border:1px solid var(--bd);vertical-align:top' + (isOverride && hasCode ? 'background:var(--amber-lt)' : '');
+  td.appendChild(skuInputs(key, isOverride, sheets));
   return td;
 }
 function renderSkuAssignTable(){
