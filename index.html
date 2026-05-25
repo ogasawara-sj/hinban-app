@@ -1255,12 +1255,7 @@ function renderPriceMatrix(){
     <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap">
       <input type="number" id="all-price" placeholder="全品番に一括適用（税抜）" style="width:210px;padding:7px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px">
       <button class="btn btn-p" onclick="setAllPrice()">全品番に適用</button>
-    </div>
-    ${false?`<div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap;padding:10px 12px;background:var(--green-lt);border-radius:var(--r);border:1px solid var(--green-bd)">
-      <span style="font-size:12px;color:var(--green);font-weight:600">📦 SKU登録済み（${sku3List.length}件）</span>
-      <button class="btn" onclick="applySkuToAll()" style="font-size:12px;background:var(--green);color:#fff;border-color:var(--green)">全品番に再反映</button>
-      ${patterns.map(p=>`<button class="btn" onclick="applySkuToPattern(${p.id})" style="font-size:12px">「${p.label}」のみ再反映</button>`).join('')}
-    </div>`:'<div style="font-size:12px;color:var(--amber);margin-bottom:10px;padding:8px 12px;background:var(--amber-lt);border-radius:var(--r)">⚠ SKUが未設定です。STEP 3に戻ってSKUを追加してください。</div>'}`;
+    </div>`;
 
   patterns.forEach(pt=>{
     const ptItems=generated.filter(h=>h.pt.id===pt.id);
@@ -2398,7 +2393,7 @@ function skuInputs(key, isOverride, sheets){
     codeInp.type = 'text';
     codeInp.value = sku.code || '';
     codeInp.placeholder = i === 0 ? (isOverride ? '空欄=メインSKU×' + (sheets || 2) : 'SKUコード') : 'SKUコード';
-    codeInp.style.cssText = 'font-family:monospace;padding:5px 8px;width:130px;border:1px solid var(--bd);border-radius:4px;font-size:12px;flex-shrink:0';
+    codeInp.style.cssText = 'font-family:monospace;padding:5px 8px;width:110px;border:1px solid var(--bd);border-radius:4px;font-size:12px;flex-shrink:0';
     codeInp.addEventListener('input', function(){
       onSkuAssignInput(key, i, codeInp.value, codeInp);
     });
@@ -2409,7 +2404,7 @@ function skuInputs(key, isOverride, sheets){
     nameInp.type = 'text';
     nameInp.id = 'sa-name-' + key + '-' + i;
     nameInp.value = sku.name || '';
-    nameInp.style.cssText = 'flex:1;padding:5px 8px;border:1px solid var(--bd);border-radius:4px;font-size:12px;background:var(--gray-50)';
+    nameInp.style.cssText = 'flex:1;min-width:0;padding:5px 8px;border:1px solid var(--bd);border-radius:4px;font-size:12px;background:var(--gray-50);white-space:nowrap;overflow:visible';
     nameInp.addEventListener('input', function(){
       if(!nameInp.hasAttribute('readonly')){
         skuAssignMap[key].skus[i].name = nameInp.value;
@@ -2418,7 +2413,9 @@ function skuInputs(key, isOverride, sheets){
     var btn_del = document.createElement('button');
     btn_del.type = 'button';
     btn_del.textContent = '×';
-    btn_del.style.cssText = 'background:none;border:none;color:var(--red);font-size:18px;cursor:pointer;padding:0 4px;flex-shrink:0';
+    btn_del.style.cssText = 'background:none;border:none;color:var(--red,#D94040);font-size:16px;cursor:pointer;padding:0 4px;flex-shrink:0;opacity:0.6';
+    btn_del.addEventListener('mouseenter', function(){ btn_del.style.opacity = '1'; });
+    btn_del.addEventListener('mouseleave', function(){ btn_del.style.opacity = '0.6'; });
     btn_del.addEventListener('click', (function(k, ix){ return function(){ removeSkuRow(k, ix); }; })(key, i));
     row.appendChild(codeInp);
     row.appendChild(nameInp);
@@ -2432,8 +2429,10 @@ function skuInputs(key, isOverride, sheets){
   });
   var addBtn = document.createElement('button');
   addBtn.type = 'button';
-  addBtn.textContent = '＋SKU追加';
-  addBtn.style.cssText = 'width:100%;border:1px dashed var(--blue);color:var(--blue);background:none;font-size:11px;margin-top:4px;cursor:pointer;border-radius:4px;padding:5px 8px;font-family:inherit';
+  addBtn.textContent = '＋ SKUを追加';
+  addBtn.style.cssText = 'background:none;border:none;color:var(--blue,#1659A8);font-size:12px;cursor:pointer;width:100%;margin-top:6px;padding:4px 0;text-align:left;opacity:0.7;font-family:inherit';
+  addBtn.addEventListener('mouseenter', function(){ addBtn.style.opacity = '1'; });
+  addBtn.addEventListener('mouseleave', function(){ addBtn.style.opacity = '0.7'; });
   addBtn.addEventListener('click', function(){
     skuAssignMap[key].skus.push({code:'', name:''});
     renderSkuAssignTable();
