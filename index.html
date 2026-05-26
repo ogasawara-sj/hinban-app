@@ -563,7 +563,15 @@ let colorMaster  = [
 let sizeMaster   = [
   {n:'ｼﾝｸﾞﾙ',c:'S'},{n:'ｾﾐﾀﾞﾌﾞﾙ',c:'M'},{n:'ﾀﾞﾌﾞﾙ',c:'W'},{n:'ｸｲｰﾝ',c:'Q'},{n:'ｻｲｽﾞなし',c:'—'},
 ];
-let shipOptions  = [{fee:0,label:'無料'},{fee:990,label:'990円'},{fee:1320,label:'1,320円'},{fee:1980,label:'1,980円'}];
+let shipOptions  = [
+  {label:'無料',fee:0},
+  {label:'660円',fee:660},
+  {label:'990円',fee:990},
+  {label:'1,320円',fee:1320},
+  {label:'1,980円',fee:1980},
+  {label:'2,200円',fee:2200},
+  {label:'4,400円',fee:4400}
+];
 let campaignHistory = [];
 let skuMaster    = {};
 let patternSkus  = [];
@@ -1021,8 +1029,7 @@ function renderPts(){
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <div style="display:flex;align-items:center;gap:8px">
           <input type="text" value="${p.label}" onchange="patterns[${pi}].label=this.value;updateCount()"
-            style="font-weight:700;font-size:13px;border:none;background:transparent;padding:0;width:140px;font-family:inherit">
-          <span class="tag tag-blue">${p.sheets}枚</span>
+            style="font-weight:700;font-size:13px;border:1px solid var(--bd);background:#fff;padding:4px 8px;width:100%;max-width:220px;border-radius:var(--r);font-family:inherit">
         </div>
         ${patterns.length>1?`<button onclick="patterns.splice(${pi},1);renderPts()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px">削除</button>`:''}
       </div>
@@ -1052,7 +1059,7 @@ function renderPts(){
   updateCount();renderPtColorPreviews();
 }
 function addPt(){
-  patterns.push({id:Date.now(),label:(patterns.length+1)+'枚購入',sheets:patterns.length+1,shipFee:0,bonus:false,colorMode:'single',patternSkuIds:[]});
+  patterns.push({id:Date.now(),label:'新パターン',sheets:patterns.length+1,shipFee:0,bonus:false,colorMode:'single',patternSkuIds:[]});
   renderPts();
 }
 function togglePtSku(pi,si,checked){
@@ -1124,12 +1131,25 @@ function getAssignSkus(entry){
   if(entry.code) return [{code:entry.code, name:entry.name||''}];
   return [];
 }
+function getAssignSizeSlots(szg){
+  var seen = {};
+  var slots = [];
+  (szg || []).forEach(function(sz){
+    var sk = (sz.c && sz.c !== '—') ? sz.c : '';
+    if(seen.hasOwnProperty(sk)) return;
+    seen[sk] = true;
+    slots.push(sz);
+  });
+  if(!slots.length && szg && szg.length) slots.push(szg[0]);
+  return slots;
+}
 function buildSkuListForAssign(cg, szg, pt){
   var skuList = [];
   var sh = pt.sheets || 1;
   var activeCg = (cg.length && cg[0] && cg[0].c && cg[0].c !== '—') ? cg : [null];
+  var assignSizes = getAssignSizeSlots(szg);
   activeCg.forEach(function(col){
-    szg.forEach(function(sz){
+    assignSizes.forEach(function(sz){
       var ck = (col && col.c && col.c !== '—') ? col.c : '';
       var sk = (sz.c && sz.c !== '—') ? sz.c : '';
       var bKey = ck + '_' + sk;
@@ -1222,19 +1242,7 @@ function generate(){
             const sizeLabel=szg.length===1?(szg[0].c==='—'?'':szg[0].n):szg.map(function(s){return s.c==='—'?'':s.n;}).filter(Boolean).join('×');
             const name=makeName(grpName, colorLabel, sizeLabel, pt.label, pt.shipFee, colorAbbr);
 
-            const skuList=buildSkuListForAssign(cg, szg, pt);
-
-            // 同じSKUコードは員数（qty）を合算して1行にまとめる
-            var mergedSkuList = [];
-            skuList.forEach(function(s){
-              if(!s.code) return;
-              var existing = mergedSkuList.find(function(m){ return m.code === s.code; });
-              if(existing){
-                existing.qty = (existing.qty || 1) + (s.qty || 1);
-              } else {
-                mergedSkuList.push(Object.assign({}, s));
-              }
-            });
+            const skuList=mergeSkuListByCode(buildSkuListForAssign(cg, szg, pt));
 
             generated.push({
               code:code,
@@ -1244,7 +1252,7 @@ function generate(){
               szg:szg,
               sz:szg[0],
               pt:pt,
-              skuList:mergedSkuList,
+              skuList:skuList,
               ship:pt.shipFee,
               price:0,
               month:document.getElementById('s-month').value,
