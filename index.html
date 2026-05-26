@@ -326,6 +326,9 @@ body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sa
         style="flex:1;min-width:160px;padding:7px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px">
       <input type="number" id="csku-qty" value="1" min="1"
         style="width:60px;padding:7px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px;text-align:right">
+      <label style="font-size:12px;display:flex;align-items:center;gap:4px;white-space:nowrap;color:var(--gray-600);cursor:pointer">
+        <input type="checkbox" id="csku-follow-sheets"> 枚数に連動
+      </label>
       <button class="btn btn-p" onclick="addCommonSku()">＋ 追加</button>
     </div>
     <div id="csku-confirm" style="display:none;margin-top:6px;font-size:12px;padding:6px 10px;background:var(--blue-lt);border-radius:var(--r);color:var(--blue-dk)"></div>
@@ -1206,7 +1209,13 @@ function buildSkuListForAssign(cg, szg, pt){
       }
     });
   });
-  commonSkus.forEach(function(s){ skuList.push(Object.assign({}, s)); });
+  commonSkus.forEach(function(s){
+    var item = Object.assign({}, s);
+    if(s.followSheets){
+      item.qty = pt.sheets || 1;
+    }
+    skuList.push(item);
+  });
   if(pt.bonus && bonuses.length){
     bonuses.forEach(function(b){ skuList.push({code: b.code || '', name: b.name || '特典', qty: 1, role: '特典'}); });
   }
@@ -2611,7 +2620,10 @@ function renderCommonSkuList(){
     <div style="display:flex;align-items:center;gap:8px;padding:5px 10px;background:var(--gray-50);border:1px solid var(--bd);border-radius:5px;margin-bottom:4px;font-size:12px">
       <span class="mono">${s.code||'—'}</span>
       <span style="flex:1">${s.name||'—'}</span>
-      <span style="color:var(--gray-400)">×${s.qty}</span>
+      <span style="color:var(--gray-400)">${s.followSheets?'×枚数連動':'×'+(s.qty||1)}</span>
+      <label style="font-size:11px;display:flex;align-items:center;gap:4px;white-space:nowrap;color:var(--gray-600);cursor:pointer">
+        <input type="checkbox" ${s.followSheets?'checked':''} onchange="toggleCommonSkuFollowSheets(${i},this.checked)"> 枚数に連動
+      </label>
       <button onclick="commonSkus.splice(${i},1);renderCommonSkuList()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px">×</button>
     </div>`).join('');
 }
@@ -2639,19 +2651,32 @@ function onCskuCodeInput(code){
   }
 }
 
+function toggleCommonSkuFollowSheets(i, checked){
+  if(!commonSkus[i]) return;
+  commonSkus[i].followSheets = !!checked;
+  if(generated.length){
+    refreshGeneratedSkus();
+    if(document.getElementById('p5') && document.getElementById('p5').classList.contains('on')) renderPriceMatrix();
+  }
+  renderCommonSkuList();
+}
+
 function addCommonSku(){
   const code = document.getElementById('csku-code').value.trim();
   const name = document.getElementById('csku-name').value.trim();
   const qty  = parseInt(document.getElementById('csku-qty').value)||1;
+  const followEl = document.getElementById('csku-follow-sheets');
+  const followSheets = followEl ? followEl.checked : false;
   if(!code && !name){ alert('SKUコードまたは名称を入力してください'); return; }
   let role = 'セット構成';
   if(code.startsWith('YR')) role = '延長保証';
   else if(code.startsWith('IN')) role = '取説';
   else if(code.startsWith('LT')) role = '特典';
-  commonSkus.push({code, name, qty, role});
+  commonSkus.push({code, name, qty, role, followSheets: !!followSheets});
   document.getElementById('csku-code').value = '';
   document.getElementById('csku-name').value = '';
   document.getElementById('csku-qty').value = '1';
+  if(followEl) followEl.checked = false;
   const conf = document.getElementById('csku-confirm');
   if(conf) conf.style.display = 'none';
   renderCommonSkuList();
