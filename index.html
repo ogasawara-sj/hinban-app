@@ -257,7 +257,17 @@ body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sa
     </div>
     <div class="g2">
       <div class="f"><label>商品グループ <span class="req">*</span></label>
-        <select id="s-group" onchange="onGroup()"><option value="">選択してください</option></select></div>
+        <div style="position:relative">
+          <input type="text" id="s-group-search" placeholder="コードで検索または選択..."
+            oninput="filterGroupList(this.value)"
+            onfocus="showGroupList()"
+            style="width:100%;padding:8px 12px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px">
+          <input type="hidden" id="s-group" value="">
+          <div id="s-group-list" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:100;
+            background:#fff;border:1px solid var(--bd);border-radius:0 0 var(--r) var(--r);
+            max-height:220px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.1)">
+          </div>
+        </div></div>
       <div class="f"><label>担当者 <span class="req">*</span></label>
         <input type="text" id="s-staff" placeholder="担当者名を入力"></div>
     </div>
@@ -710,11 +720,52 @@ function renderMonthSelect(){
 // WIZARD S1
 // ============================================================
 function renderGroupSelect(){
-  const sel=document.getElementById('s-group');
-  if(!sel) return;
-  const sorted=[...groupMaster].sort((a,b)=>a.code.localeCompare(b.code));
-  sel.innerHTML='<option value="">選択してください</option>'+
-    sorted.map(g=>`<option value="${g.code}">${g.code}</option>`).join('');
+  const hidden=document.getElementById('s-group');
+  const search=document.getElementById('s-group-search');
+  const list=document.getElementById('s-group-list');
+  if(!hidden) return;
+  if(hidden.value && !groupMaster.find(function(g){ return g.code===hidden.value; })){
+    hidden.value='';
+    if(search) search.value='';
+  }
+  if(list) list.style.display='none';
+}
+
+function showGroupList(){
+  var list=document.getElementById('s-group-list');
+  if(list) list.style.display='block';
+  var search=document.getElementById('s-group-search');
+  filterGroupList(search?search.value:'');
+}
+
+function filterGroupList(q){
+  var list=document.getElementById('s-group-list');
+  if(!list) return;
+  var filtered=groupMaster.filter(function(g){
+    return !q||g.code.toUpperCase().indexOf(q.toUpperCase())>=0;
+  }).sort(function(a,b){ return a.code.localeCompare(b.code); });
+
+  if(!filtered.length){
+    list.innerHTML='<div style="padding:10px 12px;font-size:13px;color:var(--gray-400)">該当なし</div>';
+    return;
+  }
+
+  list.innerHTML='';
+  filtered.forEach(function(g){
+    var item=document.createElement('div');
+    item.textContent=g.code;
+    item.style.cssText='padding:8px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--bd)';
+    item.addEventListener('mouseenter',function(){ item.style.background='var(--blue-lt)'; });
+    item.addEventListener('mouseleave',function(){ item.style.background=''; });
+    item.addEventListener('click',function(){
+      document.getElementById('s-group').value=g.code;
+      document.getElementById('s-group-search').value=g.code;
+      list.style.display='none';
+      onGroup();
+    });
+    list.appendChild(item);
+  });
+  list.style.display='block';
 }
 function renderStaffSelect(){
   const sel=document.getElementById('s-staff');
@@ -1543,6 +1594,8 @@ function resetWizardForm(){
     {id:2,label:'2枚セット',sheets:2,shipFee:0,bonus:true,colorMode:'set',patternSkuIds:[],unit:'枚'},
   ];
   ['s-month','s-name','s-staff','s-group'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  const gs=document.getElementById('s-group-search');if(gs)gs.value='';
+  const gl=document.getElementById('s-group-list');if(gl)gl.style.display='none';
   const gi=document.getElementById('group-info');if(gi)gi.innerHTML='';
   renderBonuses();resetWizardColors();resetWizardSizes();renderPts();go(1);
 }
@@ -2692,6 +2745,16 @@ function hideLoading(){
   const el=document.getElementById('loading-overlay');
   if(el) el.classList.remove('on');
 }
+// 外クリックで商品グループリストを閉じる
+document.addEventListener('click', function(e){
+  var searchEl=document.getElementById('s-group-search');
+  var wrapper=searchEl&&searchEl.closest('div');
+  if(wrapper&&!wrapper.contains(e.target)){
+    var list=document.getElementById('s-group-list');
+    if(list) list.style.display='none';
+  }
+});
+
 // ============================================================
 // INIT
 // ============================================================
