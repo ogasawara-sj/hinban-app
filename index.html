@@ -1160,10 +1160,23 @@ function buildSkuListForAssign(cg, szg, pt){
   }
   return skuList;
 }
+function mergeSkuListByCode(skuList){
+  var mergedSkuList = [];
+  skuList.forEach(function(s){
+    if(!s.code) return;
+    var existing = mergedSkuList.find(function(m){ return m.code === s.code; });
+    if(existing){
+      existing.qty = (existing.qty || 1) + (s.qty || 1);
+    } else {
+      mergedSkuList.push(Object.assign({}, s));
+    }
+  });
+  return mergedSkuList;
+}
 function refreshGeneratedSkus(){
   if(!generated.length) return;
   generated.forEach(function(h){
-    if(h.szg) h.skuList = buildSkuListForAssign(h.cg || [], h.szg, h.pt);
+    if(h.szg) h.skuList = mergeSkuListByCode(buildSkuListForAssign(h.cg || [], h.szg, h.pt));
   });
 }
 function generate(){
@@ -1211,6 +1224,18 @@ function generate(){
 
             const skuList=buildSkuListForAssign(cg, szg, pt);
 
+            // 同じSKUコードは員数（qty）を合算して1行にまとめる
+            var mergedSkuList = [];
+            skuList.forEach(function(s){
+              if(!s.code) return;
+              var existing = mergedSkuList.find(function(m){ return m.code === s.code; });
+              if(existing){
+                existing.qty = (existing.qty || 1) + (s.qty || 1);
+              } else {
+                mergedSkuList.push(Object.assign({}, s));
+              }
+            });
+
             generated.push({
               code:code,
               name:name,
@@ -1219,7 +1244,7 @@ function generate(){
               szg:szg,
               sz:szg[0],
               pt:pt,
-              skuList:skuList,
+              skuList:mergedSkuList,
               ship:pt.shipFee,
               price:0,
               month:document.getElementById('s-month').value,
