@@ -2404,7 +2404,7 @@ function skuInputs(key, isOverride, sheets){
     nameInp.type = 'text';
     nameInp.id = 'sa-name-' + key + '-' + i;
     nameInp.value = sku.name || '';
-    nameInp.style.cssText = 'flex:1;min-width:0;padding:5px 8px;border:1px solid var(--bd);border-radius:4px;font-size:12px;background:var(--gray-50);white-space:nowrap;overflow:visible';
+    nameInp.style.cssText = 'flex:1;min-width:0;padding:5px 8px;border:1px solid var(--bd);border-radius:4px;font-size:12px;background:var(--gray-50);overflow:hidden;text-overflow:ellipsis';
     nameInp.addEventListener('input', function(){
       if(!nameInp.hasAttribute('readonly')){
         skuAssignMap[key].skus[i].name = nameInp.value;
@@ -2413,9 +2413,9 @@ function skuInputs(key, isOverride, sheets){
     var btn_del = document.createElement('button');
     btn_del.type = 'button';
     btn_del.textContent = '×';
-    btn_del.style.cssText = 'background:none;border:none;color:var(--red,#D94040);font-size:16px;cursor:pointer;padding:0 4px;flex-shrink:0;opacity:0.6';
+    btn_del.style.cssText = 'background:none;border:none;color:#D94040;font-size:16px;cursor:pointer;padding:0 4px;flex-shrink:0;opacity:0.5';
     btn_del.addEventListener('mouseenter', function(){ btn_del.style.opacity = '1'; });
-    btn_del.addEventListener('mouseleave', function(){ btn_del.style.opacity = '0.6'; });
+    btn_del.addEventListener('mouseleave', function(){ btn_del.style.opacity = '0.5'; });
     btn_del.addEventListener('click', (function(k, ix){ return function(){ removeSkuRow(k, ix); }; })(key, i));
     row.appendChild(codeInp);
     row.appendChild(nameInp);
@@ -2430,9 +2430,9 @@ function skuInputs(key, isOverride, sheets){
   var addBtn = document.createElement('button');
   addBtn.type = 'button';
   addBtn.textContent = '＋ SKUを追加';
-  addBtn.style.cssText = 'background:none;border:none;color:var(--blue,#1659A8);font-size:12px;cursor:pointer;width:100%;margin-top:6px;padding:4px 0;text-align:left;opacity:0.7;font-family:inherit';
+  addBtn.style.cssText = 'background:none;border:none;color:var(--blue,#1659A8);font-size:12px;cursor:pointer;width:100%;margin-top:4px;padding:4px 0;text-align:left;opacity:0.6;font-family:inherit';
   addBtn.addEventListener('mouseenter', function(){ addBtn.style.opacity = '1'; });
-  addBtn.addEventListener('mouseleave', function(){ addBtn.style.opacity = '0.7'; });
+  addBtn.addEventListener('mouseleave', function(){ addBtn.style.opacity = '0.6'; });
   addBtn.addEventListener('click', function(){
     skuAssignMap[key].skus.push({code:'', name:''});
     renderSkuAssignTable();
