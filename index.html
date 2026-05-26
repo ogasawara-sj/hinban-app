@@ -1167,7 +1167,7 @@ function buildSkuListForAssign(cg, szg, pt){
   });
   if(uniqueSizes.length === 0) uniqueSizes = [null];
 
-  // ユニークなカラー×サイズでSKUを1回だけ取得し、員数はpt.sheetsを使う
+  // ユニークなカラー×サイズでSKUを1回だけ取得し、員数はcg/szgの登場回数から算出する
   uniqueColors.forEach(function(col){
     uniqueSizes.forEach(function(sz){
       var ck = col ? col.c : '';
@@ -1179,6 +1179,14 @@ function buildSkuListForAssign(cg, szg, pt){
       var colN = col ? col.n : '';
       var szN = sz ? sz.n : '';
       var rBase = [colN, szN].filter(function(x){ return x && x !== 'カラーなし'; }).join(' ');
+
+      // そのカラーがcgの中で何回登場するかをカウント（員数の根拠）
+      var colorCount = col ? (cg || []).filter(function(c){ return c && c.c === col.c; }).length : (pt.sheets || 1);
+      // そのサイズがszgの中で何回登場するかをカウント
+      var sizeCount = sz ? (szg || []).filter(function(s){ return s && s.c === sz.c; }).length : (pt.sheets || 1);
+      // 員数はカラーとサイズの登場回数の最大値を使う
+      var qty = Math.max(colorCount, sizeCount);
+
       var oSkus = (oA && oA.skus) ? oA.skus.filter(function(s){ return s.code; }) : [];
       var bSkus = (bA && bA.skus) ? bA.skus.filter(function(s){ return s.code; }) : [];
       if(oSkus.length){
@@ -1187,10 +1195,10 @@ function buildSkuListForAssign(cg, szg, pt){
         });
       } else if(bSkus.length){
         bSkus.forEach(function(s){
-          skuList.push({code: s.code, name: s.name || s.code, qty: pt.sheets || 1, role: rBase});
+          skuList.push({code: s.code, name: s.name || s.code, qty: qty, role: rBase});
         });
       } else {
-        skuList.push({code: '[' + (rBase||'—') + '未設定]', name: rBase || '本体', qty: pt.sheets || 1, role: 'ﾒｲﾝ'});
+        skuList.push({code: '[' + (rBase||'—') + '未設定]', name: rBase || '本体', qty: qty, role: 'ﾒｲﾝ'});
       }
     });
   });
@@ -1292,6 +1300,15 @@ function renderPriceMatrix(){
   const yen=n=>'¥'+Math.round(n).toLocaleString('ja-JP');
 
   let html_out=`<div class="ok-box">✅ <strong>${generated.length}件</strong>の品番コードを発行しました。</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap;padding:10px 12px;background:var(--gray-50);border-radius:var(--r);border:1px solid var(--bd)">
+      <span style="font-size:12px;color:var(--gray-600);white-space:nowrap">品番名の置換：</span>
+      <input type="text" id="replace-from" placeholder="置換前（例：MQT）" 
+        style="width:140px;padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">
+      <span style="font-size:12px;color:var(--gray-400)">→</span>
+      <input type="text" id="replace-to" placeholder="置換後（例：ﾏｲｷｭｯﾄPLUS）" 
+        style="width:180px;padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">
+      <button onclick="bulkReplaceName()" class="btn" style="font-size:12px">一括置換</button>
+    </div>
     <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap">
       <input type="number" id="all-price" placeholder="全品番に一括適用（税抜）" style="width:210px;padding:7px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px">
       <button class="btn btn-p" onclick="setAllPrice()">全品番に適用</button>
@@ -1406,6 +1423,27 @@ function setPtPrice(ptId){
 
 function updTax(i){const el=document.getElementById('tx-'+i);if(el)el.textContent=generated[i].price?'¥'+Math.round(generated[i].price*1.1).toLocaleString('ja-JP'):'—';}
 function updNL(i){const l=generated[i].name.length;const el=document.getElementById('nl-'+i);if(el){el.textContent=l+'/40';el.style.color=l>38?'var(--red)':'var(--green)';}}
+function bulkReplaceName(){
+  var from = document.getElementById('replace-from').value;
+  var to = document.getElementById('replace-to').value;
+  if(!from){ alert('置換前の文字を入力してください'); return; }
+  if(!generated.length){ alert('品番が生成されていません'); return; }
+  var count = 0;
+  generated.forEach(function(h, i){
+    if(h.name && h.name.indexOf(from) >= 0){
+      h.name = h.name.split(from).join(to);
+      count++;
+      var nameEl = document.getElementById('nm-' + i);
+      if(nameEl) nameEl.value = h.name;
+      var nlEl = document.getElementById('nl-' + i);
+      if(nlEl){
+        nlEl.textContent = h.name.length + '/40';
+        nlEl.style.color = h.name.length > 38 ? 'var(--red)' : 'var(--green)';
+      }
+    }
+  });
+  alert(count + '件の品番名を置換しました');
+}
 function setAllPrice(){const v=parseFloat(document.getElementById('all-price').value)||0;generated.forEach((_,i)=>{generated[i].price=v;const e=document.getElementById('pr-'+i);if(e)e.value=v;updTax(i);});}
 function setRowPrice(sc,idx){const v=parseFloat(document.getElementById('row-p-'+sc).value)||0;idx.forEach(i=>{generated[i].price=v;const e=document.getElementById('pr-'+i);if(e)e.value=v;updTax(i);});}
 
