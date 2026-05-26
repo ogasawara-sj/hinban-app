@@ -1180,12 +1180,16 @@ function buildSkuListForAssign(cg, szg, pt){
       var szN = sz ? sz.n : '';
       var rBase = [colN, szN].filter(function(x){ return x && x !== 'カラーなし'; }).join(' ');
 
-      // そのカラーがcgの中で何回登場するかをカウント（員数の根拠）
-      var colorCount = col ? (cg || []).filter(function(c){ return c && c.c === col.c; }).length : (pt.sheets || 1);
-      // そのサイズがszgの中で何回登場するかをカウント
-      var sizeCount = sz ? (szg || []).filter(function(s){ return s && s.c === sz.c; }).length : (pt.sheets || 1);
-      // 員数はカラーとサイズの登場回数の最大値を使う
-      var qty = Math.max(colorCount, sizeCount);
+      // cgの中で同じカラーが何回登場するかをカウント
+      var colorCount = col
+        ? (cg || []).filter(function(c){ return c && c.c === col.c; }).length
+        : 1;
+      // szgの中で同じサイズが何回登場するかをカウント
+      var sizeCount = sz
+        ? (szg || []).filter(function(s){ return s && s.c === sz.c; }).length
+        : 1;
+      // 員数はカラーとサイズの登場回数を掛け合わせる
+      var qty = colorCount * sizeCount;
 
       var oSkus = (oA && oA.skus) ? oA.skus.filter(function(s){ return s.code; }) : [];
       var bSkus = (bA && bA.skus) ? bA.skus.filter(function(s){ return s.code; }) : [];
@@ -1300,23 +1304,17 @@ function renderPriceMatrix(){
   const yen=n=>'¥'+Math.round(n).toLocaleString('ja-JP');
 
   let html_out=`<div class="ok-box">✅ <strong>${generated.length}件</strong>の品番コードを発行しました。</div>
-    <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap;padding:10px 12px;background:var(--gray-50);border-radius:var(--r);border:1px solid var(--bd)">
-      <span style="font-size:12px;color:var(--gray-600);white-space:nowrap">品番名の置換：</span>
-      <input type="text" id="replace-from" placeholder="置換前（例：MQT）" 
-        style="width:140px;padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">
-      <span style="font-size:12px;color:var(--gray-400)">→</span>
-      <input type="text" id="replace-to" placeholder="置換後（例：ﾏｲｷｭｯﾄPLUS）" 
-        style="width:180px;padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">
-      <button onclick="bulkReplaceName()" class="btn" style="font-size:12px">一括置換</button>
-    </div>
     <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap">
       <input type="number" id="all-price" placeholder="全品番に一括適用（税抜）" style="width:210px;padding:7px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px">
       <button class="btn btn-p" onclick="setAllPrice()">全品番に適用</button>
     </div>`;
 
+  let replaceUiShown=false;
   patterns.forEach(pt=>{
     const ptItems=generated.filter(h=>h.pt.id===pt.id);
     if(!ptItems.length) return;
+    const showReplaceUi=!replaceUiShown;
+    if(showReplaceUi) replaceUiShown=true;
 
     html_out+=`
     <div style="margin-bottom:20px">
@@ -1325,9 +1323,19 @@ function renderPriceMatrix(){
         <span class="tag tag-blue">${ptItems.length}品番</span>
         <span style="font-size:12px;color:var(--gray-400)">${pt.shipFee>0?'送料'+pt.shipFee+'円':'送料無料'} / ${pt.bonus&&bonuses.length?'特典'+bonuses.length+'件':'特典なし'}</span>
       </div>
-      <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;flex-wrap:wrap">
-        <input type="number" id="pt-price-${pt.id}" placeholder="このパターン一括（税抜）" style="width:200px;padding:6px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">
-        <button class="btn" onclick="setPtPrice(${pt.id})" style="font-size:12px">このパターンに適用</button>
+      <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;flex-wrap:wrap;justify-content:space-between">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input type="number" id="pt-price-${pt.id}" placeholder="このパターン一括（税抜）" style="width:200px;padding:6px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">
+          <button class="btn" onclick="setPtPrice(${pt.id})" style="font-size:12px">このパターンに適用</button>
+        </div>
+        ${showReplaceUi?`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input type="text" id="replace-from" placeholder="置換前（例：MQT）" 
+            style="width:130px;padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">
+          <span style="font-size:12px;color:var(--gray-400)">→</span>
+          <input type="text" id="replace-to" placeholder="置換後（例：ﾏｲｷｭｯﾄPLUS）" 
+            style="width:160px;padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">
+          <button onclick="bulkReplaceName()" class="btn" style="font-size:12px">品番名を一括置換</button>
+        </div>`:''}
       </div>
       <div class="tbl-wrap">
       <table class="tbl">
