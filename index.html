@@ -252,7 +252,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sa
     <div class="g2" style="margin-bottom:10px">
       <div class="f"><label>施策月 <span class="req">*</span></label>
         <select id="s-month"></select></div>
-      <div class="f"><label>施策名 <span class="req">*</span></label>
+      <div class="f"><label>施策名</label>
         <input type="text" id="s-name" placeholder="例：TRS下取りDM春号"></div>
     </div>
     <div class="g2">
@@ -273,7 +273,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sa
     </div>
     <div id="group-info"></div>
   </div>
-  <div class="nav-btns"><div></div><button class="btn btn-p" onclick="go(2)">次へ →</button></div>
+  <div class="nav-btns"><div></div><button class="btn btn-p" onclick="if(validateStep1()) go(2)">次へ →</button></div>
 </div>
 
 <!-- S2 -->
@@ -784,11 +784,34 @@ function onCampaignInput(v){
   if(campaignHistory.length>50)campaignHistory.pop();
   renderCampaignDl();saveMaster();
 }
+function validateStep1(){
+  var month=document.getElementById('s-month').value;
+  var group=document.getElementById('s-group').value;
+  var staff=document.getElementById('s-staff').value;
+  if(!month){
+    alert('施策月を選択してください');
+    return false;
+  }
+  if(!group){
+    alert('商品グループを選択してください');
+    return false;
+  }
+  if(!staff||!staff.trim()){
+    alert('担当者を入力してください');
+    return false;
+  }
+  return true;
+}
+
 function onGroup(){
   const g=document.getElementById('s-group').value;
   const el=document.getElementById('group-info');
   if(!g){el.innerHTML='';return;}
-  el.innerHTML=`<div class="info-box" style="margin-top:8px">例：${g}001</div>`;
+  var grp=g;
+  var padLen=8-grp.length;
+  var exNum='0'.repeat(Math.max(padLen-1,0))+'1';
+  var exCode=grp+exNum;
+  el.innerHTML=`<div class="info-box" style="margin-top:8px">例：${exCode}</div>`;
   renderSkuMasterTable();
   renderColorsFromMaster();
 }
@@ -903,7 +926,21 @@ function resetWizardSizes(){
 function renderColors(){
   const el=document.getElementById('color-chips');
   if(!el)return;
-  el.innerHTML=colors.map((c,i)=>`<div class="chip${c.on?' on':''}" onclick="colors[${i}].on=!colors[${i}].on;renderColors();updateCount()">${c.n}<sub>${c.c}</sub></div>`).join('');
+  var sorted=[...colorMaster].sort(function(a,b){
+    return a.n.localeCompare(b.n,'ja');
+  });
+  var display=[];
+  sorted.forEach(function(cm){
+    var found=colors.find(function(c){ return c.n===cm.n&&c.c===cm.c; });
+    if(found) display.push(found);
+  });
+  colors.forEach(function(c){
+    if(!display.some(function(d){ return d.n===c.n&&d.c===c.c; })) display.push(c);
+  });
+  el.innerHTML=display.map(function(c){
+    var i=colors.indexOf(c);
+    return `<div class="chip${c.on?' on':''}" onclick="colors[${i}].on=!colors[${i}].on;renderColors();updateCount()">${c.n}</div>`;
+  }).join('');
 }
 function addColor(){
   const n=document.getElementById('nc-name').value.trim();
