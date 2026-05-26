@@ -598,8 +598,8 @@ const STATUS_LIST=['取得OK','MS依頼済','Access登録済み','修正依頼',
 
 // Wizard state
 let colors=[], sizes=[], patterns=[
-  {id:1,label:'1枚購入',sheets:1,shipFee:990,bonus:false,colorMode:'single',patternSkuIds:[]},
-  {id:2,label:'2枚セット',sheets:2,shipFee:0,bonus:true,colorMode:'set',patternSkuIds:[]},
+  {id:1,label:'1枚購入',sheets:1,shipFee:990,bonus:false,colorMode:'single',patternSkuIds:[],unit:'枚'},
+  {id:2,label:'2枚セット',sheets:2,shipFee:0,bonus:true,colorMode:'set',patternSkuIds:[],unit:'枚'},
 ];
 let generated=[], registeredList=[], seqCounters={};
 let skuAssignMap={}, commonSkus=[];
@@ -1021,15 +1021,33 @@ function shipSelectHTML(fee,pi){
     ${shipOptions.map(s=>`<option value="${s.fee}"${s.fee===fee?' selected':''}>${s.label}</option>`).join('')}
   </select>`;
 }
+function setPatternUnit(pi, unit){
+  const p = patterns[pi];
+  if(!p) return;
+  const prev = p.unit || '枚';
+  if(prev === unit) return;
+  p.unit = unit;
+  if(typeof p.label === 'string' && p.label){
+    if(unit === '台') p.label = p.label.replace(/枚/g, '台');
+    else p.label = p.label.replace(/台/g, '枚');
+  }
+  renderPts();
+}
 function renderPts(){
   const el=document.getElementById('pt-list');
   if(!el)return;
   el.innerHTML=patterns.map((p,pi)=>`
     <div class="pt-card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <div style="display:flex;align-items:center;gap:8px">
+        <div style="display:flex;align-items:center;gap:8px;">
           <input type="text" value="${p.label}" onchange="patterns[${pi}].label=this.value;updateCount()"
             style="font-weight:700;font-size:13px;border:1px solid var(--bd);background:#fff;padding:4px 8px;width:100%;max-width:220px;border-radius:var(--r);font-family:inherit">
+          <div style="display:flex;border:1px solid var(--bd);border-radius:var(--r);overflow:hidden;font-size:12px;">
+            <button onclick="setPatternUnit(${pi},'枚')"
+              style="padding:4px 10px;background:${(p.unit||'枚')==='枚'?'var(--blue)':'#fff'};color:${(p.unit||'枚')==='枚'?'#fff':'var(--gray-600)'};border:none;cursor:pointer;">枚</button>
+            <button onclick="setPatternUnit(${pi},'台')"
+              style="padding:4px 10px;background:${(p.unit||'枚')==='台'?'var(--blue)':'#fff'};color:${(p.unit||'枚')==='台'?'#fff':'var(--gray-600)'};border:none;cursor:pointer;">台</button>
+          </div>
         </div>
         ${patterns.length>1?`<button onclick="patterns.splice(${pi},1);renderPts()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px">削除</button>`:''}
       </div>
@@ -1059,7 +1077,7 @@ function renderPts(){
   updateCount();renderPtColorPreviews();
 }
 function addPt(){
-  patterns.push({id:Date.now(),label:'新パターン',sheets:patterns.length+1,shipFee:0,bonus:false,colorMode:'single',patternSkuIds:[]});
+  patterns.push({id: Date.now(), label: '新パターン', sheets: 1, shipFee: 990, bonus: false, colorMode: 'single', patternSkuIds: [], unit: '枚'});
   renderPts();
 }
 function togglePtSku(pi,si,checked){
@@ -1477,8 +1495,8 @@ function doRegister(){
 function resetWizardForm(){
   bonuses=[];patternSkus=[];sku3List=[];spSkuList=[];skuAssignMap={};commonSkus=[];
   patterns=[
-    {id:1,label:'1枚購入',sheets:1,shipFee:990,bonus:false,colorMode:'single',patternSkuIds:[]},
-    {id:2,label:'2枚セット',sheets:2,shipFee:0,bonus:true,colorMode:'set',patternSkuIds:[]},
+    {id:1,label:'1枚購入',sheets:1,shipFee:990,bonus:false,colorMode:'single',patternSkuIds:[],unit:'枚'},
+    {id:2,label:'2枚セット',sheets:2,shipFee:0,bonus:true,colorMode:'set',patternSkuIds:[],unit:'枚'},
   ];
   ['s-month','s-name','s-staff','s-group'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   const gi=document.getElementById('group-info');if(gi)gi.innerHTML='';
