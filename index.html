@@ -1143,39 +1143,41 @@ function makeName(grpName,colorLabel,sizeName,ptLabel,shipFee,colorAbbr){
   const baseShort=grpName+clShort+sp+' '+ptLabel;
   return zenToHan((baseShort+suf).substring(0,40-suf.length)+suf);
 }
-function getAssignSkus(entry){
-  if(!entry) return [];
-  if(entry.skus && entry.skus.length) return entry.skus.filter(function(s){ return s && s.code; });
-  if(entry.code) return [{code:entry.code, name:entry.name||''}];
-  return [];
-}
-function getAssignSizeSlots(szg){
-  var seen = {};
-  var slots = [];
-  (szg || []).forEach(function(sz){
-    var sk = (sz.c && sz.c !== '—') ? sz.c : '';
-    if(seen.hasOwnProperty(sk)) return;
-    seen[sk] = true;
-    slots.push(sz);
-  });
-  if(!slots.length && szg && szg.length) slots.push(szg[0]);
-  return slots;
-}
 function buildSkuListForAssign(cg, szg, pt){
   var skuList = [];
-  var sh = pt.sheets || 1;
-  var activeCg = (cg.length && cg[0] && cg[0].c && cg[0].c !== '—') ? cg : [null];
-  var assignSizes = getAssignSizeSlots(szg);
-  activeCg.forEach(function(col){
-    assignSizes.forEach(function(sz){
-      var ck = (col && col.c && col.c !== '—') ? col.c : '';
-      var sk = (sz.c && sz.c !== '—') ? sz.c : '';
+
+  // カラーのユニークリストとサイズのユニークリストを作る
+  var uniqueColors = [];
+  (cg || []).forEach(function(col){
+    if(col && col.c && col.c !== '—'){
+      if(!uniqueColors.find(function(c){ return c.c === col.c; })){
+        uniqueColors.push(col);
+      }
+    }
+  });
+  if(uniqueColors.length === 0) uniqueColors = [null];
+
+  var uniqueSizes = [];
+  (szg || []).forEach(function(sz){
+    if(sz && sz.c && sz.c !== '—'){
+      if(!uniqueSizes.find(function(s){ return s.c === sz.c; })){
+        uniqueSizes.push(sz);
+      }
+    }
+  });
+  if(uniqueSizes.length === 0) uniqueSizes = [null];
+
+  // ユニークなカラー×サイズでSKUを1回だけ取得し、員数はpt.sheetsを使う
+  uniqueColors.forEach(function(col){
+    uniqueSizes.forEach(function(sz){
+      var ck = col ? col.c : '';
+      var sk = sz ? sz.c : '';
       var bKey = ck + '_' + sk;
       var oKey = bKey + '_pt' + pt.id;
       var bA = skuAssignMap[bKey];
       var oA = skuAssignMap[oKey];
       var colN = col ? col.n : '';
-      var szN = (sz.n && sz.n !== '—') ? sz.n : '';
+      var szN = sz ? sz.n : '';
       var rBase = [colN, szN].filter(function(x){ return x && x !== 'カラーなし'; }).join(' ');
       var oSkus = (oA && oA.skus) ? oA.skus.filter(function(s){ return s.code; }) : [];
       var bSkus = (bA && bA.skus) ? bA.skus.filter(function(s){ return s.code; }) : [];
@@ -1185,10 +1187,10 @@ function buildSkuListForAssign(cg, szg, pt){
         });
       } else if(bSkus.length){
         bSkus.forEach(function(s){
-          skuList.push({code: s.code, name: s.name || s.code, qty: sh, role: rBase});
+          skuList.push({code: s.code, name: s.name || s.code, qty: pt.sheets || 1, role: rBase});
         });
       } else {
-        skuList.push({code: '[' + (rBase || '—') + '未設定]', name: rBase || '本体', qty: sh, role: 'ﾒｲﾝ'});
+        skuList.push({code: '[' + (rBase||'—') + '未設定]', name: rBase || '本体', qty: pt.sheets || 1, role: 'ﾒｲﾝ'});
       }
     });
   });
@@ -1198,23 +1200,10 @@ function buildSkuListForAssign(cg, szg, pt){
   }
   return skuList;
 }
-function mergeSkuListByCode(skuList){
-  var mergedSkuList = [];
-  skuList.forEach(function(s){
-    if(!s.code) return;
-    var existing = mergedSkuList.find(function(m){ return m.code === s.code; });
-    if(existing){
-      existing.qty = (existing.qty || 1) + (s.qty || 1);
-    } else {
-      mergedSkuList.push(Object.assign({}, s));
-    }
-  });
-  return mergedSkuList;
-}
 function refreshGeneratedSkus(){
   if(!generated.length) return;
   generated.forEach(function(h){
-    if(h.szg) h.skuList = mergeSkuListByCode(buildSkuListForAssign(h.cg || [], h.szg, h.pt));
+    if(h.szg) h.skuList = buildSkuListForAssign(h.cg || [], h.szg, h.pt);
   });
 }
 function generate(){
@@ -1260,7 +1249,7 @@ function generate(){
             const sizeLabel=szg.length===1?(szg[0].c==='—'?'':szg[0].n):szg.map(function(s){return s.c==='—'?'':s.n;}).filter(Boolean).join('×');
             const name=makeName(grpName, colorLabel, sizeLabel, pt.label, pt.shipFee, colorAbbr);
 
-            const skuList=mergeSkuListByCode(buildSkuListForAssign(cg, szg, pt));
+            const skuList=buildSkuListForAssign(cg, szg, pt);
 
             generated.push({
               code:code,
