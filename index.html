@@ -1151,7 +1151,7 @@ function renderPts(){
               style="padding:4px 10px;background:${(p.unit||'枚')==='台'?'var(--blue)':'#fff'};color:${(p.unit||'枚')==='台'?'#fff':'var(--gray-600)'};border:none;cursor:pointer;">台</button>
           </div>
         </div>
-        ${patterns.length>1?`<button onclick="patterns.splice(${pi},1);renderPts()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px">削除</button>`:''}
+        ${patterns.length>1?`<button onclick="patterns.splice(${pi},1);renderPts();renderSkuAssignTable()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px">削除</button>`:''}
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
         <div>
@@ -1179,8 +1179,26 @@ function renderPts(){
   updateCount();renderPtColorPreviews();
 }
 function addPt(){
-  patterns.push({id: Date.now(), label: '新パターン', sheets: 1, shipFee: 990, bonus: false, colorMode: 'single', patternSkuIds: [], unit: '枚'});
+  var newId = Date.now();
+  var existingSheets = patterns.map(function(p){ return p.sheets; });
+  var newSheets = 1;
+  for(var i = 1; i <= 10; i++){
+    if(existingSheets.indexOf(i) < 0){ newSheets = i; break; }
+  }
+  var unit = patterns.length && patterns[0].unit ? patterns[0].unit : '枚';
+  var label = newSheets === 1 ? ('1' + unit + '購入') : (newSheets + unit + 'セット');
+  patterns.push({
+    id: newId,
+    label: label,
+    sheets: newSheets,
+    shipFee: 990,
+    bonus: false,
+    colorMode: newSheets > 1 ? 'set' : 'single',
+    patternSkuIds: [],
+    unit: unit
+  });
   renderPts();
+  if(typeof renderSkuAssignTable === 'function') renderSkuAssignTable();
 }
 function togglePtSku(pi,si,checked){
   if(!patterns[pi].patternSkuIds)patterns[pi].patternSkuIds=[];
