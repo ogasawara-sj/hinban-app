@@ -248,7 +248,13 @@ body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sa
 <!-- S1 -->
 <div class="panel on" id="p1">
   <div class="card">
-    <div class="card-title">📣 施策情報</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="font-weight:600;font-size:14px">📋 施策情報</div>
+      <button onclick="resetAll()" 
+        style="font-size:12px;padding:5px 12px;background:#fff;border:1px solid var(--bd);border-radius:var(--r);cursor:pointer;color:var(--gray-600)">
+        🔄 最初からやり直す
+      </button>
+    </div>
     <div class="g2" style="margin-bottom:10px">
       <div class="f"><label>施策月 <span class="req">*</span></label>
         <select id="s-month"></select></div>
@@ -926,15 +932,20 @@ function resetWizardSizes(){
 function renderColors(){
   const el=document.getElementById('color-chips');
   if(!el)return;
-  var sorted=[...colorMaster].sort(function(a,b){
-    return a.n.localeCompare(b.n,'ja');
-  });
+  var sorted=[...colorMaster]
+    .filter(function(c){
+      return !/^[A-Z]{2}$/.test(c.n);
+    })
+    .sort(function(a,b){
+      return a.n.localeCompare(b.n,'ja');
+    });
   var display=[];
   sorted.forEach(function(cm){
     var found=colors.find(function(c){ return c.n===cm.n&&c.c===cm.c; });
     if(found) display.push(found);
   });
   colors.forEach(function(c){
+    if(/^[A-Z]{2}$/.test(c.n)) return;
     if(!display.some(function(d){ return d.n===c.n&&d.c===c.c; })) display.push(c);
   });
   el.innerHTML=display.map(function(c){
@@ -1635,6 +1646,36 @@ function resetWizardForm(){
   const gl=document.getElementById('s-group-list');if(gl)gl.style.display='none';
   const gi=document.getElementById('group-info');if(gi)gi.innerHTML='';
   renderBonuses();resetWizardColors();resetWizardSizes();renderPts();go(1);
+}
+
+function resetAll(){
+  if(!confirm('入力中の内容をすべてリセットして最初からやり直しますか？\n（SKUマスタやマスタデータは保持されます）')) return;
+
+  resetWizardForm();
+
+  generated=[];
+  registeredList=[];
+  var badge=document.getElementById('total-badge');
+  if(badge) badge.textContent='登録済 0件';
+
+  var monthEl=document.getElementById('s-month');
+  if(monthEl) monthEl.value='';
+  var nameEl=document.getElementById('s-name');
+  if(nameEl) nameEl.value='';
+  var staffEl=document.getElementById('s-staff');
+  if(staffEl) staffEl.value='';
+  var grpSearchEl=document.getElementById('s-group-search');
+  if(grpSearchEl) grpSearchEl.value='';
+  var grpHiddenEl=document.getElementById('s-group');
+  if(grpHiddenEl) grpHiddenEl.value='';
+
+  var infoBox=document.getElementById('group-info');
+  if(infoBox) infoBox.innerHTML='';
+
+  showPage('wizard');
+  go(1);
+
+  alert('リセットしました。新しい品番取得を開始できます。');
 }
 
 // ============================================================
