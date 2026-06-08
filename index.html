@@ -2084,7 +2084,8 @@ function exportShitokuSheet(){
         '',                                                                // L
         taxKbn,                                                            // M
         s.qty || 1,                                                        // N
-        '', '',                                                            // O, P (社内Excelに貼り付け後にXLOOKUP関数が動作する想定で空)
+        {f: 'IFERROR(XLOOKUP(K'+skuRowNum+',SKU表!$A:$A,SKU表!$C:$C,""),"")'},  // O: 単品価格(税抜)
+        {f: 'IFERROR(XLOOKUP(K'+skuRowNum+',SKU表!$A:$A,SKU表!$D:$D,""),"")'},  // P: 単品価格(税込)
         {f: 'IFERROR((O'+skuRowNum+'*N'+skuRowNum+'),"")'},                // Q
         {f: 'IFERROR((P'+skuRowNum+'*N'+skuRowNum+'),"")'},                // R
         '', '',                                                            // S, T
