@@ -370,7 +370,10 @@ body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sa
 <!-- S6 -->
 <div class="panel" id="p6">
   <div style="margin-bottom:12px">
-    <button class="btn btn-p" onclick="exportToShitokuSheet()" style="margin-right:8px">
+    <button class="btn btn-p" onclick="exportShitokuSheet()" style="margin-right:8px">
+      📋 取得用シート用Excel出力
+    </button>
+    <button class="btn" onclick="exportToShitokuSheet()" style="margin-right:8px">
       📋 取得用シート用にコピー
     </button>
   </div>
@@ -391,7 +394,8 @@ body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sa
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
     <h2 style="font-size:16px;font-weight:700">品番一覧 / 価格表</h2>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn btn-p" onclick="exportToShitokuSheet()" style="margin-right:8px">📋 取得用シート用にコピー</button>
+      <button class="btn btn-p" onclick="exportShitokuSheet()" style="margin-right:8px">📋 取得用シート用Excel出力</button>
+      <button class="btn" onclick="exportToShitokuSheet()" style="margin-right:8px">📋 取得用シート用にコピー</button>
       <button class="btn btn-g" onclick="exportExcel()">⬇ Excel出力（価格表）</button>
       <button class="btn" onclick="exportExcel('detail')">⬇ Excel出力（取得用シート形式）</button>
     </div>
@@ -1159,19 +1163,18 @@ function renderPts(){
         </div>
         ${patterns.length>1?`<button onclick="patterns.splice(${pi},1);renderPts();renderSkuAssignTable()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px">削除</button>`:''}
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-        <div>
-          <div style="font-size:11px;color:var(--gray-600);font-weight:500;margin-bottom:4px">送料</div>
-          ${shipSelectHTML(p.shipFee,pi)}
-          ${p.shipFee>0?`<div style="font-size:10px;color:var(--amber);margin-top:2px">品番名末尾に「_」付与</div>`:''}
-        </div>
-        <div>
+      <div style="margin-bottom:10px">
+        <div style="font-size:11px;color:var(--gray-600);font-weight:500;margin-bottom:4px">送料</div>
+        ${shipSelectHTML(p.shipFee,pi)}
+        ${p.shipFee>0?`<div style="font-size:10px;color:var(--amber);margin-top:2px">品番名末尾に「_」付与</div>`:''}
+        <div style="margin-top:8px">
           <div style="font-size:11px;color:var(--gray-600);font-weight:500;margin-bottom:4px">返品期間</div>
-          <select onchange="patterns[${pi}].returnDays=this.value" style="font-size:12px;padding:4px 8px;border:1px solid var(--bd);border-radius:5px;font-family:inherit;width:100%">
-            <option value="39日" ${(p.returnDays||'60日')==='39日'?'selected':''}>39日</option>
-            <option value="60日" ${(p.returnDays||'60日')==='60日'?'selected':''}>60日</option>
-            <option value="返品不可" ${(p.returnDays||'60日')==='返品不可'?'selected':''}>返品不可</option>
-            <option value="開封後返品不可" ${(p.returnDays||'60日')==='開封後返品不可'?'selected':''}>開封後返品不可</option>
+          <select onchange="patterns[${pi}].returnDays=this.value"
+            style="width:100%;padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px">
+            <option value="39日" ${p.returnDays==='39日'?'selected':''}>39日</option>
+            <option value="60日" ${(!p.returnDays||p.returnDays==='60日')?'selected':''}>60日</option>
+            <option value="返品不可" ${p.returnDays==='返品不可'?'selected':''}>返品不可</option>
+            <option value="開封後返品不可" ${p.returnDays==='開封後返品不可'?'selected':''}>開封後返品不可</option>
           </select>
         </div>
       </div>
@@ -1330,14 +1333,14 @@ function buildSkuListForAssign(cg, szg, pt){
       var bSkus = (bA && bA.skus) ? bA.skus.filter(function(s){ return s.code; }) : [];
       if(oSkus.length){
         oSkus.forEach(function(s){
-          skuList.push({code: s.code, name: s.name || s.code, qty: 1, role: rBase + '(' + pt.label + '専用)', taxKbn: (typeof s.taxKbn !== 'undefined') ? s.taxKbn : 1});
+          skuList.push({code: s.code, name: s.name || s.code, qty: 1, role: rBase + '(' + pt.label + '専用)', taxKbn: (typeof s.taxKbn !== 'undefined') ? s.taxKbn : '1'});
         });
       } else if(bSkus.length){
         bSkus.forEach(function(s){
-          skuList.push({code: s.code, name: s.name || s.code, qty: qty, role: rBase, taxKbn: (typeof s.taxKbn !== 'undefined') ? s.taxKbn : 1});
+          skuList.push({code: s.code, name: s.name || s.code, qty: qty, role: rBase, taxKbn: (typeof s.taxKbn !== 'undefined') ? s.taxKbn : '1'});
         });
       } else {
-        skuList.push({code: '[' + (rBase||'—') + '未設定]', name: rBase || '本体', qty: qty, role: 'ﾒｲﾝ', taxKbn: 1});
+        skuList.push({code: '[' + (rBase||'—') + '未設定]', name: rBase || '本体', qty: qty, role: 'ﾒｲﾝ', taxKbn: '1'});
       }
     });
   });
@@ -1349,7 +1352,7 @@ function buildSkuListForAssign(cg, szg, pt){
     skuList.push(item);
   });
   if(pt.bonus && bonuses.length){
-    bonuses.forEach(function(b){ skuList.push({code: b.code || '', name: b.name || '特典', qty: 1, role: '特典', taxKbn: 1}); });
+    bonuses.forEach(function(b){ skuList.push({code: b.code || '', name: b.name || '特典', qty: 1, role: '特典', taxKbn: '1'}); });
   }
   return skuList;
 }
@@ -2007,6 +2010,121 @@ function addCampaignMaster(){
 }
 
 // ============================================================
+// 取得用シート Excel出力
+// ============================================================
+function exportShitokuSheet(){
+  var source = (generated && generated.length) ? generated : registeredList;
+  if(!source || !source.length){
+    alert('品番が生成されていません');
+    return;
+  }
+  var aoa = [];
+  // ヘッダー行はあえて出力しない（既存シートに貼り付けるため）
+
+  source.forEach(function(h){
+    var month = h.month || '';
+    var campaign = h.campaign || '';
+    var staff = h.staff || '';
+    var group = h.group || '';
+    var code = h.code || '';
+    var name = h.name || '';
+    var priceEx = h.price || 0;
+    var priceIn = Math.round(priceEx * 1.1);
+    var ship = h.ship || 0;
+    var returnDays = (h.pt && h.pt.returnDays) ? h.pt.returnDays : '60日';
+    var skuList = (h.skuList || []).filter(function(s){ return s.code; });
+    var skuCount = skuList.length;
+
+    var headerRowNum = aoa.length + 1; // 1-based
+    var firstSkuRow = headerRowNum + 1;
+    var lastSkuRow = headerRowNum + skuCount;
+
+    // 品番ヘッダー行
+    var header = [
+      '取得OK',                                       // A
+      group,                                          // B
+      month,                                          // C
+      campaign,                                       // D
+      staff,                                          // E
+      'ALL',                                          // F
+      8,                                              // G
+      {f: 'LENB(J'+headerRowNum+')'},                 // H
+      code,                                           // I
+      name,                                           // J
+      '', '', '', '',                                 // K-N
+      {f: 'SUM(O'+firstSkuRow+':O'+lastSkuRow+')'},   // O
+      {f: 'SUM(P'+firstSkuRow+':P'+lastSkuRow+')'},   // P
+      {f: 'SUM(Q'+firstSkuRow+':Q'+lastSkuRow+')'},   // Q
+      {f: 'SUM(R'+firstSkuRow+':R'+lastSkuRow+')'},   // R
+      priceEx,                                        // S
+      priceIn,                                        // T
+      {f: 'U'+firstSkuRow},                           // U
+      '', '', '',                                     // V-X
+      ship,                                           // Y
+      returnDays                                      // Z
+    ];
+    aoa.push(header);
+
+    // SKU行
+    skuList.forEach(function(s){
+      var skuRowNum = aoa.length + 1;
+      var taxKbn = (typeof s.taxKbn !== 'undefined') ? s.taxKbn : '1';
+      var skuRow = [
+        '取得OK',                                                          // A
+        group,                                                             // B
+        month,                                                             // C
+        campaign,                                                          // D
+        staff,                                                             // E
+        'ALL',                                                             // F
+        8,                                                                 // G
+        '',                                                                // H
+        code,                                                              // I
+        '',                                                                // J
+        s.code,                                                            // K
+        '',                                                                // L
+        taxKbn,                                                            // M
+        s.qty || 1,                                                        // N
+        '', '',                                                            // O, P (社内Excelに貼り付け後にXLOOKUP関数が動作する想定で空)
+        {f: 'IFERROR((O'+skuRowNum+'*N'+skuRowNum+'),"")'},                // Q
+        {f: 'IFERROR((P'+skuRowNum+'*N'+skuRowNum+'),"")'},                // R
+        '', '',                                                            // S, T
+        {f: '1-(T'+headerRowNum+'/R'+headerRowNum+')'},                    // U
+        '', '', '',                                                        // V-X
+        '', ''                                                             // Y, Z
+      ];
+      aoa.push(skuRow);
+    });
+  });
+
+  // SheetJSでブック作成（数式セルは後から設定）
+  var wb = XLSX.utils.book_new();
+  var plainAoa = aoa.map(function(row){
+    return row.map(function(cell){
+      if(cell && typeof cell === 'object' && cell.f) return '';
+      return cell;
+    });
+  });
+  var ws = XLSX.utils.aoa_to_sheet(plainAoa);
+  aoa.forEach(function(row, r){
+    row.forEach(function(cell, c){
+      if(cell && typeof cell === 'object' && cell.f){
+        var ref = XLSX.utils.encode_cell({r:r, c:c});
+        ws[ref] = {f: cell.f};
+      }
+    });
+  });
+  XLSX.utils.book_append_sheet(wb, ws, '取得用シート貼付');
+
+  // ファイル名（YYYYMMDD_HHMM）
+  var d = new Date();
+  var pad = function(n){ return String(n).padStart(2, '0'); };
+  var fname = '品番登録_' + d.getFullYear() + pad(d.getMonth()+1) + pad(d.getDate()) + '_' + pad(d.getHours()) + pad(d.getMinutes()) + '.xlsx';
+  XLSX.writeFile(wb, fname);
+
+  alert(source.length + '件の品番（' + aoa.length + '行）を出力しました。\n\n使い方：\n1. ダウンロードしたExcelを開く\n2. 全行を選択してコピー（Ctrl+A → Ctrl+C）\n3. 社内の「取得用シート」の空いている行を選択\n4. 形式を選択して貼り付け→「数式」を選んで貼り付け');
+}
+
+// ============================================================
 // 取得用シート クリップボードコピー
 // ============================================================
 function exportToShitokuSheet(){
@@ -2058,7 +2176,7 @@ function exportToShitokuSheet(){
     var skuList = h.skuList || [];
     skuList.forEach(function(s){
       if(!s.code) return;
-      var taxKbn = (typeof s.taxKbn !== 'undefined') ? s.taxKbn : 1;
+      var taxKbn = (typeof s.taxKbn !== 'undefined') ? s.taxKbn : '1';
       var skuRow = [
         '取得OK',        // A: ステータス
         group,           // B: 商品グループ
@@ -2693,13 +2811,13 @@ function ensureAssignSkus(key){
   if(!skuAssignMap[key]) skuAssignMap[key]={skus:[]};
   if(!skuAssignMap[key].skus){
     if(skuAssignMap[key].code){
-      skuAssignMap[key].skus=[{code:skuAssignMap[key].code,name:skuAssignMap[key].name||'',taxKbn:1}];
+      skuAssignMap[key].skus=[{code:skuAssignMap[key].code,name:skuAssignMap[key].name||'',taxKbn:'1'}];
     } else {
-      skuAssignMap[key].skus=[{code:'',name:'',taxKbn:1}];
+      skuAssignMap[key].skus=[{code:'',name:'',taxKbn:'1'}];
     }
   }
-  if(!skuAssignMap[key].skus.length) skuAssignMap[key].skus.push({code:'',name:'',taxKbn:1});
-  skuAssignMap[key].skus.forEach(function(s){ if(typeof s.taxKbn === 'undefined') s.taxKbn = 1; });
+  if(!skuAssignMap[key].skus.length) skuAssignMap[key].skus.push({code:'',name:'',taxKbn:'1'});
+  skuAssignMap[key].skus.forEach(function(s){ if(typeof s.taxKbn === 'undefined') s.taxKbn = '1'; });
 }
 function onSkuAssignInput(key, idx, code, inputEl){
   var clean=(code||'').replace(/[Ａ-Ｚａ-ｚ０-９]/g, function(c){
@@ -2707,9 +2825,9 @@ function onSkuAssignInput(key, idx, code, inputEl){
   }).toUpperCase().replace(/[^A-Z0-9]/g, '');
   if(inputEl && clean !== code) inputEl.value = clean;
   code = clean;
-  if(!skuAssignMap[key]) skuAssignMap[key] = {skus: [{code:'', name:'', taxKbn:1}]};
-  if(!skuAssignMap[key].skus) skuAssignMap[key].skus = [{code:'', name:'', taxKbn:1}];
-  while(skuAssignMap[key].skus.length <= idx) skuAssignMap[key].skus.push({code:'', name:'', taxKbn:1});
+  if(!skuAssignMap[key]) skuAssignMap[key] = {skus: [{code:'', name:'', taxKbn:'1'}]};
+  if(!skuAssignMap[key].skus) skuAssignMap[key].skus = [{code:'', name:'', taxKbn:'1'}];
+  while(skuAssignMap[key].skus.length <= idx) skuAssignMap[key].skus.push({code:'', name:'', taxKbn:'1'});
   skuAssignMap[key].skus[idx].code = code;
   var nameEl = document.getElementById('sa-name-' + key + '-' + idx);
   if(!nameEl) return;
@@ -2748,7 +2866,7 @@ function handleSkuPaste(e, key, startIdx){
   if(!skuAssignMap[key].skus) skuAssignMap[key].skus = [];
   lines.forEach(function(code, i){
     var idx = startIdx + i;
-    while(skuAssignMap[key].skus.length <= idx) skuAssignMap[key].skus.push({code:'', name:'', taxKbn:1});
+    while(skuAssignMap[key].skus.length <= idx) skuAssignMap[key].skus.push({code:'', name:'', taxKbn:'1'});
     var clean = (code||'').replace(/[Ａ-Ｚａ-ｚ０-９]/g, function(c){
       return String.fromCharCode(c.charCodeAt(0) - 0xFEE0);
     }).toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -2762,7 +2880,7 @@ function removeSkuRow(key, idx){
   if(!skuAssignMap[key] || !skuAssignMap[key].skus) return;
   skuAssignMap[key].skus.splice(idx, 1);
   if(skuAssignMap[key].skus.length === 0){
-    skuAssignMap[key].skus = [{code:'', name:'', taxKbn:1}];
+    skuAssignMap[key].skus = [{code:'', name:'', taxKbn:'1'}];
   }
   renderSkuAssignTable();
 }
@@ -2793,13 +2911,13 @@ function skuInputs(key, isOverride, sheets){
         skuAssignMap[key].skus[i].name = nameInp.value;
       }
     });
-    if(typeof sku.taxKbn === 'undefined') sku.taxKbn = 1;
+    if(typeof sku.taxKbn === 'undefined') sku.taxKbn = '1';
     var taxSel = document.createElement('select');
-    taxSel.style.cssText = 'width:70px;font-size:11px;padding:4px;border:1px solid var(--bd);border-radius:4px;flex-shrink:0;font-family:inherit';
+    taxSel.style.cssText = 'width:70px;font-size:11px;padding:2px 4px;border:1px solid var(--bd);border-radius:4px;flex-shrink:0;font-family:inherit';
     taxSel.innerHTML = '<option value="1">課税</option><option value="0">非課税</option>';
     taxSel.value = String(sku.taxKbn);
     taxSel.addEventListener('change', function(){
-      skuAssignMap[key].skus[i].taxKbn = +taxSel.value;
+      skuAssignMap[key].skus[i].taxKbn = taxSel.value;
     });
     var btn_del = document.createElement('button');
     btn_del.type = 'button';
@@ -2826,7 +2944,7 @@ function skuInputs(key, isOverride, sheets){
   addBtn.addEventListener('mouseenter', function(){ addBtn.style.opacity = '1'; });
   addBtn.addEventListener('mouseleave', function(){ addBtn.style.opacity = '0.6'; });
   addBtn.addEventListener('click', function(){
-    skuAssignMap[key].skus.push({code:'', name:'', taxKbn:1});
+    skuAssignMap[key].skus.push({code:'', name:'', taxKbn:'1'});
     renderSkuAssignTable();
   });
   container.appendChild(addBtn);
@@ -2918,9 +3036,9 @@ function renderCommonSkuList(){
       <span class="mono">${s.code||'—'}</span>
       <span style="flex:1">${s.name||'—'}</span>
       <span style="color:var(--gray-400)">${s.followSheets?'×枚数連動':'×'+(s.qty||1)}</span>
-      <select onchange="commonSkus[${i}].taxKbn=+this.value" style="width:70px;font-size:11px;padding:4px;border:1px solid var(--bd);border-radius:4px;font-family:inherit">
-        <option value="1" ${(typeof s.taxKbn==='undefined'||s.taxKbn===1)?'selected':''}>課税</option>
-        <option value="0" ${s.taxKbn===0?'selected':''}>非課税</option>
+      <select onchange="commonSkus[${i}].taxKbn=this.value" style="width:70px;font-size:11px;padding:2px 4px;border:1px solid var(--bd);border-radius:4px;font-family:inherit">
+        <option value="1" ${(typeof s.taxKbn==='undefined'||s.taxKbn==='1'||s.taxKbn===1)?'selected':''}>課税</option>
+        <option value="0" ${s.taxKbn==='0'||s.taxKbn===0?'selected':''}>非課税</option>
       </select>
       <label style="font-size:11px;display:flex;align-items:center;gap:4px;white-space:nowrap;color:var(--gray-600);cursor:pointer">
         <input type="checkbox" ${s.followSheets?'checked':''} onchange="toggleCommonSkuFollowSheets(${i},this.checked)"> 枚数に連動
@@ -2973,7 +3091,7 @@ function addCommonSku(){
   if(code.startsWith('YR')) role = '延長保証';
   else if(code.startsWith('IN')) role = '取説';
   else if(code.startsWith('LT')) role = '特典';
-  commonSkus.push({code, name, qty, role, followSheets: !!followSheets, taxKbn: 1});
+  commonSkus.push({code, name, qty, role, followSheets: !!followSheets, taxKbn: '1'});
   document.getElementById('csku-code').value = '';
   document.getElementById('csku-name').value = '';
   document.getElementById('csku-qty').value = '1';
