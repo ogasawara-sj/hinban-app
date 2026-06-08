@@ -1481,10 +1481,11 @@ function renderPriceMatrix(){
             const skuOk=h.skuList.length>0;
             return `<tr>
               <td>
-                <span class="mono" style="cursor:pointer;text-decoration:underline dotted"
-                  onclick="toggleSkuRow4(${i})" title="クリックでSKU確認">${h.code}</span>
+                <input type="text" id="cd-${i}" value="${h.code}"
+                  oninput="onCodeEdit(${i}, this.value, this)"
+                  style="width:100px;padding:3px 6px;border:1px solid var(--bd);border-radius:4px;font-size:12px;font-family:monospace;background:var(--blue-lt);color:var(--blue-dk);font-weight:600">
               </td>
-              <td style="font-size:12px;font-weight:500">${h.sizeLabel||'—'}</td>
+              <td style="font-size:12px;font-weight:500;cursor:pointer" onclick="toggleSkuRow4(${i})" title="クリックでSKU確認">${h.sizeLabel||'—'}</td>
               <td style="font-size:12px">${h.colorLabel||'—'}</td>
               <td><input type="number" id="pr-${i}" value="${h.price||''}" min="0" placeholder="0"
                 onchange="generated[${i}].price=+this.value;updTax(${i})" style="width:90px"></td>
@@ -1515,6 +1516,33 @@ function renderPriceMatrix(){
 function toggleSkuRow4(i){
   const el=document.getElementById('sku-row4-'+i);
   if(el) el.style.display=el.style.display==='none'?'table-row':'none';
+}
+
+function onCodeEdit(idx, newCode, inputEl){
+  newCode = (newCode || '').trim().toUpperCase();
+  // 全角→半角変換
+  newCode = newCode.replace(/[Ａ-Ｚａ-ｚ０-９]/g, function(c){
+    return String.fromCharCode(c.charCodeAt(0) - 0xFEE0);
+  });
+  if(!newCode){
+    // 空欄は一時的に許可（あとで重複チェック）
+    generated[idx].code = '';
+    return;
+  }
+  // 重複チェック
+  var dup = generated.find(function(g, i){
+    return i !== idx && g.code === newCode;
+  });
+  if(dup){
+    inputEl.style.background = 'var(--red-lt, #FDEAEA)';
+    inputEl.style.color = 'var(--red, #D94040)';
+    inputEl.title = '既に使用されている品番コードです';
+  } else {
+    inputEl.style.background = 'var(--blue-lt)';
+    inputEl.style.color = 'var(--blue-dk)';
+    inputEl.title = '';
+    generated[idx].code = newCode;
+  }
 }
 
 // SKU一覧テーブルHTML生成（共通）
