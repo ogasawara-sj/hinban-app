@@ -119,6 +119,11 @@ body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sa
 .ptbl input[type=number]{width:95px;padding:4px 6px;border:1px solid var(--bd);border-radius:5px;font-size:12px;text-align:right;font-family:inherit}
 .ptbl .tax-in{font-size:11px;color:var(--gray-400);text-align:right;white-space:nowrap}
 
+/* ===== 品番コード折りたたみマーク ===== */
+.toggle-marker{display:inline-flex;align-items:center;justify-content:center;font-size:16px;color:#999;background:transparent;border:none;outline:none;padding:4px 6px;cursor:pointer;transition:color .15s ease;user-select:none;vertical-align:middle;line-height:1}
+.toggle-marker:hover{color:#555}
+.code-cell-wrap{display:flex;align-items:center;gap:2px}
+
 /* ===== MASTER PAGE ===== */
 .master-tabs{display:flex;gap:0;border-bottom:2px solid var(--bd);margin-bottom:20px}
 .mtab{padding:10px 20px;cursor:pointer;font-size:13px;color:var(--gray-400);border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .12s;white-space:nowrap}
@@ -276,8 +281,8 @@ body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sa
         <input type="text" id="s-staff" placeholder="担当者名を入力">
         <div style="margin-top:10px">
           <label style="font-size:12px;color:var(--gray-600);font-weight:500">KUROSHIO有効開始日時</label>
-          <input type="datetime-local" id="s-startdt" step="60" style="width:100%;padding:8px 12px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px;margin-top:4px">
-          <div style="font-size:11px;color:var(--gray-400);margin-top:2px">空欄可。形式：YYYY/MM/DD HH:mm</div>
+          <input type="date" id="s-startdt" style="width:100%;padding:8px 12px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px;margin-top:4px">
+          <div style="font-size:11px;color:var(--gray-400);margin-top:2px">空欄可。日付選択時は 00:00 が適用されます</div>
         </div></div>
     </div>
     <div id="group-info"></div>
@@ -702,17 +707,6 @@ function renderAll(){
     const d=new Date(document.lastModified);
     const pad=n=>String(n).padStart(2,'0');
     utEl.textContent='更新: '+d.getFullYear()+'/'+pad(d.getMonth()+1)+'/'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes());
-  }
-  var startDtEl=document.getElementById('s-startdt');
-  if(startDtEl&&!startDtEl._startDtBound){
-    startDtEl._startDtBound=true;
-    startDtEl.addEventListener('change',function(e){
-      var v=e.target.value;
-      if(v&&v.length>=10){
-        var datePart=v.substring(0,10);
-        e.target.value=datePart+'T00:00';
-      }
-    });
   }
 }
 
@@ -1292,12 +1286,27 @@ function renderPtColorPreviews(){
 // ============================================================
 // GENERATE
 // ============================================================
+// 入力: YYYY-MM-DD（type="date"）/ 旧datetime-local / 既存の YYYY/MM/DD 00:00
+// 出力: YYYY/MM/DD 00:00（Excel・表示用）
 function formatStartDateTime(value){
   if(!value) return '';
-  var d = new Date(value);
+  if(/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}$/.test(value)) return value;
+  var datePart=value;
+  if(value.indexOf('T')>=0) datePart=value.substring(0,10);
+  if(/^\d{4}-\d{2}-\d{2}$/.test(datePart)){
+    var p=datePart.split('-');
+    return p[0]+'/'+p[1]+'/'+p[2]+' 00:00';
+  }
+  var d=new Date(value);
   if(isNaN(d.getTime())) return '';
-  var pad = function(n){ return String(n).padStart(2, '0'); };
-  return d.getFullYear()+'/'+pad(d.getMonth()+1)+'/'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes());
+  var pad=function(n){ return String(n).padStart(2,'0'); };
+  return d.getFullYear()+'/'+pad(d.getMonth()+1)+'/'+pad(d.getDate())+' 00:00';
+}
+function getStartDateInputValue(){
+  var s=document.getElementById('s-startdt');
+  if(!s||!s.value) return '';
+  var v=s.value;
+  return v.indexOf('T')>=0?v.substring(0,10):v;
 }
 function getNextCode(g){
   if(!seqCounters[g])seqCounters[g]=1;
@@ -1463,7 +1472,7 @@ function generate(){
               colorLabel:colorLabel,
               colorAbbr:colorAbbr,
               sizeLabel:sizeLabel,
-              startDateTime:formatStartDateTime(document.getElementById('s-startdt').value),
+              startDateTime:getStartDateInputValue(),
               taxKbn:'1',
               teikiKbn:'非定期',
               teikiT2:''
@@ -1558,10 +1567,12 @@ function renderPriceMatrix(){
             const skuOk=h.skuList.length>0;
             return `<tr>
               <td>
-                <span onclick="toggleSkuRow4(${i})" style="cursor:pointer;display:inline-block;width:16px;color:var(--gray-400);user-select:none" id="cd-toggle-${i}">⌄</span>
-                <input type="text" id="cd-${i}" value="${h.code}"
-                  oninput="onCodeEdit(${i}, this.value, this)"
-                  style="width:120px;padding:5px 8px;border:1px solid var(--bd);border-radius:4px;font-size:12px;font-family:monospace">
+                <div class="code-cell-wrap">
+                  <button type="button" class="toggle-marker" onclick="toggleSkuRow4(${i})" id="cd-toggle-${i}">⌄</button>
+                  <input type="text" id="cd-${i}" value="${h.code}"
+                    oninput="onCodeEdit(${i}, this.value, this)"
+                    style="width:120px;padding:5px 8px;border:1px solid var(--bd);border-radius:4px;font-size:12px;font-family:monospace">
+                </div>
               </td>
               <td style="font-size:12px;font-weight:500;cursor:pointer" onclick="toggleSkuRow4(${i})" title="クリックでSKU確認">${h.sizeLabel||'—'}</td>
               <td style="font-size:12px">${h.colorLabel||'—'}</td>
@@ -1730,12 +1741,14 @@ function applyTaxKbnAll(){
 function buildConfirm(){
   const skuWarn=!skuCache.length
     ?`<div class="warn-box" style="margin-bottom:10px">⚠ SKUマスタ未読込のためSKUが自動設定されていません。初期設定でSKUマスタを読み込んでからSTEP 2に戻り再生成してください。</div>`:'';
-  const startDtVal=(function(){var s=document.getElementById('s-startdt');return s?s.value:'';})();
+  const startDtVal=getStartDateInputValue();
+  const startDtDisp=formatStartDateTime(startDtVal);
 
   document.getElementById('confirm-wrap').innerHTML=skuWarn+`
     <div style="margin-bottom:12px;padding:8px 12px;background:var(--gray-50);border-radius:var(--r);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
       <span style="font-size:12px;color:var(--gray-600);white-space:nowrap">KUROSHIO有効開始日時：</span>
-      <input type="datetime-local" id="s-startdt-confirm" step="60" value="${startDtVal}" onchange="var v=this.value;if(v&&v.length>=10){var d=v.substring(0,10);this.value=d+'T00:00';}document.getElementById('s-startdt').value=this.value" style="padding:4px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">
+      <input type="date" id="s-startdt-confirm" value="${startDtVal}" onchange="document.getElementById('s-startdt').value=this.value;var d=document.getElementById('s-startdt-disp');if(d)d.textContent=formatStartDateTime(this.value)" style="padding:4px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">
+      <span id="s-startdt-disp" style="font-size:12px;color:var(--gray-600);white-space:nowrap">${startDtDisp||''}</span>
     </div>
     <div style="font-size:12px;color:var(--gray-400);margin-bottom:8px">⌄をクリックするとSKU構成を確認できます</div>
     <table class="tbl">
@@ -1753,8 +1766,10 @@ function buildConfirm(){
         ${generated.map((h,i)=>`
           <tr>
             <td>
-              <span onclick="toggleSkuRow4(${i})" style="cursor:pointer;display:inline-block;width:16px;color:var(--gray-400);user-select:none" id="cd-toggle-${i}">⌄</span>
-              <span class="mono">${h.code||'—'}</span>
+              <div class="code-cell-wrap">
+                <button type="button" class="toggle-marker" onclick="toggleSkuRow4(${i})" id="cd-toggle-${i}">⌄</button>
+                <span class="mono">${h.code||'—'}</span>
+              </div>
             </td>
             <td style="font-size:12px">${h.name}</td>
             <td style="text-align:right">¥${(h.price||0).toLocaleString('ja-JP')}</td>
@@ -1792,7 +1807,7 @@ function doRegister(){
   if(np.length&&!confirm(`価格未入力 ${np.length}件あります。このまま登録しますか？`))return;
   const cn=document.getElementById('s-name').value.trim();
   if(cn&&!campaignHistory.includes(cn)){campaignHistory.unshift(cn);if(campaignHistory.length>50)campaignHistory.pop();renderCampaignDl();}
-  var startDt=formatStartDateTime(document.getElementById('s-startdt').value);
+  var startDt=getStartDateInputValue();
   generated.forEach(function(h){ h.startDateTime=startDt; });
   showLoading('登録中...');
   setTimeout(()=>{
@@ -2142,6 +2157,7 @@ function exportShitokuSheet(){
     var priceIn = Math.round(priceEx * 1.1);
     var ship = h.ship || 0;
     var returnDays = (h.pt && h.pt.returnDays) ? h.pt.returnDays : '60日';
+    var startDtOut = formatStartDateTime(h.startDateTime) || '';
     var skuList = (h.skuList || []).filter(function(s){ return s.code; });
     var skuCount = skuList.length;
 
@@ -2169,7 +2185,7 @@ function exportShitokuSheet(){
       priceEx,                                        // S
       priceIn,                                        // T
       {f: 'U'+firstSkuRow},                           // U
-      '', '', '',                                     // V-X
+      startDtOut, '', '',                             // V-X（V: 有効開始日時）
       ship,                                           // Y
       returnDays                                      // Z
     ];
@@ -2277,7 +2293,7 @@ function exportAccessImport(){
       priceIn,
       '',
       h.ship || 0,
-      h.startDateTime || '',
+      formatStartDateTime(h.startDateTime) || '',
       '',
       '',
       ret.days,
