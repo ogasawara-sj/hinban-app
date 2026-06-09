@@ -1391,12 +1391,12 @@ function buildSkuListForAssign(cg, szg, pt){
     uniqueSizes.forEach(function(sz){
       var ck = col ? col.c : '';
       var sk = sz ? sz.c : '';
-      var bKey = ck + '_' + sk;
+      var colN = col ? col.n : '';
+      var szN = sz ? sz.n : '';
+      var bKey = makeAssignKey(ck, sk, colN, szN);
       var oKey = bKey + '_pt' + pt.id;
       var bA = skuAssignMap[bKey];
       var oA = skuAssignMap[oKey];
-      var colN = col ? col.n : '';
-      var szN = sz ? sz.n : '';
       var rBase = [colN, szN].filter(function(x){ return x && x !== 'カラーなし'; }).join(' ');
 
       // cgの中で同じカラーが何回登場するかをカウント
@@ -3089,6 +3089,19 @@ document.addEventListener('click',e=>{
 // ============================================================
 // STEP4: SKU割り当て表
 // ============================================================
+function normalizeAssignPart(code, name){
+  if(code && code !== '—') return String(code);
+  if(name && name !== 'カラーなし' && name !== '—') return 'n:' + name;
+  return '';
+}
+function makeAssignKey(ck, sk, colorName, sizeName){
+  var c = normalizeAssignPart(ck, colorName);
+  var s = normalizeAssignPart(sk, sizeName);
+  return c + '_' + s;
+}
+function cloneSkuEntry(s){
+  return {code: (s && s.code) ? s.code : '', name: (s && s.name) ? s.name : ''};
+}
 function ensureAssignSkus(key){
   if(!skuAssignMap[key]) skuAssignMap[key]={skus:[]};
   if(!skuAssignMap[key].skus){
@@ -3173,7 +3186,7 @@ function skuInputs(key, isOverride, sheets){
     row.style.cssText = 'display:flex;gap:6px;align-items:center;margin-bottom:4px';
     var codeInp = document.createElement('input');
     codeInp.type = 'text';
-    codeInp.value = sku.code || '';
+    codeInp.value = (sku && sku.code) ? sku.code : '';
     codeInp.placeholder = i === 0 ? (isOverride ? '空欄=メインSKU×' + (sheets || 2) : 'SKUコード') : 'SKUコード';
     codeInp.style.cssText = 'font-family:monospace;padding:5px 8px;width:110px;border:1px solid var(--bd);border-radius:4px;font-size:12px;flex-shrink:0';
     codeInp.addEventListener('input', function(){
@@ -3241,11 +3254,11 @@ function renderSkuAssignTable(){
   }
   const rows=[];
   if(selC.length && selS.length){
-    selC.forEach(function(c){selS.forEach(function(s){rows.push({label:c.n+' / '+s.n,ck:c.c,sk:s.c});});});
+    selC.forEach(function(c){selS.forEach(function(s){rows.push({label:c.n+' / '+s.n,ck:c.c,sk:s.c,cn:c.n,sn:s.n});});});
   } else if(selC.length){
-    selC.forEach(function(c){rows.push({label:c.n,ck:c.c,sk:''});});
+    selC.forEach(function(c){rows.push({label:c.n,ck:c.c,sk:'',cn:c.n,sn:''});});
   } else {
-    selS.forEach(function(s){rows.push({label:s.n,ck:'',sk:s.c});});
+    selS.forEach(function(s){rows.push({label:s.n,ck:'',sk:s.c,cn:'',sn:s.n});});
   }
   el.innerHTML='';
   const hint=document.createElement('div');
@@ -3273,9 +3286,7 @@ function renderSkuAssignTable(){
   table.appendChild(thead);
   const tbody=document.createElement('tbody');
   rows.forEach(function(row){
-    var ck = (row.ck && row.ck !== '—') ? row.ck : '';
-    var sk = (row.sk && row.sk !== '—') ? row.sk : '';
-    const baseKey = ck + '_' + sk;
+    const baseKey = makeAssignKey(row.ck, row.sk, row.cn, row.sn);
     ensureAssignSkus(baseKey);
     const tr=document.createElement('tr');
     const labelTd=document.createElement('td');
