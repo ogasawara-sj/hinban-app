@@ -275,7 +275,12 @@ body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sa
           </div>
         </div></div>
       <div class="f"><label>担当者 <span class="req">*</span></label>
-        <input type="text" id="s-staff" placeholder="担当者名を入力"></div>
+        <input type="text" id="s-staff" placeholder="担当者名を入力">
+        <div style="margin-top:10px">
+          <label style="font-size:12px;color:var(--gray-600);font-weight:500">KUROSHIO有効開始日時</label>
+          <input type="datetime-local" id="s-startdt"
+            style="width:100%;padding:8px 12px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px;margin-top:4px">
+        </div></div>
     </div>
     <div id="group-info"></div>
   </div>
