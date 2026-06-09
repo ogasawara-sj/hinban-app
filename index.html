@@ -124,6 +124,15 @@ body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sa
 .toggle-marker:hover{color:#555}
 .code-cell-wrap{display:flex;align-items:center;gap:2px}
 
+/* ===== STEP5 一括設定エリア ===== */
+.bulk-settings-panel{margin-bottom:12px;padding:10px 12px;background:var(--gray-50);border-radius:var(--r);border:1px solid var(--bd)}
+.bulk-settings-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;align-items:flex-start}
+.bulk-settings-label{font-size:12px;color:var(--gray-600);font-weight:500;margin-bottom:6px}
+.bulk-settings-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.bulk-settings-note{font-size:12px;color:#888;margin-top:6px;line-height:1.4}
+#all-price::placeholder{color:#aaa}
+@media (max-width:768px){.bulk-settings-grid{grid-template-columns:1fr}}
+
 /* ===== MASTER PAGE ===== */
 .master-tabs{display:flex;gap:0;border-bottom:2px solid var(--bd);margin-bottom:20px}
 .mtab{padding:10px 20px;cursor:pointer;font-size:13px;color:var(--gray-400);border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .12s;white-space:nowrap}
@@ -1499,25 +1508,36 @@ function renderPriceMatrix(){
   const yen=n=>'¥'+Math.round(n).toLocaleString('ja-JP');
 
   let html_out=`<div class="ok-box">✅ <strong>${generated.length}件</strong>の品番を生成しました。</div>
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;padding:10px 12px;background:var(--gray-50);border-radius:var(--r);border:1px solid var(--bd);flex-wrap:wrap">
-      <span style="font-size:12px;color:var(--gray-600);white-space:nowrap">品番コード連番開始：</span>
-      <input type="text" id="code-start" placeholder="例：00010" style="width:100px;padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px;font-family:monospace">
-      <button onclick="applyCodeSequence()" class="btn" style="font-size:12px">全品番に連番適用</button>
-      <span style="font-size:11px;color:var(--gray-400);margin-left:8px">※グループコード+連番で合計8桁になります</span>
-    </div>
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;padding:10px 12px;background:var(--gray-50);border-radius:var(--r);border:1px solid var(--bd);flex-wrap:wrap">
-      <span style="font-size:12px;color:var(--gray-600);white-space:nowrap">消費税区分（全品番に一括）：</span>
-      <select id="tax-kbn-all" style="width:140px;padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">
-        <option value="1">1：標準税</option>
-        <option value="4">4：軽減税</option>
-        <option value="0">0：非課税</option>
-        <option value="3">3：不課税</option>
-      </select>
-      <button onclick="applyTaxKbnAll()" class="btn" style="font-size:12px">全品番に適用</button>
-    </div>
-    <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap">
-      <input type="number" id="all-price" placeholder="全品番に一括適用（税抜）" style="width:210px;padding:7px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px">
-      <button class="btn btn-p" onclick="setAllPrice()">全品番に適用</button>
+    <div class="bulk-settings-panel">
+      <div class="bulk-settings-grid">
+        <div class="bulk-settings-col">
+          <div class="bulk-settings-label">品番コード連番開始</div>
+          <div class="bulk-settings-row">
+            <input type="text" id="code-start" placeholder="例：00010" style="width:100px;padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px;font-family:monospace">
+            <button onclick="applyCodeSequence()" class="btn" style="font-size:12px">全品番に連番適用</button>
+          </div>
+          <div class="bulk-settings-note">※グループコード+連番で合計8桁になります</div>
+        </div>
+        <div class="bulk-settings-col">
+          <div class="bulk-settings-label">税抜価格</div>
+          <div class="bulk-settings-row">
+            <input type="number" id="all-price" placeholder="例：9,980円（税抜）" style="width:160px;padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">
+            <button class="btn btn-p" onclick="setAllPrice()" style="font-size:12px">全品番に適用</button>
+          </div>
+        </div>
+        <div class="bulk-settings-col">
+          <div class="bulk-settings-label">消費税区分</div>
+          <div class="bulk-settings-row">
+            <select id="tax-kbn-all" style="width:140px;padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">
+              <option value="1">1：標準税</option>
+              <option value="4">4：軽減税</option>
+              <option value="0">0：非課税</option>
+              <option value="3">3：不課税</option>
+            </select>
+            <button onclick="applyTaxKbnAll()" class="btn" style="font-size:12px">全品番に適用</button>
+          </div>
+        </div>
+      </div>
     </div>`;
 
   let replaceUiShown=false;
