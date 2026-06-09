@@ -276,7 +276,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sa
         <input type="text" id="s-staff" placeholder="担当者名を入力">
         <div style="margin-top:10px">
           <label style="font-size:12px;color:var(--gray-600);font-weight:500">KUROSHIO有効開始日時</label>
-          <input type="datetime-local" id="s-startdt" style="width:100%;padding:8px 12px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px;margin-top:4px">
+          <input type="datetime-local" id="s-startdt" step="60" style="width:100%;padding:8px 12px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px;margin-top:4px">
           <div style="font-size:11px;color:var(--gray-400);margin-top:2px">空欄可。形式：YYYY/MM/DD HH:mm</div>
         </div></div>
     </div>
@@ -619,8 +619,8 @@ const STATUS_LIST=['取得OK','MS依頼済','Access登録済み','修正依頼',
 
 // Wizard state
 let colors=[], sizes=[], patterns=[
-  {id:1,label:'1枚購入',sheets:1,shipFee:990,bonus:false,colorMode:'single',patternSkuIds:[],unit:'枚',returnDays:'60日',yupakeKbn:'0',meisaiHidden:'表示',returnAfterOpenDays:'8'},
-  {id:2,label:'2枚セット',sheets:2,shipFee:0,bonus:true,colorMode:'set',patternSkuIds:[],unit:'枚',returnDays:'60日',yupakeKbn:'0',meisaiHidden:'表示',returnAfterOpenDays:'8'},
+  {id:1,label:'1枚購入',sheets:1,shipFee:990,bonus:false,colorMode:'single',patternSkuIds:[],unit:'枚',returnDays:'39日',yupakeKbn:'0',meisaiHidden:'表示',returnAfterOpenDays:'8'},
+  {id:2,label:'2枚セット',sheets:2,shipFee:0,bonus:true,colorMode:'set',patternSkuIds:[],unit:'枚',returnDays:'39日',yupakeKbn:'0',meisaiHidden:'表示',returnAfterOpenDays:'8'},
 ];
 let generated=[], registeredList=[], seqCounters={};
 let skuAssignMap={}, commonSkus=[];
@@ -702,6 +702,17 @@ function renderAll(){
     const d=new Date(document.lastModified);
     const pad=n=>String(n).padStart(2,'0');
     utEl.textContent='更新: '+d.getFullYear()+'/'+pad(d.getMonth()+1)+'/'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes());
+  }
+  var startDtEl=document.getElementById('s-startdt');
+  if(startDtEl&&!startDtEl._startDtBound){
+    startDtEl._startDtBound=true;
+    startDtEl.addEventListener('change',function(e){
+      var v=e.target.value;
+      if(v&&v.length>=10){
+        var datePart=v.substring(0,10);
+        e.target.value=datePart+'T00:00';
+      }
+    });
   }
 }
 
@@ -1121,7 +1132,7 @@ function getCombinations(arr,r){
   return res;
 }
 function shipSelectHTML(fee,pi){
-  return`<select onchange="patterns[${pi}].shipFee=+this.value;renderPts()" style="font-size:12px;padding:4px 8px;border:1px solid var(--bd);border-radius:5px;font-family:inherit">
+  return`<select onchange="patterns[${pi}].shipFee=+this.value;renderPts()" style="width:130px;font-size:12px;padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-family:inherit">
     ${shipOptions.map(s=>`<option value="${s.fee}"${s.fee===fee?' selected':''}>${s.label}</option>`).join('')}
   </select>`;
 }
@@ -1155,43 +1166,45 @@ function renderPts(){
         </div>
         ${patterns.length>1?`<button onclick="patterns.splice(${pi},1);renderPts();renderSkuAssignTable()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px">削除</button>`:''}
       </div>
-      <div style="margin-bottom:10px">
-        <div style="font-size:11px;color:var(--gray-600);font-weight:500;margin-bottom:4px">送料</div>
-        ${shipSelectHTML(p.shipFee,pi)}
-        ${p.shipFee>0?`<div style="font-size:10px;color:var(--amber);margin-top:2px">品番名末尾に「_」付与</div>`:''}
-        <div style="margin-top:8px">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:6px">
+        <div>
+          <div style="font-size:11px;color:var(--gray-600);font-weight:500;margin-bottom:4px">送料</div>
+          ${shipSelectHTML(p.shipFee,pi)}
+        </div>
+        <div>
           <div style="font-size:11px;color:var(--gray-600);font-weight:500;margin-bottom:4px">返品期間</div>
           <select onchange="patterns[${pi}].returnDays=this.value;renderPts()"
-            style="width:100%;padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px">
-            <option value="39日" ${p.returnDays==='39日'?'selected':''}>39日</option>
-            <option value="60日" ${(!p.returnDays||p.returnDays==='60日')?'selected':''}>60日</option>
+            style="width:130px;padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px">
+            <option value="39日" ${(!p.returnDays||p.returnDays==='39日')?'selected':''}>39日</option>
+            <option value="60日" ${p.returnDays==='60日'?'selected':''}>60日</option>
             <option value="返品不可" ${p.returnDays==='返品不可'?'selected':''}>返品不可</option>
             <option value="開封後返品不可" ${p.returnDays==='開封後返品不可'?'selected':''}>開封後返品不可</option>
           </select>
-          <div id="return-after-${pi}" style="margin-top:6px;display:${p.returnDays==='開封後返品不可'?'block':'none'}">
-            <div style="font-size:11px;color:var(--gray-600);font-weight:500;margin-bottom:4px">開封後返品不可：返品可能日数</div>
-            <select onchange="patterns[${pi}].returnAfterOpenDays=this.value" style="width:100%;padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px">
-              <option value="8" ${(!p.returnAfterOpenDays||p.returnAfterOpenDays==='8')?'selected':''}>8日</option>
-              <option value="39" ${p.returnAfterOpenDays==='39'?'selected':''}>39日</option>
-              <option value="60" ${p.returnAfterOpenDays==='60'?'selected':''}>60日</option>
-            </select>
-          </div>
         </div>
-        <div style="margin-top:8px">
+        <div>
           <div style="font-size:11px;color:var(--gray-600);font-weight:500;margin-bottom:4px">ゆうパケ対象</div>
-          <select onchange="patterns[${pi}].yupakeKbn=this.value" style="width:100%;padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px">
+          <select onchange="patterns[${pi}].yupakeKbn=this.value" style="width:130px;padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px">
             <option value="0" ${p.yupakeKbn!=='1'?'selected':''}>0：対象外商品</option>
             <option value="1" ${p.yupakeKbn==='1'?'selected':''}>1：ゆうパケ対象商品</option>
           </select>
         </div>
-        <div style="margin-top:8px">
+        <div>
           <div style="font-size:11px;color:var(--gray-600);font-weight:500;margin-bottom:4px">明細書非表示フラグ</div>
-          <select onchange="patterns[${pi}].meisaiHidden=this.value" style="width:100%;padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px">
+          <select onchange="patterns[${pi}].meisaiHidden=this.value" style="width:130px;padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px">
             <option value="表示" ${(!p.meisaiHidden||p.meisaiHidden==='表示')?'selected':''}>表示</option>
             <option value="1" ${p.meisaiHidden==='1'?'selected':''}>1：非表示</option>
             <option value="2" ${p.meisaiHidden==='2'?'selected':''}>2：部分的非表示</option>
           </select>
         </div>
+      </div>
+      ${p.shipFee>0?`<div style="font-size:10px;color:var(--amber);margin-bottom:6px">品番名末尾に「_」付与</div>`:''}
+      <div id="return-after-${pi}" style="margin-bottom:6px;display:${p.returnDays==='開封後返品不可'?'block':'none'}">
+        <div style="font-size:11px;color:var(--gray-600);font-weight:500;margin-bottom:4px">開封後返品不可：返品可能日数</div>
+        <select onchange="patterns[${pi}].returnAfterOpenDays=this.value" style="width:130px;padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px">
+          <option value="8" ${(!p.returnAfterOpenDays||p.returnAfterOpenDays==='8')?'selected':''}>8日</option>
+          <option value="39" ${p.returnAfterOpenDays==='39'?'selected':''}>39日</option>
+          <option value="60" ${p.returnAfterOpenDays==='60'?'selected':''}>60日</option>
+        </select>
       </div>
 
       ${patternSkus.length?`
@@ -1228,7 +1241,7 @@ function addPt(){
     colorMode: newSheets > 1 ? 'set' : 'single',
     patternSkuIds: [],
     unit: unit,
-    returnDays: '60日',
+    returnDays: '39日',
     yupakeKbn: '0',
     meisaiHidden: '表示',
     returnAfterOpenDays: '8'
@@ -1545,7 +1558,7 @@ function renderPriceMatrix(){
             const skuOk=h.skuList.length>0;
             return `<tr>
               <td>
-                <span onclick="toggleSkuRow4(${i})" style="cursor:pointer;display:inline-block;width:16px;color:var(--gray-400);user-select:none" id="cd-toggle-${i}">▶</span>
+                <span onclick="toggleSkuRow4(${i})" style="cursor:pointer;display:inline-block;width:16px;color:var(--gray-400);user-select:none" id="cd-toggle-${i}">⌄</span>
                 <input type="text" id="cd-${i}" value="${h.code}"
                   oninput="onCodeEdit(${i}, this.value, this)"
                   style="width:120px;padding:5px 8px;border:1px solid var(--bd);border-radius:4px;font-size:12px;font-family:monospace">
@@ -1592,7 +1605,7 @@ function toggleSkuRow4(i){
   if(el){
     const open=el.style.display==='none';
     el.style.display=open?'table-row':'none';
-    if(toggle) toggle.textContent=open?'▼':'▶';
+    if(toggle) toggle.textContent=open?'⌃':'⌄';
   }
 }
 
@@ -1720,11 +1733,11 @@ function buildConfirm(){
   const startDtVal=(function(){var s=document.getElementById('s-startdt');return s?s.value:'';})();
 
   document.getElementById('confirm-wrap').innerHTML=skuWarn+`
-    <div style="margin-bottom:12px;padding:10px 12px;background:var(--blue-lt);border-radius:var(--r);border:1px solid var(--blue-bd)">
-      <label style="font-size:12px;color:var(--blue-dk);font-weight:500">KUROSHIO有効開始日時（全品番共通）</label>
-      <input type="datetime-local" id="s-startdt-confirm" value="${startDtVal}" onchange="document.getElementById('s-startdt').value=this.value" style="width:100%;padding:6px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px;margin-top:4px">
+    <div style="margin-bottom:12px;padding:8px 12px;background:var(--gray-50);border-radius:var(--r);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span style="font-size:12px;color:var(--gray-600);white-space:nowrap">KUROSHIO有効開始日時：</span>
+      <input type="datetime-local" id="s-startdt-confirm" step="60" value="${startDtVal}" onchange="var v=this.value;if(v&&v.length>=10){var d=v.substring(0,10);this.value=d+'T00:00';}document.getElementById('s-startdt').value=this.value" style="padding:4px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">
     </div>
-    <div style="font-size:12px;color:var(--gray-400);margin-bottom:8px">▶をクリックするとSKU構成を確認できます</div>
+    <div style="font-size:12px;color:var(--gray-400);margin-bottom:8px">⌄をクリックするとSKU構成を確認できます</div>
     <table class="tbl">
       <thead><tr>
         <th style="width:130px">品番コード</th>
@@ -1740,7 +1753,7 @@ function buildConfirm(){
         ${generated.map((h,i)=>`
           <tr>
             <td>
-              <span onclick="toggleSkuRow4(${i})" style="cursor:pointer;display:inline-block;width:16px;color:var(--gray-400);user-select:none" id="cd-toggle-${i}">▶</span>
+              <span onclick="toggleSkuRow4(${i})" style="cursor:pointer;display:inline-block;width:16px;color:var(--gray-400);user-select:none" id="cd-toggle-${i}">⌄</span>
               <span class="mono">${h.code||'—'}</span>
             </td>
             <td style="font-size:12px">${h.name}</td>
@@ -1760,7 +1773,7 @@ function buildConfirm(){
               </select>
             </td>
             <td>
-              <input type="text" onchange="generated[${i}].teikiT2=this.value" value="${h.teikiT2||''}" placeholder="定期T2注文品番" style="width:140px;padding:3px 6px;border:1px solid var(--bd);border-radius:4px;font-size:12px;${h.teikiKbn&&h.teikiKbn!=='非定期'?'':'background:#f0f0f0;'}" ${h.teikiKbn&&h.teikiKbn!=='非定期'?'':'disabled'}>
+              ${h.teikiKbn&&h.teikiKbn!=='非定期'?`<input type="text" onchange="generated[${i}].teikiT2=this.value" value="${h.teikiT2||''}" placeholder="定期T2注文品番（必須）" style="width:160px;padding:3px 6px;border:1px solid var(--bd);border-radius:4px;font-size:12px">`:''}
             </td>
           </tr>
           <tr id="sku-row4-${i}" style="display:none;background:var(--gray-50)">
@@ -1798,8 +1811,8 @@ function doRegister(){
 function resetWizardForm(){
   bonuses=[];patternSkus=[];sku3List=[];spSkuList=[];skuAssignMap={};commonSkus=[];
   patterns=[
-    {id:1,label:'1枚購入',sheets:1,shipFee:990,bonus:false,colorMode:'single',patternSkuIds:[],unit:'枚',returnDays:'60日',yupakeKbn:'0',meisaiHidden:'表示',returnAfterOpenDays:'8'},
-    {id:2,label:'2枚セット',sheets:2,shipFee:0,bonus:true,colorMode:'set',patternSkuIds:[],unit:'枚',returnDays:'60日',yupakeKbn:'0',meisaiHidden:'表示',returnAfterOpenDays:'8'},
+    {id:1,label:'1枚購入',sheets:1,shipFee:990,bonus:false,colorMode:'single',patternSkuIds:[],unit:'枚',returnDays:'39日',yupakeKbn:'0',meisaiHidden:'表示',returnAfterOpenDays:'8'},
+    {id:2,label:'2枚セット',sheets:2,shipFee:0,bonus:true,colorMode:'set',patternSkuIds:[],unit:'枚',returnDays:'39日',yupakeKbn:'0',meisaiHidden:'表示',returnAfterOpenDays:'8'},
   ];
   ['s-month','s-name','s-staff','s-group'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   var sd=document.getElementById('s-startdt');if(sd)sd.value='';
