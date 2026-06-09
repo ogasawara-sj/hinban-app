@@ -130,7 +130,9 @@ body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sa
 .bulk-settings-label{font-size:12px;color:var(--gray-600);font-weight:500;margin-bottom:6px}
 .bulk-settings-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .bulk-settings-note{font-size:12px;color:#888;margin-top:6px;line-height:1.4}
-#all-price::placeholder{color:#aaa}
+#code-start::placeholder,#all-price::placeholder,.pt-price-input::placeholder{color:#aaa}
+.btn-primary{background:var(--blue);color:#fff;border-color:var(--blue);font-size:12px;padding:5px 12px}
+.btn-primary:hover{background:var(--blue-dk);border-color:var(--blue-dk)}
 @media (max-width:768px){.bulk-settings-grid{grid-template-columns:1fr}}
 
 /* ===== MASTER PAGE ===== */
@@ -287,12 +289,20 @@ body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sa
           </div>
         </div></div>
       <div class="f"><label>担当者 <span class="req">*</span></label>
-        <input type="text" id="s-staff" placeholder="担当者名を入力">
-        <div style="margin-top:10px">
+        <input type="text" id="s-staff" placeholder="担当者名を入力"></div>
+    </div>
+    <div style="margin-bottom:10px">
+      <div class="g2" style="margin-bottom:0">
+        <div class="f" style="margin-bottom:0">
           <label style="font-size:12px;color:var(--gray-600);font-weight:500">KUROSHIO有効開始日時</label>
           <input type="date" id="s-startdt" style="width:100%;padding:8px 12px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px;margin-top:4px">
-          <div style="font-size:11px;color:var(--gray-400);margin-top:2px">空欄可。日付選択時は 00:00 が適用されます</div>
-        </div></div>
+        </div>
+        <div class="f" style="margin-bottom:0">
+          <label style="font-size:12px;color:var(--gray-600);font-weight:500">KUROSHIO有効終了日時</label>
+          <input type="date" id="s-enddt" style="width:100%;padding:8px 12px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px;margin-top:4px">
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--gray-400);margin-top:6px">※空欄可。日付選択時は 00:00 が適用されます</div>
     </div>
     <div id="group-info"></div>
   </div>
@@ -1297,7 +1307,7 @@ function renderPtColorPreviews(){
 // ============================================================
 // 入力: YYYY-MM-DD（type="date"）/ 旧datetime-local / 既存の YYYY/MM/DD 00:00
 // 出力: YYYY/MM/DD 00:00（Excel・表示用）
-function formatStartDateTime(value){
+function formatKuroshioDateTime(value){
   if(!value) return '';
   if(/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}$/.test(value)) return value;
   var datePart=value;
@@ -1311,8 +1321,16 @@ function formatStartDateTime(value){
   var pad=function(n){ return String(n).padStart(2,'0'); };
   return d.getFullYear()+'/'+pad(d.getMonth()+1)+'/'+pad(d.getDate())+' 00:00';
 }
+function formatStartDateTime(value){ return formatKuroshioDateTime(value); }
+function formatEndDateTime(value){ return formatKuroshioDateTime(value); }
 function getStartDateInputValue(){
   var s=document.getElementById('s-startdt');
+  if(!s||!s.value) return '';
+  var v=s.value;
+  return v.indexOf('T')>=0?v.substring(0,10):v;
+}
+function getEndDateInputValue(){
+  var s=document.getElementById('s-enddt');
   if(!s||!s.value) return '';
   var v=s.value;
   return v.indexOf('T')>=0?v.substring(0,10):v;
@@ -1389,14 +1407,14 @@ function buildSkuListForAssign(cg, szg, pt){
       var bSkus = (bA && bA.skus) ? bA.skus.filter(function(s){ return s.code; }) : [];
       if(oSkus.length){
         oSkus.forEach(function(s){
-          skuList.push({code: s.code, name: s.name || s.code, qty: 1, role: rBase + '(' + pt.label + '専用)', taxKbn: (typeof s.taxKbn !== 'undefined') ? s.taxKbn : '1'});
+          skuList.push({code: s.code, name: s.name || s.code, qty: 1, role: rBase + '(' + pt.label + '専用)'});
         });
       } else if(bSkus.length){
         bSkus.forEach(function(s){
-          skuList.push({code: s.code, name: s.name || s.code, qty: qty, role: rBase, taxKbn: (typeof s.taxKbn !== 'undefined') ? s.taxKbn : '1'});
+          skuList.push({code: s.code, name: s.name || s.code, qty: qty, role: rBase});
         });
       } else {
-        skuList.push({code: '[' + (rBase||'—') + '未設定]', name: rBase || '本体', qty: qty, role: 'ﾒｲﾝ', taxKbn: '1'});
+        skuList.push({code: '[' + (rBase||'—') + '未設定]', name: rBase || '本体', qty: qty, role: 'ﾒｲﾝ'});
       }
     });
   });
@@ -1408,7 +1426,7 @@ function buildSkuListForAssign(cg, szg, pt){
     skuList.push(item);
   });
   if(pt.bonus && bonuses.length){
-    bonuses.forEach(function(b){ skuList.push({code: b.code || '', name: b.name || '特典', qty: 1, role: '特典', taxKbn: '1'}); });
+    bonuses.forEach(function(b){ skuList.push({code: b.code || '', name: b.name || '特典', qty: 1, role: '特典'}); });
   }
   return skuList;
 }
@@ -1482,6 +1500,7 @@ function generate(){
               colorAbbr:colorAbbr,
               sizeLabel:sizeLabel,
               startDateTime:getStartDateInputValue(),
+              endDateTime:getEndDateInputValue(),
               taxKbn:'1',
               teikiKbn:'非定期',
               teikiT2:''
@@ -1513,8 +1532,8 @@ function renderPriceMatrix(){
         <div class="bulk-settings-col">
           <div class="bulk-settings-label">品番コード連番開始</div>
           <div class="bulk-settings-row">
-            <input type="text" id="code-start" placeholder="例：00010" style="width:100px;padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px;font-family:monospace">
-            <button onclick="applyCodeSequence()" class="btn" style="font-size:12px">全品番に連番適用</button>
+            <input type="text" id="code-start" placeholder="例：00010" style="width:100px;padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">
+            <button onclick="applyCodeSequence()" class="btn btn-primary">全品番に連番適用</button>
           </div>
           <div class="bulk-settings-note">※グループコード+連番で合計8桁になります</div>
         </div>
@@ -1522,7 +1541,7 @@ function renderPriceMatrix(){
           <div class="bulk-settings-label">税抜価格</div>
           <div class="bulk-settings-row">
             <input type="number" id="all-price" placeholder="例：9,980円（税抜）" style="width:160px;padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">
-            <button class="btn btn-p" onclick="setAllPrice()" style="font-size:12px">全品番に適用</button>
+            <button class="btn btn-primary" onclick="setAllPrice()">全品番に適用</button>
           </div>
         </div>
         <div class="bulk-settings-col">
@@ -1534,7 +1553,7 @@ function renderPriceMatrix(){
               <option value="0">0：非課税</option>
               <option value="3">3：不課税</option>
             </select>
-            <button onclick="applyTaxKbnAll()" class="btn" style="font-size:12px">全品番に適用</button>
+            <button onclick="applyTaxKbnAll()" class="btn btn-primary">全品番に適用</button>
           </div>
         </div>
       </div>
@@ -1546,6 +1565,7 @@ function renderPriceMatrix(){
     if(!ptItems.length) return;
     const showReplaceUi=!replaceUiShown;
     if(showReplaceUi) replaceUiShown=true;
+    const ptPh=pt.sheets<=1?'例：9,980円（税抜）':'例：12,980円（税抜）';
 
     html_out+=`
     <div style="margin-bottom:20px">
@@ -1556,8 +1576,8 @@ function renderPriceMatrix(){
       </div>
       <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;flex-wrap:wrap;justify-content:space-between">
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <input type="number" id="pt-price-${pt.id}" placeholder="このパターン一括（税抜）" style="width:200px;padding:6px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">
-          <button class="btn" onclick="setPtPrice(${pt.id})" style="font-size:12px">このパターンに適用</button>
+          <input type="number" id="pt-price-${pt.id}" class="pt-price-input" placeholder="${ptPh}" style="width:200px;padding:6px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">
+          <button class="btn btn-primary" onclick="setPtPrice(${pt.id})">このパターンに適用</button>
         </div>
         ${showReplaceUi?`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <input type="text" id="replace-from" placeholder="置換前（例：MQT）" 
@@ -1565,7 +1585,7 @@ function renderPriceMatrix(){
           <span style="font-size:12px;color:var(--gray-400)">→</span>
           <input type="text" id="replace-to" placeholder="置換後（例：ﾏｲｷｭｯﾄPLUS）" 
             style="width:160px;padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">
-          <button onclick="bulkReplaceName()" class="btn" style="font-size:12px">品番名を一括置換</button>
+          <button onclick="bulkReplaceName()" class="btn btn-primary">品番名を一括置換</button>
         </div>`:''}
       </div>
       <div class="tbl-wrap">
@@ -1761,14 +1781,13 @@ function applyTaxKbnAll(){
 function buildConfirm(){
   const skuWarn=!skuCache.length
     ?`<div class="warn-box" style="margin-bottom:10px">⚠ SKUマスタ未読込のためSKUが自動設定されていません。初期設定でSKUマスタを読み込んでからSTEP 2に戻り再生成してください。</div>`:'';
-  const startDtVal=getStartDateInputValue();
-  const startDtDisp=formatStartDateTime(startDtVal);
+  const startDtDisp=formatKuroshioDateTime(getStartDateInputValue());
+  const endDtDisp=formatKuroshioDateTime(getEndDateInputValue());
 
   document.getElementById('confirm-wrap').innerHTML=skuWarn+`
-    <div style="margin-bottom:12px;padding:8px 12px;background:var(--gray-50);border-radius:var(--r);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-      <span style="font-size:12px;color:var(--gray-600);white-space:nowrap">KUROSHIO有効開始日時：</span>
-      <input type="date" id="s-startdt-confirm" value="${startDtVal}" onchange="document.getElementById('s-startdt').value=this.value;var d=document.getElementById('s-startdt-disp');if(d)d.textContent=formatStartDateTime(this.value)" style="padding:4px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">
-      <span id="s-startdt-disp" style="font-size:12px;color:var(--gray-600);white-space:nowrap">${startDtDisp||''}</span>
+    <div style="margin-bottom:12px;padding:8px 12px;background:var(--gray-50);border-radius:var(--r);font-size:12px;color:var(--gray-600);line-height:1.8">
+      <div>KUROSHIO有効開始日時：${startDtDisp||'（未設定）'}</div>
+      <div>KUROSHIO有効終了日時：${endDtDisp||'（未設定）'}</div>
     </div>
     <div style="font-size:12px;color:var(--gray-400);margin-bottom:8px">⌄をクリックするとSKU構成を確認できます</div>
     <table class="tbl">
@@ -1828,7 +1847,8 @@ function doRegister(){
   const cn=document.getElementById('s-name').value.trim();
   if(cn&&!campaignHistory.includes(cn)){campaignHistory.unshift(cn);if(campaignHistory.length>50)campaignHistory.pop();renderCampaignDl();}
   var startDt=getStartDateInputValue();
-  generated.forEach(function(h){ h.startDateTime=startDt; });
+  var endDt=getEndDateInputValue();
+  generated.forEach(function(h){ h.startDateTime=startDt; h.endDateTime=endDt; });
   showLoading('登録中...');
   setTimeout(()=>{
   generated.forEach(h=>registeredList.push({...h,registeredAt:new Date().toLocaleDateString('ja-JP')}));
@@ -1851,6 +1871,7 @@ function resetWizardForm(){
   ];
   ['s-month','s-name','s-staff','s-group'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   var sd=document.getElementById('s-startdt');if(sd)sd.value='';
+  var ed=document.getElementById('s-enddt');if(ed)ed.value='';
   const gs=document.getElementById('s-group-search');if(gs)gs.value='';
   const gl=document.getElementById('s-group-list');if(gl)gl.style.display='none';
   const gi=document.getElementById('group-info');if(gi)gi.innerHTML='';
@@ -2177,7 +2198,8 @@ function exportShitokuSheet(){
     var priceIn = Math.round(priceEx * 1.1);
     var ship = h.ship || 0;
     var returnDays = (h.pt && h.pt.returnDays) ? h.pt.returnDays : '60日';
-    var startDtOut = formatStartDateTime(h.startDateTime) || '';
+    var startDtOut = formatKuroshioDateTime(h.startDateTime) || '';
+    var endDtOut = formatKuroshioDateTime(h.endDateTime) || '';
     var skuList = (h.skuList || []).filter(function(s){ return s.code; });
     var skuCount = skuList.length;
 
@@ -2205,7 +2227,7 @@ function exportShitokuSheet(){
       priceEx,                                        // S
       priceIn,                                        // T
       {f: 'U'+firstSkuRow},                           // U
-      startDtOut, '', '',                             // V-X（V: 有効開始日時）
+      startDtOut, endDtOut, '',                       // V-X（V: 有効開始日時 / W: 有効終了日時）
       ship,                                           // Y
       returnDays                                      // Z
     ];
@@ -2214,7 +2236,7 @@ function exportShitokuSheet(){
     // SKU行
     skuList.forEach(function(s){
       var skuRowNum = aoa.length + 1;
-      var taxKbn = (typeof s.taxKbn !== 'undefined') ? s.taxKbn : '1';
+      var taxKbn = h.taxKbn || '1';
       var skuRow = [
         '取得OK',                                                          // A
         group,                                                             // B
@@ -2313,8 +2335,8 @@ function exportAccessImport(){
       priceIn,
       '',
       h.ship || 0,
-      formatStartDateTime(h.startDateTime) || '',
-      '',
+      formatKuroshioDateTime(h.startDateTime) || '',
+      formatKuroshioDateTime(h.endDateTime) || '',
       '',
       ret.days,
       '',
@@ -2397,6 +2419,8 @@ function exportToShitokuSheet(){
     var priceIn = Math.round((h.price || 0) * 1.1);
     var ship = h.ship || 0;
     var returnDays = (h.pt && h.pt.returnDays) ? h.pt.returnDays : '60日';
+    var startDtOut = formatKuroshioDateTime(h.startDateTime) || '';
+    var endDtOut = formatKuroshioDateTime(h.endDateTime) || '';
 
     // 品番ヘッダー行（SKUコード・数量・消費税区分は空欄）
     var headerRow = [
@@ -2418,7 +2442,7 @@ function exportToShitokuSheet(){
       priceEx,         // S: 販売価格（税抜）
       priceIn,         // T: 販売価格（税込）
       '',              // U: 割引率（関数）
-      '', '', '',      // V-X: 空
+      startDtOut, endDtOut, '',  // V-X: 有効開始/終了日時
       ship,            // Y: 送料
       returnDays       // Z: 返品期間
     ];
@@ -2428,7 +2452,7 @@ function exportToShitokuSheet(){
     var skuList = h.skuList || [];
     skuList.forEach(function(s){
       if(!s.code) return;
-      var taxKbn = (typeof s.taxKbn !== 'undefined') ? s.taxKbn : '1';
+      var taxKbn = h.taxKbn || '1';
       var skuRow = [
         '取得OK',        // A: ステータス
         group,           // B: 商品グループ
@@ -3063,13 +3087,12 @@ function ensureAssignSkus(key){
   if(!skuAssignMap[key]) skuAssignMap[key]={skus:[]};
   if(!skuAssignMap[key].skus){
     if(skuAssignMap[key].code){
-      skuAssignMap[key].skus=[{code:skuAssignMap[key].code,name:skuAssignMap[key].name||'',taxKbn:'1'}];
+      skuAssignMap[key].skus=[{code:skuAssignMap[key].code,name:skuAssignMap[key].name||''}];
     } else {
-      skuAssignMap[key].skus=[{code:'',name:'',taxKbn:'1'}];
+      skuAssignMap[key].skus=[{code:'',name:''}];
     }
   }
-  if(!skuAssignMap[key].skus.length) skuAssignMap[key].skus.push({code:'',name:'',taxKbn:'1'});
-  skuAssignMap[key].skus.forEach(function(s){ if(typeof s.taxKbn === 'undefined') s.taxKbn = '1'; });
+  if(!skuAssignMap[key].skus.length) skuAssignMap[key].skus.push({code:'',name:''});
 }
 function onSkuAssignInput(key, idx, code, inputEl){
   var clean=(code||'').replace(/[Ａ-Ｚａ-ｚ０-９]/g, function(c){
@@ -3077,9 +3100,9 @@ function onSkuAssignInput(key, idx, code, inputEl){
   }).toUpperCase().replace(/[^A-Z0-9]/g, '');
   if(inputEl && clean !== code) inputEl.value = clean;
   code = clean;
-  if(!skuAssignMap[key]) skuAssignMap[key] = {skus: [{code:'', name:'', taxKbn:'1'}]};
-  if(!skuAssignMap[key].skus) skuAssignMap[key].skus = [{code:'', name:'', taxKbn:'1'}];
-  while(skuAssignMap[key].skus.length <= idx) skuAssignMap[key].skus.push({code:'', name:'', taxKbn:'1'});
+  if(!skuAssignMap[key]) skuAssignMap[key] = {skus: [{code:'', name:''}]};
+  if(!skuAssignMap[key].skus) skuAssignMap[key].skus = [{code:'', name:''}];
+  while(skuAssignMap[key].skus.length <= idx) skuAssignMap[key].skus.push({code:'', name:''});
   skuAssignMap[key].skus[idx].code = code;
   var nameEl = document.getElementById('sa-name-' + key + '-' + idx);
   if(!nameEl) return;
@@ -3118,7 +3141,7 @@ function handleSkuPaste(e, key, startIdx){
   if(!skuAssignMap[key].skus) skuAssignMap[key].skus = [];
   lines.forEach(function(code, i){
     var idx = startIdx + i;
-    while(skuAssignMap[key].skus.length <= idx) skuAssignMap[key].skus.push({code:'', name:'', taxKbn:'1'});
+    while(skuAssignMap[key].skus.length <= idx) skuAssignMap[key].skus.push({code:'', name:''});
     var clean = (code||'').replace(/[Ａ-Ｚａ-ｚ０-９]/g, function(c){
       return String.fromCharCode(c.charCodeAt(0) - 0xFEE0);
     }).toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -3132,7 +3155,7 @@ function removeSkuRow(key, idx){
   if(!skuAssignMap[key] || !skuAssignMap[key].skus) return;
   skuAssignMap[key].skus.splice(idx, 1);
   if(skuAssignMap[key].skus.length === 0){
-    skuAssignMap[key].skus = [{code:'', name:'', taxKbn:'1'}];
+    skuAssignMap[key].skus = [{code:'', name:''}];
   }
   renderSkuAssignTable();
 }
@@ -3163,14 +3186,6 @@ function skuInputs(key, isOverride, sheets){
         skuAssignMap[key].skus[i].name = nameInp.value;
       }
     });
-    if(typeof sku.taxKbn === 'undefined') sku.taxKbn = '1';
-    var taxSel = document.createElement('select');
-    taxSel.style.cssText = 'width:70px;font-size:11px;padding:2px 4px;border:1px solid var(--bd);border-radius:4px;flex-shrink:0;font-family:inherit';
-    taxSel.innerHTML = '<option value="1">課税</option><option value="0">非課税</option>';
-    taxSel.value = String(sku.taxKbn);
-    taxSel.addEventListener('change', function(){
-      skuAssignMap[key].skus[i].taxKbn = taxSel.value;
-    });
     var btn_del = document.createElement('button');
     btn_del.type = 'button';
     btn_del.textContent = '×';
@@ -3180,7 +3195,6 @@ function skuInputs(key, isOverride, sheets){
     btn_del.addEventListener('click', (function(k, ix){ return function(){ removeSkuRow(k, ix); }; })(key, i));
     row.appendChild(codeInp);
     row.appendChild(nameInp);
-    row.appendChild(taxSel);
     row.appendChild(btn_del);
     container.appendChild(row);
     if(sku.code) onSkuAssignInput(key, i, sku.code, codeInp);
@@ -3196,7 +3210,7 @@ function skuInputs(key, isOverride, sheets){
   addBtn.addEventListener('mouseenter', function(){ addBtn.style.opacity = '1'; });
   addBtn.addEventListener('mouseleave', function(){ addBtn.style.opacity = '0.6'; });
   addBtn.addEventListener('click', function(){
-    skuAssignMap[key].skus.push({code:'', name:'', taxKbn:'1'});
+    skuAssignMap[key].skus.push({code:'', name:''});
     renderSkuAssignTable();
   });
   container.appendChild(addBtn);
@@ -3288,10 +3302,6 @@ function renderCommonSkuList(){
       <span class="mono">${s.code||'—'}</span>
       <span style="flex:1">${s.name||'—'}</span>
       <span style="color:var(--gray-400)">${s.followSheets?'×枚数連動':'×'+(s.qty||1)}</span>
-      <select onchange="commonSkus[${i}].taxKbn=this.value" style="width:70px;font-size:11px;padding:2px 4px;border:1px solid var(--bd);border-radius:4px;font-family:inherit">
-        <option value="1" ${(typeof s.taxKbn==='undefined'||s.taxKbn==='1'||s.taxKbn===1)?'selected':''}>課税</option>
-        <option value="0" ${s.taxKbn==='0'||s.taxKbn===0?'selected':''}>非課税</option>
-      </select>
       <label style="font-size:11px;display:flex;align-items:center;gap:4px;white-space:nowrap;color:var(--gray-600);cursor:pointer">
         <input type="checkbox" ${s.followSheets?'checked':''} onchange="toggleCommonSkuFollowSheets(${i},this.checked)"> 枚数に連動
       </label>
@@ -3343,7 +3353,7 @@ function addCommonSku(){
   if(code.startsWith('YR')) role = '延長保証';
   else if(code.startsWith('IN')) role = '取説';
   else if(code.startsWith('LT')) role = '特典';
-  commonSkus.push({code, name, qty, role, followSheets: !!followSheets, taxKbn: '1'});
+  commonSkus.push({code, name, qty, role, followSheets: !!followSheets});
   document.getElementById('csku-code').value = '';
   document.getElementById('csku-name').value = '';
   document.getElementById('csku-qty').value = '1';
