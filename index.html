@@ -2554,7 +2554,71 @@ function styleShitokuSkuRow(ws,rn,isTeiki){
   }
 }
 function setShitokuFormula(cell,formula){
-  cell.value={formula:formula};
+  if(!formula) return;
+  var f=formula.charAt(0)==='='?formula.substring(1):formula;
+  cell.value={formula:f};
+}
+function formatCampaignMonth(value){
+  if(!value) return '';
+  var m=String(value).match(/(\d+)月/);
+  if(m) return parseInt(m[1],10)+'月';
+  m=String(value).match(/^\d{4}-(\d{1,2})$/);
+  if(m) return parseInt(m[1],10)+'月';
+  return value;
+}
+var SHITOKU_STATUS_DV='"取得OK,オファー確認中,MS依頼済,Access登録済み,チェック依頼,チェック完了,稟議申請中,WF完了,構成変更依頼,済,取得不要"';
+function applyShitokuStatusValidation(cell,statusVal){
+  cell.value=statusVal||'取得OK';
+  cell.dataValidation={
+    type:'list',
+    allowBlank:true,
+    formulae:[SHITOKU_STATUS_DV],
+    showErrorMessage:true,
+    errorStyle:'warning',
+    errorTitle:'無効な値',
+    error:'リストから選択してください'
+  };
+}
+function applyShitokuHeaderFormulas(ws,x,firstSku,lastSku,xs,fs,isTeiki,N){
+  setShitokuFormula(ws.getCell(x,7),'LENB(I'+xs+')');
+  setShitokuFormula(ws.getCell(x,8),'LENB(J'+xs+')');
+  if(N>0){
+    setShitokuFormula(ws.getCell(x,15),'SUM(O'+firstSku+':O'+lastSku+')');
+    setShitokuFormula(ws.getCell(x,16),'SUM(P'+firstSku+':P'+lastSku+')');
+    setShitokuFormula(ws.getCell(x,17),'SUM(Q'+firstSku+':Q'+lastSku+')');
+    setShitokuFormula(ws.getCell(x,18),'SUM(R'+firstSku+':R'+lastSku+')');
+    setShitokuFormula(ws.getCell(x,19),'S'+fs);
+    setShitokuFormula(ws.getCell(x,20),'T'+fs);
+    setShitokuFormula(ws.getCell(x,21),'1-(T'+xs+'/R'+xs+')');
+    setShitokuFormula(ws.getCell(x,25),'Y'+fs);
+    setShitokuFormula(ws.getCell(x,26),'Z'+fs);
+    setShitokuFormula(ws.getCell(x,28),'SUM(AB'+firstSku+':AB'+lastSku+')');
+    setShitokuFormula(ws.getCell(x,44),'AR'+fs);
+    setShitokuFormula(ws.getCell(x,45),'AS'+fs);
+    if(isTeiki){
+      setShitokuFormula(ws.getCell(x,36),'AJ'+fs);
+      setShitokuFormula(ws.getCell(x,37),'AK'+fs);
+    }
+  }
+  setShitokuFormula(ws.getCell(x,29),'XLOOKUP(B'+xs+',INDIRECT("P2計算!$A:$A"),INDIRECT("P2計算!$B:$B"))');
+  setShitokuFormula(ws.getCell(x,30),'XLOOKUP(B'+xs+',INDIRECT("P2計算!$D:$D"),INDIRECT("P2計算!$E:$E"))');
+  setShitokuFormula(ws.getCell(x,31),'XLOOKUP(B'+xs+',INDIRECT("P2計算!$G:$G"),INDIRECT("P2計算!$H:$H"))');
+  setShitokuFormula(ws.getCell(x,32),'XLOOKUP(B'+xs+',INDIRECT("P2計算!$J:$J"),INDIRECT("P2計算!$K:$K"))');
+  setShitokuFormula(ws.getCell(x,33),'XLOOKUP(B'+xs+',INDIRECT("P2計算!$M:$M"),INDIRECT("P2計算!$N:$N"))');
+  setShitokuFormula(ws.getCell(x,34),'S'+xs+'-AB'+xs+'-AC'+xs+'-AD'+xs+'-S'+xs+'*AE'+xs+'-S'+xs+'*AF'+xs+'-AG'+xs+'*AF'+xs);
+  setShitokuFormula(ws.getCell(x,35),'AH'+xs+'/S'+xs);
+}
+function applyShitokuSkuRowFormulas(ws,y,ys,xs,isFirst){
+  setShitokuFormula(ws.getCell(y,12),'VLOOKUP(K'+ys+',INDIRECT("SKU表!A:B"),2,0)');
+  setShitokuFormula(ws.getCell(y,15),'IFERROR(ROUNDUP(VLOOKUP(K'+ys+',INDIRECT("SKU表!A:D"),3,FALSE),0),"")');
+  setShitokuFormula(ws.getCell(y,16),'IFERROR(VLOOKUP(K'+ys+',INDIRECT("SKU表!A:D"),4,FALSE),"")');
+  setShitokuFormula(ws.getCell(y,17),'IFERROR((O'+ys+'*N'+ys+'),"")');
+  setShitokuFormula(ws.getCell(y,18),'IFERROR((P'+ys+'*N'+ys+'),"")');
+  setShitokuFormula(ws.getCell(y,28),'IFERROR(VLOOKUP(K'+ys+',INDIRECT("EX0054_在庫表!$A:$G"),7,FALSE)*N'+ys+',"")');
+  if(isFirst){
+    setShitokuFormula(ws.getCell(y,20),'ROUNDDOWN(S'+ys+'*1.1,0)');
+    setShitokuFormula(ws.getCell(y,21),'1-(T'+xs+'/R'+xs+')');
+  }
 }
 function formatKuroshioMonthDay(value){
   if(!value) return '';
@@ -2580,10 +2644,6 @@ function isShitokuTeiki(teikiKbn){
 function shitokuMergeCells(ws,col,r1,r2){
   if(r2<=r1) return;
   ws.mergeCells(col+r1+':'+col+r2);
-}
-function applyShitokuStatusCell(cell,status){
-  cell.value=status||'取得OK';
-  cell.dataValidation={type:'list',allowBlank:true,formulae:['"'+STATUS_LIST.join(',')+'"']};
 }
 function applyShitokuPartMerges(ws,x,firstSku,lastSku,isTeiki){
   ['D','F','G','H','AT'].forEach(function(col){shitokuMergeCells(ws,col,x,lastSku);});
@@ -2674,7 +2734,7 @@ async function exportShitokuSheet(){
     var x=rowNum;
     var firstSku=x+1;
     var lastSku=x+N;
-    var month=h.month||'';
+    var month=formatCampaignMonth(h.month||'');
     var campaign=h.campaign||'';
     var staff=h.staff||'';
     var group=h.group||'';
@@ -2695,42 +2755,15 @@ async function exportShitokuSheet(){
       cols.forEach(function(col){ws.getCell(rn,col).numFmt=fmt;});
     }
 
-    // 品番ヘッダー行
-    applyShitokuStatusCell(ws.getCell(x,1),statusVal);
+    // 品番ヘッダー行（数式は結合後に再設定）
+    ws.getCell(x,1).value=statusVal;
     ws.getCell(x,2).value=group;
     ws.getCell(x,3).value=month;
     ws.getCell(x,4).value=campaign;
     ws.getCell(x,5).value=staff;
     ws.getCell(x,9).value=code;
     ws.getCell(x,10).value=name;
-    setShitokuFormula(ws.getCell(x,7),'LENB(I'+xs+')');
-    setShitokuFormula(ws.getCell(x,8),'LENB(J'+xs+')');
     ws.getCell(x,38).value=0;
-    if(N>0){
-      setShitokuFormula(ws.getCell(x,15),'SUM(O'+firstSku+':O'+lastSku+')');
-      setShitokuFormula(ws.getCell(x,16),'SUM(P'+firstSku+':P'+lastSku+')');
-      setShitokuFormula(ws.getCell(x,17),'SUM(Q'+firstSku+':Q'+lastSku+')');
-      setShitokuFormula(ws.getCell(x,18),'SUM(R'+firstSku+':R'+lastSku+')');
-      setShitokuFormula(ws.getCell(x,19),'S'+fs);
-      setShitokuFormula(ws.getCell(x,20),'T'+fs);
-      setShitokuFormula(ws.getCell(x,21),'1-(T'+xs+'/R'+xs+')');
-      setShitokuFormula(ws.getCell(x,25),'Y'+fs);
-      setShitokuFormula(ws.getCell(x,26),'Z'+fs);
-      setShitokuFormula(ws.getCell(x,28),'SUM(AB'+firstSku+':AB'+lastSku+')');
-      setShitokuFormula(ws.getCell(x,44),'AR'+fs);
-      setShitokuFormula(ws.getCell(x,45),'AS'+fs);
-      if(isTeiki){
-        setShitokuFormula(ws.getCell(x,36),'AJ'+fs);
-        setShitokuFormula(ws.getCell(x,37),'AK'+fs);
-      }
-    }
-    setShitokuFormula(ws.getCell(x,29),'XLOOKUP(B'+xs+',INDIRECT("P2計算!$A:$A"),INDIRECT("P2計算!$B:$B"))');
-    setShitokuFormula(ws.getCell(x,30),'XLOOKUP(B'+xs+',INDIRECT("P2計算!$D:$D"),INDIRECT("P2計算!$E:$E"))');
-    setShitokuFormula(ws.getCell(x,31),'XLOOKUP(B'+xs+',INDIRECT("P2計算!$G:$G"),INDIRECT("P2計算!$H:$H"))');
-    setShitokuFormula(ws.getCell(x,32),'XLOOKUP(B'+xs+',INDIRECT("P2計算!$J:$J"),INDIRECT("P2計算!$K:$K"))');
-    setShitokuFormula(ws.getCell(x,33),'XLOOKUP(B'+xs+',INDIRECT("P2計算!$M:$M"),INDIRECT("P2計算!$N:$N"))');
-    setShitokuFormula(ws.getCell(x,34),'S'+xs+'-AB'+xs+'-AC'+xs+'-AD'+xs+'-S'+xs+'*AE'+xs+'-S'+xs+'*AF'+xs+'-AG'+xs+'*AF'+xs);
-    setShitokuFormula(ws.getCell(x,35),'AH'+xs+'/S'+xs);
     ws.getCell(x,39).value=0;
     ws.getCell(x,40).value=0;
     ws.getCell(x,41).value=0;
@@ -2743,28 +2776,20 @@ async function exportShitokuSheet(){
     ws.getRow(x).height=15;
     totalRows++;
 
-    // SKU行
+    // SKU行（数式は結合後に再設定）
     skuList.forEach(function(s,si){
       var y=x+1+si;
-      var ys=String(y);
       var isFirst=(si===0);
-      applyShitokuStatusCell(ws.getCell(y,1),statusVal);
+      ws.getCell(y,1).value=statusVal;
       ws.getCell(y,2).value=group;
       ws.getCell(y,3).value=month;
       ws.getCell(y,5).value=staff;
       ws.getCell(y,9).value=code;
       ws.getCell(y,11).value=s.code;
-      setShitokuFormula(ws.getCell(y,12),'VLOOKUP(K'+ys+',INDIRECT("SKU表!A:B"),2,0)');
       ws.getCell(y,13).value=taxKbn;
       ws.getCell(y,14).value=s.qty||1;
-      setShitokuFormula(ws.getCell(y,15),'IFERROR(ROUNDUP(VLOOKUP(K'+ys+',INDIRECT("SKU表!A:D"),3,FALSE),0),"")');
-      setShitokuFormula(ws.getCell(y,16),'IFERROR(VLOOKUP(K'+ys+',INDIRECT("SKU表!A:D"),4,FALSE),"")');
-      setShitokuFormula(ws.getCell(y,17),'IFERROR((O'+ys+'*N'+ys+'),"")');
-      setShitokuFormula(ws.getCell(y,18),'IFERROR((P'+ys+'*N'+ys+'),"")');
       if(isFirst){
         ws.getCell(y,19).value=priceEx;
-        setShitokuFormula(ws.getCell(y,20),'ROUNDDOWN(S'+ys+'*1.1,0)');
-        setShitokuFormula(ws.getCell(y,21),'1-(T'+xs+'/R'+xs+')');
         ws.getCell(y,25).value=ship;
         ws.getCell(y,26).value=returnDaysNum;
         ws.getCell(y,44).value=formatKuroshioMonthDay(h.startDateTime);
@@ -2784,7 +2809,6 @@ async function exportShitokuSheet(){
       ws.getCell(y,41).value=0;
       ws.getCell(y,42).value=0;
       ws.getCell(y,43).value=0;
-      setShitokuFormula(ws.getCell(y,28),'IFERROR(VLOOKUP(K'+ys+',INDIRECT("EX0054_在庫表!$A:$G"),7,FALSE)*N'+ys+',"")');
       styleShitokuSkuRow(ws,y,isTeiki);
       setNumFmt(y,[15,16,17,18,19,20,22,23,25,28],numFmt);
       if(isFirst) setNumFmt(y,[21],pctFmt);
@@ -2794,6 +2818,13 @@ async function exportShitokuSheet(){
     });
 
     applyShitokuPartMerges(ws,x,firstSku,lastSku,isTeiki);
+    applyShitokuHeaderFormulas(ws,x,firstSku,lastSku,xs,fs,isTeiki,N);
+    skuList.forEach(function(s,si){
+      applyShitokuSkuRowFormulas(ws,x+1+si,String(x+1+si),xs,si===0);
+    });
+    for(var ar=x;ar<=lastSku;ar++){
+      applyShitokuStatusValidation(ws.getCell(ar,1),statusVal);
+    }
 
     rowNum=lastSku+1;
   });
