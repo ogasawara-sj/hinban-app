@@ -2406,11 +2406,11 @@ async function exportShitokuSheet(){
       setShitokuFormula(ws.getCell(x,44),'AR'+firstSku);
       setShitokuFormula(ws.getCell(x,45),'AS'+firstSku);
     }
-    setShitokuFormula(ws.getCell(x,29),'XLOOKUP(B'+xs+',P2計算!$A:$A,P2計算!$B:$B)');
-    setShitokuFormula(ws.getCell(x,30),'XLOOKUP(B'+xs+',P2計算!$D:$D,P2計算!$E:$E)');
-    setShitokuFormula(ws.getCell(x,31),'XLOOKUP(B'+xs+',P2計算!$G:$G,P2計算!$H:$H)');
-    setShitokuFormula(ws.getCell(x,32),'XLOOKUP(B'+xs+',P2計算!$J:$J,P2計算!$K:$K)');
-    setShitokuFormula(ws.getCell(x,33),'XLOOKUP(B'+xs+',P2計算!$M:$M,P2計算!$N:$N)');
+    setShitokuFormula(ws.getCell(x,29),'XLOOKUP(B'+xs+',INDIRECT("P2計算!$A:$A"),INDIRECT("P2計算!$B:$B"))');
+    setShitokuFormula(ws.getCell(x,30),'XLOOKUP(B'+xs+',INDIRECT("P2計算!$D:$D"),INDIRECT("P2計算!$E:$E"))');
+    setShitokuFormula(ws.getCell(x,31),'XLOOKUP(B'+xs+',INDIRECT("P2計算!$G:$G"),INDIRECT("P2計算!$H:$H"))');
+    setShitokuFormula(ws.getCell(x,32),'XLOOKUP(B'+xs+',INDIRECT("P2計算!$J:$J"),INDIRECT("P2計算!$K:$K"))');
+    setShitokuFormula(ws.getCell(x,33),'XLOOKUP(B'+xs+',INDIRECT("P2計算!$M:$M"),INDIRECT("P2計算!$N:$N"))');
     setShitokuFormula(ws.getCell(x,34),'S'+xs+'-AB'+xs+'-AC'+xs+'-AD'+xs+'-S'+xs+'*AE'+xs+'-S'+xs+'*AF'+xs+'-AG'+xs+'*AF'+xs);
     setShitokuFormula(ws.getCell(x,35),'AH'+xs+'/S'+xs);
     ws.getCell(x,38).value=0;
@@ -2436,11 +2436,11 @@ async function exportShitokuSheet(){
       ws.getCell(y,5).value=staff;
       ws.getCell(y,9).value=code;
       ws.getCell(y,11).value=s.code;
-      setShitokuFormula(ws.getCell(y,12),'VLOOKUP(K'+ys+',SKU表!A:B,2,0)');
+      setShitokuFormula(ws.getCell(y,12),'VLOOKUP(K'+ys+',INDIRECT("SKU表!A:B"),2,0)');
       ws.getCell(y,13).value=taxKbn;
       ws.getCell(y,14).value=s.qty||1;
-      setShitokuFormula(ws.getCell(y,15),'IFERROR(ROUNDUP(VLOOKUP(K'+ys+',SKU表!A:D,3,FALSE),0),"")');
-      setShitokuFormula(ws.getCell(y,16),'IFERROR(VLOOKUP(K'+ys+',SKU表!A:D,4,FALSE),"")');
+      setShitokuFormula(ws.getCell(y,15),'IFERROR(ROUNDUP(VLOOKUP(K'+ys+',INDIRECT("SKU表!A:D"),3,FALSE),0),"")');
+      setShitokuFormula(ws.getCell(y,16),'IFERROR(VLOOKUP(K'+ys+',INDIRECT("SKU表!A:D"),4,FALSE),"")');
       setShitokuFormula(ws.getCell(y,17),'IFERROR((O'+ys+'*N'+ys+'),"")');
       setShitokuFormula(ws.getCell(y,18),'IFERROR((P'+ys+'*N'+ys+'),"")');
       if(isFirst){
@@ -2459,7 +2459,7 @@ async function exportShitokuSheet(){
         ws.getCell(y,43).value=0;
         ws.getCell(y,45).value='有効';
       }
-      setShitokuFormula(ws.getCell(y,28),'IFERROR(VLOOKUP(K'+ys+',EX0054_在庫表!$A:$G,7,FALSE)*N'+ys+',"")');
+      setShitokuFormula(ws.getCell(y,28),'IFERROR(VLOOKUP(K'+ys+',INDIRECT("EX0054_在庫表!$A:$G"),7,FALSE)*N'+ys+',"")');
       styleSkuRow(y);
       setNumFmt(y,[15,16,17,18,19,20,22,23,25,28],numFmt);
       if(isFirst) setNumFmt(y,[21],pctFmt);
