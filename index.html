@@ -420,9 +420,10 @@ body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sa
 <div class="page" id="page-list">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
     <h2 style="font-size:16px;font-weight:700">品番一覧 / 価格表</h2>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
       <button class="btn btn-p" onclick="exportShitokuSheet()">📋 取得用シート用Excel出力</button>
       <button class="btn btn-p" onclick="exportAccessImport()">📋 アクセス登録用Excel出力</button>
+      <button class="btn" onclick="deleteAllRegistered()" style="background:var(--red);color:#fff;border-color:var(--red)">🗑️ 全品番を削除</button>
     </div>
   </div>
   <div class="filter-bar">
@@ -461,7 +462,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sa
     <h2 style="font-size:16px;font-weight:700">⚙ マスタ管理</h2>
     <button class="btn btn-g" onclick="exportMasterHTML()" style="font-size:12px">💾 全マスタをHTMLに書き出し（チーム配布用）</button>
   </div>
-  <div class="info-box" style="margin-bottom:14px">ℹ️ ここで管理する全マスタはブラウザに自動保存され、「HTMLに書き出し」でチームに配布できます。SharePointのSKUマスタはExcelインポートで一括取込できます。</div>
+  <div class="info-box" style="margin-bottom:14px">ℹ️ ここで管理する全マスタはブラウザ（localStorage / IndexedDB）に自動保存され、強制リロード後も保持されます。「HTMLに書き出し」でチームに配布できます。SharePointのSKUマスタはExcelインポートで一括取込できます。</div>
 
   <div class="master-tabs">
     <div class="mtab on" id="mt-sku"    onclick="showMasterTab('sku')">📋 SKUマスタ</div>
@@ -576,6 +577,13 @@ body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sa
       </div>
     </div>
   </div>
+
+  <div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--bd)">
+    <button class="btn" onclick="resetAllMasters()" style="background:var(--amber-lt);color:var(--amber);border:1px solid var(--amber)">⚠️ 全マスタをリセット</button>
+  </div>
+  <div style="margin-top:12px;margin-bottom:8px">
+    <button class="btn" onclick="wipeAllAppData()" style="background:var(--red);color:#fff;border-color:var(--red)">🚨 全データを初期化</button>
+  </div>
 </div><!-- /master -->
 
 <script>
@@ -628,6 +636,8 @@ let shipOptions  = [
 ];
 let campaignHistory = [];
 let skuMaster    = {};
+let skuCache = [];
+let skuLastUpdated = '';
 let patternSkus  = [];
 let bonuses      = [];
 let sku3List     = []; // STEP3で設定するSKUリスト
@@ -659,32 +669,263 @@ let generated=[], registeredList=[], seqCounters={};
 let skuAssignMap={}, commonSkus=[];
 
 // ============================================================
-// STORAGE
+// STORAGE（localStorage + IndexedDB、window.storage から移行）
 // ============================================================
-const SK={STAFF:'hbs_staff',GROUP:'hbs_group',COLOR:'hbs_color',SIZE:'hbs_size',
-          SHIP:'hbs_ship',CAMP:'hbs_camp',SKU:'hbs_sku'};
+const PERSIST_KEYS={
+  REGISTERED:'hinban_registered_list',
+  SKU_CACHE:'hinban_sku_master',
+  STAFF:'hinban_owner_master',
+  GROUP:'hinban_product_group_master',
+  COLOR:'hinban_color_master',
+  SIZE:'hinban_size_master',
+  SHIP:'hinban_shipping_master',
+  CAMP:'hinban_campaign_master',
+  SKU_LEGACY:'hinban_sku_master_legacy',
+  LEGACY_BUNDLE:'hbs_all_masters',
+  IDB_FLAG_PREFIX:'hinban_idb_'
+};
+const PERSIST_LS_LIMIT=4.5*1024*1024;
+const PERSIST_IDB_NAME='hinban_app_db';
+const PERSIST_IDB_STORE='kv';
 
+const DEFAULT_MASTERS={
+  staffList:JSON.parse(JSON.stringify(staffList)),
+  groupMaster:JSON.parse(JSON.stringify(groupMaster)),
+  colorMaster:JSON.parse(JSON.stringify(colorMaster)),
+  sizeMaster:JSON.parse(JSON.stringify(sizeMaster)),
+  shipOptions:JSON.parse(JSON.stringify(shipOptions)),
+  campaignHistory:[],
+  skuMaster:{}
+};
+
+function persistIdbOpen(){
+  return new Promise(function(resolve,reject){
+    if(!window.indexedDB){reject(new Error('IndexedDB unavailable'));return;}
+    var req=indexedDB.open(PERSIST_IDB_NAME,1);
+    req.onupgradeneeded=function(e){e.target.result.createObjectStore(PERSIST_IDB_STORE);};
+    req.onsuccess=function(){resolve(req.result);};
+    req.onerror=function(){reject(req.error);};
+  });
+}
+function persistIdbSet(key,val){
+  return persistIdbOpen().then(function(db){
+    return new Promise(function(resolve,reject){
+      var tx=db.transaction(PERSIST_IDB_STORE,'readwrite');
+      tx.objectStore(PERSIST_IDB_STORE).put(val,key);
+      tx.oncomplete=function(){db.close();resolve();};
+      tx.onerror=function(){reject(tx.error);};
+    });
+  });
+}
+function persistIdbGet(key){
+  return persistIdbOpen().then(function(db){
+    return new Promise(function(resolve,reject){
+      var tx=db.transaction(PERSIST_IDB_STORE,'readonly');
+      var req=tx.objectStore(PERSIST_IDB_STORE).get(key);
+      req.onsuccess=function(){db.close();resolve(req.result);};
+      req.onerror=function(){reject(req.error);};
+    });
+  });
+}
+function persistIdbDelete(key){
+  return persistIdbOpen().then(function(db){
+    return new Promise(function(resolve,reject){
+      var tx=db.transaction(PERSIST_IDB_STORE,'readwrite');
+      tx.objectStore(PERSIST_IDB_STORE).delete(key);
+      tx.oncomplete=function(){db.close();resolve();};
+      tx.onerror=function(){reject(tx.error);};
+    });
+  });
+}
+function persistIdbClear(){
+  return persistIdbOpen().then(function(db){
+    return new Promise(function(resolve,reject){
+      var tx=db.transaction(PERSIST_IDB_STORE,'readwrite');
+      tx.objectStore(PERSIST_IDB_STORE).clear();
+      tx.oncomplete=function(){db.close();resolve();};
+      tx.onerror=function(){reject(tx.error);};
+    });
+  });
+}
+function persistUsesIdb(key){
+  try{return localStorage.getItem(PERSIST_KEYS.IDB_FLAG_PREFIX+key)==='1';}catch(e){return false;}
+}
+function persistMarkIdb(key,useIdb){
+  try{
+    if(useIdb)localStorage.setItem(PERSIST_KEYS.IDB_FLAG_PREFIX+key,'1');
+    else localStorage.removeItem(PERSIST_KEYS.IDB_FLAG_PREFIX+key);
+  }catch(e){}
+}
+async function persistSet(key,data){
+  var json=typeof data==='string'?data:JSON.stringify(data);
+  var size=new Blob([json]).size;
+  var useIdb=size>PERSIST_LS_LIMIT;
+  if(!useIdb){
+    try{
+      localStorage.setItem(key,json);
+      persistMarkIdb(key,false);
+      return;
+    }catch(e){
+      if(e&&e.name==='QuotaExceededError') useIdb=true;
+      else if(!window.indexedDB) return;
+      else useIdb=true;
+    }
+  }
+  if(window.indexedDB){
+    await persistIdbSet(key,json);
+    persistMarkIdb(key,true);
+    try{localStorage.removeItem(key);}catch(e){}
+  }
+}
+async function persistGet(key){
+  if(persistUsesIdb(key)&&window.indexedDB){
+    try{
+      var idbVal=await persistIdbGet(key);
+      if(idbVal!=null) return JSON.parse(idbVal);
+    }catch(e){}
+  }
+  try{
+    var ls=localStorage.getItem(key);
+    if(ls) return JSON.parse(ls);
+  }catch(e){}
+  try{
+    if(window.storage){
+      var r=await window.storage.get(key);
+      if(r&&r.value) return JSON.parse(r.value);
+    }
+  }catch(e){}
+  return null;
+}
+async function persistRemove(key){
+  try{localStorage.removeItem(key);}catch(e){}
+  persistMarkIdb(key,false);
+  if(window.indexedDB){
+    try{await persistIdbDelete(key);}catch(e){}
+  }
+  try{
+    if(window.storage) await window.storage.set(key,'');
+  }catch(e){}
+}
+async function persistClearAll(){
+  Object.keys(localStorage).forEach(function(k){
+    if(k.indexOf('hinban_')===0||k==='hbs_all_masters') try{localStorage.removeItem(k);}catch(e){}
+  });
+  try{sessionStorage.clear();}catch(e){}
+  if(window.indexedDB){
+    try{await persistIdbClear();}catch(e){}
+  }
+}
+
+async function saveRegisteredList(){
+  try{await persistSet(PERSIST_KEYS.REGISTERED,registeredList);}catch(e){console.warn('saveRegisteredList',e);}
+}
+async function saveSkuCache(){
+  try{await persistSet(PERSIST_KEYS.SKU_CACHE,{cache:skuCache,updated:skuLastUpdated});}catch(e){console.warn('saveSkuCache',e);}
+}
 async function saveMaster(){
   try{
-    const data={staffList,groupMaster,colorMaster,sizeMaster,shipOptions,campaignHistory,skuMaster};
-    await window.storage.set('hbs_all_masters', JSON.stringify(data));
-  }catch(e){}
+    await Promise.all([
+      persistSet(PERSIST_KEYS.STAFF,staffList),
+      persistSet(PERSIST_KEYS.GROUP,groupMaster),
+      persistSet(PERSIST_KEYS.COLOR,colorMaster),
+      persistSet(PERSIST_KEYS.SIZE,sizeMaster),
+      persistSet(PERSIST_KEYS.SHIP,shipOptions),
+      persistSet(PERSIST_KEYS.CAMP,campaignHistory),
+      persistSet(PERSIST_KEYS.SKU_LEGACY,skuMaster),
+      persistSet(PERSIST_KEYS.LEGACY_BUNDLE,{staffList,groupMaster,colorMaster,sizeMaster,shipOptions,campaignHistory,skuMaster})
+    ]);
+  }catch(e){console.warn('saveMaster',e);}
+}
+function applyMasterBundle(d){
+  if(!d) return;
+  if(d.staffList&&d.staffList.length) staffList=d.staffList;
+  if(d.groupMaster&&d.groupMaster.length) groupMaster=d.groupMaster;
+  if(d.colorMaster&&d.colorMaster.length) colorMaster=d.colorMaster;
+  if(d.sizeMaster&&d.sizeMaster.length) sizeMaster=d.sizeMaster;
+  if(d.shipOptions&&d.shipOptions.length) shipOptions=d.shipOptions;
+  if(d.campaignHistory) campaignHistory=d.campaignHistory;
+  if(d.skuMaster&&typeof d.skuMaster==='object') skuMaster=d.skuMaster;
 }
 async function loadMaster(){
   try{
-    const r=await window.storage.get('hbs_all_masters');
-    if(r&&r.value){
-      const d=JSON.parse(r.value);
-      if(d.staffList&&d.staffList.length)    staffList=d.staffList;
-      if(d.groupMaster&&d.groupMaster.length) groupMaster=d.groupMaster;
-      if(d.colorMaster&&d.colorMaster.length) colorMaster=d.colorMaster;
-      if(d.sizeMaster&&d.sizeMaster.length)   sizeMaster=d.sizeMaster;
-      if(d.shipOptions&&d.shipOptions.length)  shipOptions=d.shipOptions;
-      if(d.campaignHistory)                   campaignHistory=d.campaignHistory;
-      if(d.skuMaster&&typeof d.skuMaster==='object') skuMaster=d.skuMaster;
+    var reg=await persistGet(PERSIST_KEYS.REGISTERED);
+    if(Array.isArray(reg)) registeredList=reg;
+    var skuData=await persistGet(PERSIST_KEYS.SKU_CACHE);
+    if(skuData&&Array.isArray(skuData.cache)){
+      skuCache=skuData.cache;
+      skuLastUpdated=skuData.updated||'';
     }
-  }catch(e){}
+    var loaded=false;
+    var staff=await persistGet(PERSIST_KEYS.STAFF);
+    if(staff&&staff.length){staffList=staff;loaded=true;}
+    var grp=await persistGet(PERSIST_KEYS.GROUP);
+    if(grp&&grp.length){groupMaster=grp;loaded=true;}
+    var col=await persistGet(PERSIST_KEYS.COLOR);
+    if(col&&col.length){colorMaster=col;loaded=true;}
+    var sz=await persistGet(PERSIST_KEYS.SIZE);
+    if(sz&&sz.length){sizeMaster=sz;loaded=true;}
+    var ship=await persistGet(PERSIST_KEYS.SHIP);
+    if(ship&&ship.length){shipOptions=ship;loaded=true;}
+    var camp=await persistGet(PERSIST_KEYS.CAMP);
+    if(camp){campaignHistory=camp;loaded=true;}
+    var skuLeg=await persistGet(PERSIST_KEYS.SKU_LEGACY);
+    if(skuLeg&&typeof skuLeg==='object'){skuMaster=skuLeg;loaded=true;}
+    if(!loaded){
+      var legacy=await persistGet(PERSIST_KEYS.LEGACY_BUNDLE);
+      applyMasterBundle(legacy);
+    }
+    var badge=document.getElementById('total-badge');
+    if(badge) badge.textContent='登録済 '+registeredList.length+'件';
+  }catch(e){console.warn('loadMaster',e);}
   renderAll();
+}
+function deleteAllRegistered(){
+  if(!confirm('全品番データを削除します。元に戻せません。よろしいですか？')) return;
+  registeredList=[];
+  var badge=document.getElementById('total-badge');
+  if(badge) badge.textContent='登録済 0件';
+  saveRegisteredList();
+  renderList();
+}
+async function resetAllMasters(){
+  if(!confirm('全マスタデータ（SKUマスタ、カラー、サイズ、担当者、商品グループ、送料、施策名）を削除します。元に戻せません。よろしいですか？')) return;
+  staffList=JSON.parse(JSON.stringify(DEFAULT_MASTERS.staffList));
+  groupMaster=JSON.parse(JSON.stringify(DEFAULT_MASTERS.groupMaster));
+  colorMaster=JSON.parse(JSON.stringify(DEFAULT_MASTERS.colorMaster));
+  sizeMaster=JSON.parse(JSON.stringify(DEFAULT_MASTERS.sizeMaster));
+  shipOptions=JSON.parse(JSON.stringify(DEFAULT_MASTERS.shipOptions));
+  campaignHistory=[];
+  skuMaster={};
+  skuCache=[];
+  skuLastUpdated='';
+  await persistRemove(PERSIST_KEYS.SKU_CACHE);
+  await saveMaster();
+  renderAll();
+  renderSkuStatus();
+  renderInitStatus();
+  alert('全マスタをリセットしました。');
+}
+async function wipeAllAppData(){
+  if(!confirm('全データ（品番一覧・SKUマスタ・全マスタ）を削除します。元に戻せません。\n\n本当によろしいですか？')) return;
+  if(!confirm('最終確認：すべてのデータが消去されます。続行しますか？')) return;
+  registeredList=[];
+  staffList=JSON.parse(JSON.stringify(DEFAULT_MASTERS.staffList));
+  groupMaster=JSON.parse(JSON.stringify(DEFAULT_MASTERS.groupMaster));
+  colorMaster=JSON.parse(JSON.stringify(DEFAULT_MASTERS.colorMaster));
+  sizeMaster=JSON.parse(JSON.stringify(DEFAULT_MASTERS.sizeMaster));
+  shipOptions=JSON.parse(JSON.stringify(DEFAULT_MASTERS.shipOptions));
+  campaignHistory=[];
+  skuMaster={};
+  skuCache=[];
+  skuLastUpdated='';
+  await persistClearAll();
+  await saveMaster();
+  var badge=document.getElementById('total-badge');
+  if(badge) badge.textContent='登録済 0件';
+  renderAll();
+  renderSkuStatus();
+  renderInitStatus();
+  alert('全データを初期化しました。');
 }
 
 // ============================================================
@@ -1913,6 +2154,7 @@ function doRegister(){
   setTimeout(()=>{
   generated.forEach(h=>registeredList.push({...h,registeredAt:new Date().toLocaleDateString('ja-JP')}));
   document.getElementById('total-badge').textContent=`登録済 ${registeredList.length}件`;
+  saveRegisteredList();
   saveMaster();
   generated=[];hideLoading();showPage('list');
   setTimeout(function(){
@@ -1947,6 +2189,7 @@ function resetAll(){
   registeredList=[];
   var badge=document.getElementById('total-badge');
   if(badge) badge.textContent='登録済 0件';
+  saveRegisteredList();
 
   var monthEl=document.getElementById('s-month');
   if(monthEl) monthEl.value='';
@@ -1994,9 +2237,9 @@ function renderList(){
       <td style="text-align:right;font-weight:600">¥${(r.price||0).toLocaleString('ja-JP')}</td>
       <td style="text-align:right;color:var(--gray-400)">¥${Math.round((r.price||0)*1.1).toLocaleString('ja-JP')}</td>
       <td style="text-align:center;font-size:11px">${r.ship>0?r.ship+'円':'無料'}</td>
-      <td><select class="status-sel" onchange="registeredList[${idx}].status=this.value;renderList()">${STATUS_LIST.map(s=>`<option${r.status===s?' selected':''}>${s}</option>`).join('')}</select></td>
+      <td><select class="status-sel" onchange="registeredList[${idx}].status=this.value;saveRegisteredList();renderList()">${STATUS_LIST.map(s=>`<option${r.status===s?' selected':''}>${s}</option>`).join('')}</select></td>
       <td style="text-align:center">${r.skuList.length}</td>
-      <td><button onclick="if(confirm('削除しますか？')){registeredList.splice(${idx},1);document.getElementById('total-badge').textContent='登録済 '+registeredList.length+'件';renderList()}" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px">削除</button></td>
+      <td><button onclick="if(confirm('削除しますか？')){registeredList.splice(${idx},1);document.getElementById('total-badge').textContent='登録済 '+registeredList.length+'件';saveRegisteredList();renderList()}" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px">削除</button></td>
     </tr>`;
   }).join('');
   document.getElementById('list-footer').textContent=`${data.length}件表示 / 合計 ${registeredList.length}件`;
@@ -2926,9 +3169,7 @@ const SHEET_CONFIG = {
   'IN（取説）':   {header:10,code:0,name:1,date:2,prefix:'IN'},
 };
 
-// インメモリSKUキャッシュ（更新ボタンで上書き）
-let skuCache = []; // [{c,n,d,col,t}]
-let skuLastUpdated = '';
+// インメモリSKUキャッシュ（更新ボタンで上書き・localStorage/IndexedDBに永続化）
 
 function extractColor(name){
   if(!name) return '';
@@ -3006,6 +3247,7 @@ function updateSkuMaster(){
           }
         });
         saveMaster();
+        saveSkuCache();
         alert(`✅ SKUマスタを更新しました\n取込件数：${skuCache.length}件\nカラー判定：${skuCache.filter(s=>s.col).length}件`);
       }catch(err){
         alert('読み込みエラー: ' + err.message);
@@ -3091,6 +3333,7 @@ function updateSkuMasterAndProceed(){
           }
         });
         saveMaster();
+        saveSkuCache();
         renderInitStatus();
         renderSkuStatus();
         // 完了後にウィザードへ自動遷移
