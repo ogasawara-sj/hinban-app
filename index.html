@@ -594,10 +594,6 @@ body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sa
 const DAKUTEN={'ガ':'ｶﾞ','ギ':'ｷﾞ','グ':'ｸﾞ','ゲ':'ｹﾞ','ゴ':'ｺﾞ','ザ':'ｻﾞ','ジ':'ｼﾞ','ズ':'ｽﾞ','ゼ':'ｾﾞ','ゾ':'ｿﾞ','ダ':'ﾀﾞ','ヂ':'ﾁﾞ','ヅ':'ﾂﾞ','デ':'ﾃﾞ','ド':'ﾄﾞ','バ':'ﾊﾞ','ビ':'ﾋﾞ','ブ':'ﾌﾞ','ベ':'ﾍﾞ','ボ':'ﾎﾞ','パ':'ﾊﾟ','ピ':'ﾋﾟ','プ':'ﾌﾟ','ペ':'ﾍﾟ','ポ':'ﾎﾟ','ヴ':'ｳﾞ'};
 const SEION={'ア':'ｱ','イ':'ｲ','ウ':'ｳ','エ':'ｴ','オ':'ｵ','カ':'ｶ','キ':'ｷ','ク':'ｸ','ケ':'ｹ','コ':'ｺ','サ':'ｻ','シ':'ｼ','ス':'ｽ','セ':'ｾ','ソ':'ｿ','タ':'ﾀ','チ':'ﾁ','ツ':'ﾂ','テ':'ﾃ','ト':'ﾄ','ナ':'ﾅ','ニ':'ﾆ','ヌ':'ﾇ','ネ':'ﾈ','ノ':'ﾉ','ハ':'ﾊ','ヒ':'ﾋ','フ':'ﾌ','ヘ':'ﾍ','ホ':'ﾎ','マ':'ﾏ','ミ':'ﾐ','ム':'ﾑ','メ':'ﾒ','モ':'ﾓ','ヤ':'ﾔ','ユ':'ﾕ','ヨ':'ﾖ','ラ':'ﾗ','リ':'ﾘ','ル':'ﾙ','レ':'ﾚ','ロ':'ﾛ','ワ':'ﾜ','ヲ':'ｦ','ン':'ﾝ','ァ':'ｧ','ィ':'ｨ','ゥ':'ｩ','ェ':'ｪ','ォ':'ｫ','ャ':'ｬ','ュ':'ｭ','ョ':'ｮ','ッ':'ｯ','ー':'ｰ'};
 function zenToHan(s){let r='';for(const c of s){if(DAKUTEN[c])r+=DAKUTEN[c];else if(SEION[c])r+=SEION[c];else r+=c;}return r;}
-function toHalfWidthKana(str){
-  if(!str) return '';
-  return zenToHan(String(str).replace(/　/g,' '));
-}
 
 // ============================================================
 // MASTER DATA
@@ -668,8 +664,8 @@ const STATUS_LIST=['取得OK','MS依頼済','Access登録済み','修正依頼',
 
 // Wizard state
 let colors=[], sizes=[], patterns=[
-  {id:1,label:'1枚購入',sheets:1,shipFee:990,bonus:false,colorMode:'single',patternSkuIds:[],unit:'枚',returnDays:'39日',yupakeKbn:'0',meisaiHidden:'表示',returnAfterOpenDays:'8',pairModes:['none'],pairGroup:'',sizePairs:[],colorPairs:[]},
-  {id:2,label:'2枚セット',sheets:2,shipFee:0,bonus:true,colorMode:'set',patternSkuIds:[],unit:'枚',returnDays:'39日',yupakeKbn:'0',meisaiHidden:'表示',returnAfterOpenDays:'8',pairModes:['none'],pairGroup:'',sizePairs:[],colorPairs:[]},
+  {id:1,label:'1枚購入',sheets:1,shipFee:990,bonus:false,colorMode:'single',patternSkuIds:[],unit:'枚',returnDays:'39日',yupakeKbn:'0',meisaiHidden:'表示',returnAfterOpenDays:'8',pairModes:['none'],pairGroup:'',sizePairs:[]},
+  {id:2,label:'2枚セット',sheets:2,shipFee:0,bonus:true,colorMode:'set',patternSkuIds:[],unit:'枚',returnDays:'39日',yupakeKbn:'0',meisaiHidden:'表示',returnAfterOpenDays:'8',pairModes:['none'],pairGroup:'',sizePairs:[]},
 ];
 let generated=[], registeredList=[], seqCounters={};
 let skuAssignMap={}, commonSkus=[], pairAssignMap={};
@@ -873,21 +869,22 @@ function normalizeRegisteredList(){
 function normalizePattern(p){
   if(!p) return;
   if(!p.pairModes||!p.pairModes.length){
-    if(p.pairMode==='crossColor') p.pairModes=['crossColor'];
-    else if(p.pairMode==='crossGroup'||p.crossGroup) p.pairModes=['crossGroup'];
-    else if(p.pairMode) p.pairModes=[p.pairMode];
+    if(p.pairMode==='crossGroup'||p.crossGroup) p.pairModes=['crossGroup'];
+    else if(p.pairMode==='crossColor') p.pairModes=['none'];
+    else if(p.pairMode) p.pairModes=[p.pairMode==='crossColor'?'none':p.pairMode];
     else p.pairModes=p.crossGroup?['crossGroup']:['none'];
   }
-  p.pairModes=p.pairModes.filter(function(m,i,a){return m&&a.indexOf(m)===i;});
+  p.pairModes=p.pairModes.filter(function(m,i,a){return m&&m!=='crossColor'&&a.indexOf(m)===i;});
   if(p.pairModes.indexOf('crossGroup')>=0){
     p.pairModes=['crossGroup'];
   }else if(!p.pairModes.length){
     p.pairModes=['none'];
+  }else{
+    p.pairModes=['none'];
   }
   p.crossGroup=p.pairModes.indexOf('crossGroup')>=0;
-  p.pairMode=p.pairModes.length===1?p.pairModes[0]:p.pairModes.join('+');
+  p.pairMode=p.pairModes[0];
   if(!p.sizePairs) p.sizePairs=[];
-  if(!p.colorPairs) p.colorPairs=[];
   if(p.pairGroup===undefined) p.pairGroup='';
 }
 function normalizeAllPatterns(){
@@ -921,14 +918,6 @@ function formatColorAbbr(cg){
   if(cg.every(function(c){return assignPartId(c.c,c.n)===id0;})) return cg[0].c;
   return cg.map(function(c){return c.c;}).join('×');
 }
-function buildNoneModeCgs(pt,selC,sh){
-  if(!selC.length) return [[]];
-  if(sh<=1) return selC.map(function(c){return [c];});
-  if(hasPairMode(pt,'crossColor')){
-    return selC.map(function(c){return [c,c];});
-  }
-  return getCombinationsWithRep(selC,sh);
-}
 function countPatternHinban(p,selC,selS){
   normalizePattern(p);
   var modes=getPatternPairModes(p);
@@ -940,18 +929,12 @@ function countPatternHinban(p,selC,selS){
     }
     return count;
   }
-  if(modes.indexOf('none')>=0){
-    var cn,sn;
-    if(!selC.length) cn=1;
-    else if(sh<=1) cn=selC.length;
-    else if(modes.indexOf('crossColor')>=0) cn=selC.length;
-    else cn=getCombinationsWithRep(selC,sh).length;
-    sn=sh<=1?selS.length:Math.max(1,getCombinationsWithRep(selS,sh).length);
-    count+=cn*sn;
-  }
-  if(modes.indexOf('crossColor')>=0&&p.colorPairs&&p.colorPairs.length){
-    count+=p.colorPairs.length*(selS.length||1);
-  }
+  var cn,sn;
+  if(!selC.length) cn=1;
+  else if(sh<=1) cn=selC.length;
+  else cn=getCombinationsWithRep(selC,sh).length;
+  sn=sh<=1?selS.length:Math.max(1,getCombinationsWithRep(selS,sh).length);
+  count=cn*sn;
   return count;
 }
 async function loadMaster(){
@@ -1595,23 +1578,10 @@ function renderPts(){
 
       ${(p.sheets||1)>=2?`
       <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--bd)">
-        <div style="font-size:11px;color:var(--gray-600);font-weight:600;margin-bottom:8px">ペア構成タイプ（複数選択可：通常＋カラー違い）</div>
-        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
-          <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:${isCrossGroupActive(p)?'not-allowed':'pointer'};opacity:${isCrossGroupActive(p)?'.5':'1'}">
-            <input type="checkbox" ${hasPairMode(p,'none')?'checked':''} ${isCrossGroupActive(p)?'disabled':''} onchange="togglePatternPairMode(${pi},'none',this.checked)">
-            <span>通常（単純${p.unit||'枚'}セット）</span>
-            <span style="font-size:11px;color:var(--gray-400)">— 同色${p.unit||'枚'}数セット等（既存ロジック）</span>
-          </label>
-          <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:${isCrossGroupActive(p)?'not-allowed':'pointer'};opacity:${isCrossGroupActive(p)?'.5':'1'}">
-            <input type="checkbox" ${hasPairMode(p,'crossColor')?'checked':''} ${isCrossGroupActive(p)?'disabled':''} onchange="togglePatternPairMode(${pi},'crossColor',this.checked)">
-            <span>カラー違い${p.unit||'枚'}セット</span>
-            <span style="font-size:11px;color:var(--gray-400)">— 同グループ・異カラー（同色ペアは除外）</span>
-          </label>
-          <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:${(hasPairMode(p,'none')||hasPairMode(p,'crossColor'))&&!isCrossGroupActive(p)?'not-allowed':'pointer'};opacity:${(hasPairMode(p,'none')||hasPairMode(p,'crossColor'))&&!isCrossGroupActive(p)?'.5':'1'}">
-            <input type="checkbox" ${hasPairMode(p,'crossGroup')?'checked':''} ${(hasPairMode(p,'none')||hasPairMode(p,'crossColor'))&&!isCrossGroupActive(p)?'disabled':''} onchange="togglePatternPairMode(${pi},'crossGroup',this.checked)">
-            <span>異グループセット</span>
-            <span style="font-size:11px;color:var(--gray-400)">— メイン＋別商品グループ（通常・カラー違いと排他）</span>
-          </label>
+        <div class="tog-row">
+          <button type="button" class="tog ${isCrossGroupActive(p)?'on':''}" onclick="toggleCrossGroupPairMode(${pi})"></button>
+          <span style="font-weight:600">異グループセットを含む</span>
+          <span style="font-size:11px;color:var(--gray-400)">（メイン＋別商品グループの${p.unit||'枚'}セット。OFF時は通常の組み合わせ生成）</span>
         </div>
         ${hasPairMode(p,'crossGroup')?`
         <div class="g2" style="margin-top:4px">
@@ -1639,23 +1609,6 @@ function renderPts(){
               +'</div>';
           }).join('')}
           <button class="btn btn-ghost" onclick="addPatternSizePair(${pi})" style="font-size:12px;margin-top:4px">＋ サイズペア追加</button>
-        </div>`:''}
-        ${hasPairMode(p,'crossColor')?`
-        <div style="margin-top:4px">
-          <div style="font-size:11px;color:var(--gray-600);font-weight:500;margin-bottom:6px">カラーペア（カラー1 × カラー2）</div>
-          ${(p.colorPairs||[]).map(function(cp,ci){
-            return '<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap">'
-              +'<select onchange="updatePatternColorPair('+pi+','+ci+',\'color1\',this.value)" style="padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">'+colorPairSelectHTML(cp.color1)+'</select>'
-              +'<span style="font-size:12px;color:var(--gray-400)">×</span>'
-              +'<select onchange="updatePatternColorPair('+pi+','+ci+',\'color2\',this.value)" style="padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">'+colorPairSelectHTML(cp.color2)+'</select>'
-              +'<button onclick="removePatternColorPair('+pi+','+ci+')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px">削除</button>'
-              +'</div>';
-          }).join('')}
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
-            <button class="btn btn-ghost" onclick="addPatternColorPair(${pi})" style="font-size:12px">＋ カラーペア追加</button>
-            <button class="btn btn-ghost" onclick="generateAllColorPairs(${pi})" style="font-size:12px">選択カラーから全ペア生成</button>
-          </div>
-          <div style="font-size:11px;color:var(--gray-400);margin-top:6px">※同色ペア（ホワイト×ホワイト等）は「通常」モードで作成してください</div>
         </div>`:''}
       </div>`:''}
 
@@ -1699,8 +1652,7 @@ function addPt(){
     returnAfterOpenDays: '8',
     pairModes: ['none'],
     pairGroup: '',
-    sizePairs: [],
-    colorPairs: []
+    sizePairs: []
   });
   renderPts();
   if(typeof renderSkuAssignTable === 'function') renderSkuAssignTable();
@@ -1792,22 +1744,6 @@ function makeName(grpName,colorLabel,sizeName,ptLabel,shipFee,colorAbbr){
   const baseShort=grpName+clShort+sp+' '+ptLabel;
   return zenToHan((baseShort+suf).substring(0,40-suf.length)+suf);
 }
-function makeCrossColorName(groupCode,sizeName,color1Name,color2Name,shipFee){
-  var groupNameHalf=toHalfWidthKana(getGroupFormalName(groupCode));
-  var sizeHalf='';
-  if(sizeName&&sizeName!=='—'&&sizeName!=='サイズなし'){
-    sizeHalf=toHalfWidthKana(sizeNameForProductName({n:sizeName,c:''})||sizeName);
-  }
-  var c1Half=toHalfWidthKana(color1Name);
-  var c2Half=toHalfWidthKana(color2Name);
-  var parts=[groupNameHalf];
-  if(sizeHalf) parts.push(sizeHalf);
-  parts.push(c1Half+'×'+c2Half);
-  parts.push('ｾｯﾄ');
-  var base=parts.join(' ');
-  var suf=shipFee>0?'_':'';
-  return (base+suf).substring(0,40-suf.length)+suf;
-}
 function normalizeAssignPart(code, name){
   if(code && code !== '—') return String(code);
   if(name && name !== 'カラーなし' && name !== '—') return 'n:' + name;
@@ -1866,74 +1802,18 @@ function sizePairSelectHTML(selectedCode){
     return '<option value="'+s.c+'"'+(selectedCode===s.c?' selected':'')+'>'+s.n+' ('+s.c+')</option>';
   }).join('');
 }
-function togglePatternPairMode(pi,mode,checked){
+function toggleCrossGroupPairMode(pi){
   var p=patterns[pi];
   if(!p) return;
-  normalizePattern(p);
-  if(mode==='crossGroup'){
-    if(checked){
-      p.pairModes=['crossGroup'];
-    }else{
-      p.pairModes=['none'];
-    }
+  if(isCrossGroupActive(p)){
+    p.pairModes=['none'];
   }else{
-    p.pairModes=p.pairModes.filter(function(m){return m!=='crossGroup';});
-    if(checked){
-      if(p.pairModes.indexOf(mode)<0) p.pairModes.push(mode);
-    }else{
-      p.pairModes=p.pairModes.filter(function(m){return m!==mode;});
-      if(!p.pairModes.length) p.pairModes=['none'];
-    }
+    p.pairModes=['crossGroup'];
+    if(!p.sizePairs) p.sizePairs=[];
   }
   normalizePattern(p);
   renderPts();
   if(typeof renderSkuAssignTable==='function') renderSkuAssignTable();
-}
-function colorPairSelectHTML(selectedName){
-  var selC=colors.filter(function(c){return c.on;});
-  return selC.map(function(c){
-    return '<option value="'+c.n+'"'+(selectedName===c.n?' selected':'')+'>'+c.n+'</option>';
-  }).join('');
-}
-function resolveColorByName(name){
-  if(!name) return null;
-  return colors.find(function(c){return c.n===name;})||colorMaster.find(function(c){return c.n===name;})||null;
-}
-function resolveColorPair(cp){
-  return {c1:resolveColorByName(cp.color1),c2:resolveColorByName(cp.color2)};
-}
-function addPatternColorPair(pi){
-  var selC=colors.filter(function(c){return c.on;});
-  if(selC.length<2){alert('カラーを2つ以上選択してください');return;}
-  if(!patterns[pi].colorPairs) patterns[pi].colorPairs=[];
-  patterns[pi].colorPairs.push({color1:selC[0].n,color2:selC[1].n});
-  renderPts();
-}
-function removePatternColorPair(pi,idx){
-  if(!patterns[pi].colorPairs) return;
-  patterns[pi].colorPairs.splice(idx,1);
-  renderPts();
-}
-function updatePatternColorPair(pi,idx,field,name){
-  if(!patterns[pi].colorPairs||!patterns[pi].colorPairs[idx]) return;
-  patterns[pi].colorPairs[idx][field]=name;
-  var cp=patterns[pi].colorPairs[idx];
-  if(cp.color1&&cp.color2&&cp.color1===cp.color2){
-    alert('同色のカラーペアは設定できません。「通常」モードをご利用ください。');
-    patterns[pi].colorPairs.splice(idx,1);
-  }
-  renderPts();
-}
-function generateAllColorPairs(pi){
-  var selC=colors.filter(function(c){return c.on;});
-  if(selC.length<2){alert('カラーを2つ以上選択してください');return;}
-  patterns[pi].colorPairs=[];
-  for(var i=0;i<selC.length;i++){
-    for(var j=i+1;j<selC.length;j++){
-      patterns[pi].colorPairs.push({color1:selC[i].n,color2:selC[j].n});
-    }
-  }
-  renderPts();
 }
 function setPairGroup(pi,code){
   patterns[pi].pairGroup=code;
@@ -2086,18 +1966,6 @@ function generate(){
             return;
           }
         }
-        if(hasPairMode(vp,'crossColor')){
-          if(selC.length<2){
-            alert('「'+vp.label+'」はカラーを2つ以上選択してください');
-            hideLoading();
-            return;
-          }
-          if(!vp.colorPairs||!vp.colorPairs.length){
-            alert('「'+vp.label+'」のカラーペアを1つ以上追加してください');
-            hideLoading();
-            return;
-          }
-        }
       }
 
       patterns.forEach(function(pt){
@@ -2153,55 +2021,14 @@ function generate(){
           return;
         }
 
-        if(modes.indexOf('crossColor')>=0&&pt.colorPairs&&pt.colorPairs.length){
-          pt.colorPairs.forEach(function(cp){
-            var resolved=resolveColorPair(cp);
-            if(!resolved.c1||!resolved.c2) return;
-            if(resolved.c1.n===resolved.c2.n) return;
-            var cg=[resolved.c1,resolved.c2];
-            var sizeList=selS.length?selS:[{n:'サイズなし',c:'—',on:true}];
-            sizeList.forEach(function(sz){
-              var szg=[sz];
-              var colorLabel=cp.color1+'×'+cp.color2;
-              var colorAbbr=resolved.c1.c+'×'+resolved.c2.c;
-              var sizeLabel=sz.c==='—'?'':sz.n;
-              var name=makeCrossColorName(g,sizeLabel,cp.color1,cp.color2,pt.shipFee);
-              var skuList=buildSkuListForAssign(cg,szg,pt,null);
-              generated.push({
-                code:'',
-                name:name,
-                group:g,
-                cg:cg,
-                szg:szg,
-                sz:sz,
-                pt:pt,
-                skuList:skuList,
-                ship:pt.shipFee,
-                price:0,
-                month:document.getElementById('s-month').value,
-                campaign:document.getElementById('s-name').value,
-                staff:document.getElementById('s-staff').value,
-                status:'取得OK',
-                colorLabel:colorLabel,
-                colorAbbr:colorAbbr,
-                sizeLabel:sizeLabel,
-                sizePair:null,
-                colorPair:cp,
-                pairGroup:null,
-                pairSKU:null,
-                genPairMode:'crossColor',
-                startDateTime:getStartDateInputValue(),
-                endDateTime:getEndDateInputValue(),
-                taxKbn:'1',
-                teikiKbn:'非定期',
-                teikiT2:''
-              });
-            });
-          });
+        let cgs=[];
+        if(!selC.length){
+          cgs=[[]];
+        } else if(sh<=1){
+          cgs=selC.map(function(c){ return [c]; });
+        } else {
+          cgs=getCombinationsWithRep(selC, sh);
         }
-
-        if(modes.indexOf('none')>=0){
-        let cgs=buildNoneModeCgs(pt,selC,sh);
 
         let szGroups=[];
         if(sh<=1){
@@ -2253,7 +2080,6 @@ function generate(){
             });
           });
         });
-        }
       });
 
       renderPriceMatrix();
@@ -2643,8 +2469,8 @@ function doRegister(){
 function resetWizardForm(){
   bonuses=[];patternSkus=[];sku3List=[];spSkuList=[];skuAssignMap={};commonSkus=[];pairAssignMap={};
   patterns=[
-    {id:1,label:'1枚購入',sheets:1,shipFee:990,bonus:false,colorMode:'single',patternSkuIds:[],unit:'枚',returnDays:'39日',yupakeKbn:'0',meisaiHidden:'表示',returnAfterOpenDays:'8',pairModes:['none'],pairGroup:'',sizePairs:[],colorPairs:[]},
-    {id:2,label:'2枚セット',sheets:2,shipFee:0,bonus:true,colorMode:'set',patternSkuIds:[],unit:'枚',returnDays:'39日',yupakeKbn:'0',meisaiHidden:'表示',returnAfterOpenDays:'8',pairModes:['none'],pairGroup:'',sizePairs:[],colorPairs:[]},
+    {id:1,label:'1枚購入',sheets:1,shipFee:990,bonus:false,colorMode:'single',patternSkuIds:[],unit:'枚',returnDays:'39日',yupakeKbn:'0',meisaiHidden:'表示',returnAfterOpenDays:'8',pairModes:['none'],pairGroup:'',sizePairs:[]},
+    {id:2,label:'2枚セット',sheets:2,shipFee:0,bonus:true,colorMode:'set',patternSkuIds:[],unit:'枚',returnDays:'39日',yupakeKbn:'0',meisaiHidden:'表示',returnAfterOpenDays:'8',pairModes:['none'],pairGroup:'',sizePairs:[]},
   ];
   ['s-month','s-name','s-staff','s-group'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   var sd=document.getElementById('s-startdt');if(sd)sd.value='';
