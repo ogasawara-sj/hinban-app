@@ -2898,6 +2898,7 @@ function filterAccessSkuList(skuList){
 }
 
 function copyAccessRowStyle(ws,fromRow,toRow){
+  if(fromRow===toRow) return;
   var sourceRow=ws.getRow(fromRow);
   var destRow=ws.getRow(toRow);
   if(sourceRow.height) destRow.height=sourceRow.height;
@@ -2912,12 +2913,34 @@ function copyAccessRowStyle(ws,fromRow,toRow){
   });
 }
 
+function toAccessNum(v,fallback){
+  var n=parseInt(v,10);
+  return isNaN(n)?(fallback!==undefined?fallback:0):n;
+}
+
+function parseAccessExcelDate(value){
+  if(!value) return null;
+  var datePart=String(value);
+  if(datePart.indexOf('T')>=0) datePart=datePart.substring(0,10);
+  if(/^\d{4}-\d{2}-\d{2}$/.test(datePart)){
+    var p=datePart.split('-').map(Number);
+    return new Date(p[0],p[1]-1,p[2],0,0,0);
+  }
+  if(/^\d{4}\/\d{2}\/\d{2}/.test(datePart)){
+    var parts=datePart.substring(0,10).split('/').map(Number);
+    return new Date(parts[0],parts[1]-1,parts[2],0,0,0);
+  }
+  var d=new Date(value);
+  return isNaN(d.getTime())?null:d;
+}
+
 function writeAccessBtoCData(ws,list){
   var dataStartRow=5;
   var styleRow=5;
+  var dateFmt='yyyy/mm/dd hh:mm';
   list.forEach(function(h,idx){
     var rowIdx=dataStartRow+idx;
-    if(idx>0) copyAccessRowStyle(ws,styleRow,rowIdx);
+    if(rowIdx!==styleRow) copyAccessRowStyle(ws,styleRow,rowIdx);
     var ret=getAccessReturnKbnAndDays(h.pt);
     var pt=h.pt||{};
     var priceIn=Math.round((h.price||0)*1.1);
@@ -2929,22 +2952,51 @@ function writeAccessBtoCData(ws,list){
     row.getCell(5).value=ret.kbn;
     row.getCell(6).value=h.group||'';
     row.getCell(10).value=pt.meisaiHidden||'表示';
-    row.getCell(11).value=h.taxKbn||'1';
-    row.getCell(12).value=priceIn;
-    row.getCell(14).value=h.ship||0;
-    row.getCell(15).value=formatKuroshioDateTime(h.startDateTime)||'';
-    row.getCell(16).value=formatKuroshioDateTime(h.endDateTime)||'';
-    row.getCell(18).value=ret.days;
-    row.getCell(20).value='0';
+    var c11=row.getCell(11);
+    c11.value=toAccessNum(h.taxKbn,1);
+    c11.numFmt='0';
+    var c12=row.getCell(12);
+    c12.value=priceIn;
+    c12.numFmt='#,##0';
+    var c14=row.getCell(14);
+    c14.value=Number(h.ship)||0;
+    c14.numFmt='#,##0';
+    var startDt=parseAccessExcelDate(h.startDateTime);
+    var c15=row.getCell(15);
+    if(startDt){c15.value=startDt;c15.numFmt=dateFmt;}else{c15.value=null;}
+    var endDt=parseAccessExcelDate(h.endDateTime);
+    var c16=row.getCell(16);
+    if(endDt){c16.value=endDt;c16.numFmt=dateFmt;}else{c16.value=null;}
+    var c18=row.getCell(18);
+    c18.value=toAccessNum(ret.days,0);
+    c18.numFmt='0';
+    var c20=row.getCell(20);
+    c20.value=0;
+    c20.numFmt='0';
     row.getCell(23).value=h.teikiKbn||'非定期';
     row.getCell(24).value=h.teikiT2||'';
-    row.getCell(26).value='0';
-    row.getCell(27).value='1';
-    row.getCell(31).value=pt.yupakeKbn||'0';
+    var c26=row.getCell(26);
+    c26.value=0;
+    c26.numFmt='0';
+    var c27=row.getCell(27);
+    c27.value=1;
+    c27.numFmt='0';
+    var c31=row.getCell(31);
+    c31.value=toAccessNum(pt.yupakeKbn,0);
+    c31.numFmt='0';
     row.getCell(32).value='DM,Doukon';
-    row.getCell(33).value='0';
-    row.getCell(38).value='0';
-    row.getCell(43).value=priceIn;
+    var c33=row.getCell(33);
+    c33.value=0;
+    c33.numFmt='0';
+    var c38=row.getCell(38);
+    c38.value=0;
+    c38.numFmt='0';
+    var c43=row.getCell(43);
+    c43.value=priceIn;
+    c43.numFmt='#,##0';
+    row.getCell(44).value=null;
+    row.getCell(45).value=null;
+    row.getCell(46).value=null;
   });
 }
 
@@ -2956,12 +3008,17 @@ function writeAccessCompositionData(ws,list){
   list.forEach(function(h){
     filterAccessSkuList(h.skuList).forEach(function(s){
       var rowIdx=dataStartRow+rowOffset;
-      if(rowOffset>0) copyAccessRowStyle(ws,styleRow,rowIdx);
+      if(rowIdx!==styleRow) copyAccessRowStyle(ws,styleRow,rowIdx);
       var row=ws.getRow(rowIdx);
       row.getCell(1).value=compositeNo++;
       row.getCell(2).value=h.code||'';
       row.getCell(3).value=s.code||'';
-      row.getCell(4).value=s.qty||1;
+      var c4=row.getCell(4);
+      c4.value=Number(s.qty)||1;
+      c4.numFmt='0';
+      row.getCell(5).value=null;
+      row.getCell(6).value=null;
+      row.getCell(7).value=null;
       rowOffset++;
     });
   });
