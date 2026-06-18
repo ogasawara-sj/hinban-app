@@ -2855,108 +2855,155 @@ async function exportShitokuSheet(){
 }
 
 // ============================================================
-// アクセス登録用 Excel出力
+// アクセス登録用 Excel出力（社内テンプレート準拠）
 // ============================================================
-function exportAccessImport(){
-  var list = registeredList && registeredList.length ? registeredList : generated;
-  if(!list || !list.length){ alert('登録済み品番がありません'); return; }
+var ACCESS_TEMPLATE_URLS=[
+  'templates/access-register-template.xlsx',
+  'public/templates/access-register-template.xlsx'
+];
+var ACCESS_KEEP_SHEETS=['注文品番 (BtoC)','構成_注文品番','注文品番リスト','バージョン(非表示)'];
 
-  var sheet1Header1 = ['', '【KUROSHIO】申請者入力項目', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '【SJBF登録依頼】申請者入力項目', '', '', '', '', '', '', '', '', '', '割引率計算用', 'システム', '', ''];
-  var sheet1Header2 = ['選択項目', '', '', '', '可\n001：不可\n002：開封後不可', '※「商品関連マスタ参照画面」の「商品グループコード」を参照下さい', '※「商品関連マスタ参照画面」の「商品サブグループコード」を参照下さい', '', 'ｱｿｰﾄ以外\n0001：ｱｿｰﾄ親品番', '表示\n1：非表示\n2：部分的非表示', '1：標準税\n4：軽減税\n0：非課税\n3：不課税', '', '', '', '', '', '', '【返品不可区分】\n■001：不可\n0日\n■可、002：開封後不可\n8日\n39日\n60日', '', '0：通常お届け\n1：翌日配送対象商品', '', '', '非定期\n1：初回（配送あり）\n3：継続\n4：復活', '', '0：まとめ買い\n1：単品', '0：対象外\n1：キャッシュバック対象', '0：クレ分割不可\n1：クレ分割可能', '1：月\n2：日', '', '', '0：対象外商品\n1：ゆうパケ対象商品', '', '1：キャッシュバック対象である\n0：対象でない', '', '', '商品\n受注\n', '', '1：あり\n0：なし', '', '', '', '', '', '', ''];
-  var sheet1Header3 = ['申請', '必須', 'Z01C固定', '必須', '必須', '必須', '任意', '任意', '任意', '必須', '必須', '必須', '任意', '必須', '必須', '任意', '任意', '必須', '任意', '必須', '任意', '任意', '必須', '条件付必須', '任意', '必須', '必須', '条件付必須', '条件付必須', '条件付必須', '必須', '必須', '必須', 'CB対象商品必須', 'CB対象商品必須', 'CB対象商品必須', 'CB対象商品必須', '必須', '定期付商品必須', '定期付商品必須', '条件付必須', '任意', '任意', '申請ID', '仮申請', 'メッセージ'];
-  var sheet1Header4 = ['No', '注文品番', '販売組織', '注文品番名', '返品不可区分', '商品グループ', '商品サブグループ', 'アソート数', 'アソート対象フラグ', '明細書非表示フラグ', '消費税区分', '販売価格（税込）', 'バリューアップ価格（税込）', '送料金額（税込）', '有効開始日時', '有効終了日時', 'お試し期間', '返品可能期間', '購入数量制限', '翌日配送対象フラグ', '翌日配送開始日時', '翌日配送終了日時', '定期商品種別', '定期T2注文品番', 'まとめ買い商品種別', 'キャッシュバック対象フラグ', 'クレジット分割払い', 'デフォルトお届け間隔', 'デフォルトお届け間隔数', '初期の間隔', 'ゆうパケフラグ', '商品コード使用チャネル', 'キャッシュバック情報登録', 'キャッシュバック 受付期間', 'キャッシュバック 金額', 'キャッシュバック 単位', 'キャッシュバック 条件', 'AT/OM補正', '継続商品の注文品番', '継続商品の販売価格（税抜）', '販売開始日', 'その他', '現在販売価格(税込)'];
-
-  var sheet1Data = [sheet1Header1, sheet1Header2, sheet1Header3, sheet1Header4];
-
-  function getReturnKbnAndDays(pt){
-    var rd = pt && pt.returnDays;
-    if(rd === '39日') return {kbn: '可', days: '39'};
-    if(rd === '60日') return {kbn: '可', days: '60'};
-    if(rd === '返品不可') return {kbn: '001', days: '0'};
-    if(rd === '開封後返品不可') return {kbn: '002', days: (pt.returnAfterOpenDays || '8')};
-    return {kbn: '可', days: '60'};
+async function loadAccessTemplate(){
+  if(window._accessTemplateBuffer) return window._accessTemplateBuffer;
+  var lastStatus=0;
+  for(var i=0;i<ACCESS_TEMPLATE_URLS.length;i++){
+    try{
+      var res=await fetch(ACCESS_TEMPLATE_URLS[i]);
+      lastStatus=res.status;
+      if(res.ok){
+        var buf=await res.arrayBuffer();
+        window._accessTemplateBuffer=buf;
+        return buf;
+      }
+    }catch(e){}
   }
+  var err=new Error('テンプレート読み込み失敗');
+  err.status=lastStatus;
+  throw err;
+}
 
-  list.forEach(function(h, idx){
-    var ret = getReturnKbnAndDays(h.pt);
-    var pt = h.pt || {};
-    var priceIn = Math.round((h.price || 0) * 1.1);
-    var row = [
-      idx + 1,
-      h.code || '',
-      'Z01C',
-      h.name || '',
-      ret.kbn,
-      h.group || '',
-      '',
-      '',
-      '',
-      pt.meisaiHidden || '表示',
-      h.taxKbn || '1',
-      priceIn,
-      '',
-      h.ship || 0,
-      formatKuroshioDateTime(h.startDateTime) || '',
-      formatKuroshioDateTime(h.endDateTime) || '',
-      '',
-      ret.days,
-      '',
-      '0',
-      '',
-      '',
-      h.teikiKbn || '非定期',
-      h.teikiT2 || '',
-      '',
-      '0',
-      '1',
-      '', '', '',
-      pt.yupakeKbn || '0',
-      'DM,Doukon',
-      '0',
-      '', '', '', '',
-      '0',
-      '',
-      '',
-      '',
-      '',
-      '',
-      '',
-      '',
-      ''
-    ];
-    sheet1Data.push(row);
+function getAccessReturnKbnAndDays(pt){
+  var rd=pt&&pt.returnDays;
+  if(rd==='39日') return {kbn:'可',days:'39'};
+  if(rd==='60日') return {kbn:'可',days:'60'};
+  if(rd==='返品不可') return {kbn:'001',days:'0'};
+  if(rd==='開封後返品不可') return {kbn:'002',days:(pt.returnAfterOpenDays||'8')};
+  return {kbn:'可',days:'60'};
+}
+
+function filterAccessSkuList(skuList){
+  return (skuList||[]).filter(function(s){
+    return s.code&&String(s.code).indexOf('[')!==0;
   });
+}
 
-  var sheet2Header1 = ['', 'ヘッダー', '構成情報', '', 'システム', '', ''];
-  var sheet2Header2 = ['申請', '必須', '必須', '必須', '申請ID', '仮申請', 'メッセージ'];
-  var sheet2Header3 = ['No', '注文品番', '構成SKU品番', '員数', '', '', ''];
-  var sheet2Data = [sheet2Header1, sheet2Header2, sheet2Header3];
+function copyAccessRowStyle(ws,fromRow,toRow){
+  var sourceRow=ws.getRow(fromRow);
+  var destRow=ws.getRow(toRow);
+  if(sourceRow.height) destRow.height=sourceRow.height;
+  sourceRow.eachCell({includeEmpty:true},function(cell,colNum){
+    var destCell=destRow.getCell(colNum);
+    if(cell.style) destCell.style=JSON.parse(JSON.stringify(cell.style));
+    if(cell.numFmt) destCell.numFmt=cell.numFmt;
+    if(cell.dataValidation){
+      try{destCell.dataValidation=JSON.parse(JSON.stringify(cell.dataValidation));}
+      catch(e){destCell.dataValidation=cell.dataValidation;}
+    }
+  });
+}
 
-  var compositeNo = 1;
+function writeAccessBtoCData(ws,list){
+  var dataStartRow=5;
+  var styleRow=5;
+  list.forEach(function(h,idx){
+    var rowIdx=dataStartRow+idx;
+    if(idx>0) copyAccessRowStyle(ws,styleRow,rowIdx);
+    var ret=getAccessReturnKbnAndDays(h.pt);
+    var pt=h.pt||{};
+    var priceIn=Math.round((h.price||0)*1.1);
+    var row=ws.getRow(rowIdx);
+    row.getCell(1).value=idx+1;
+    row.getCell(2).value=h.code||'';
+    row.getCell(3).value='Z01C';
+    row.getCell(4).value=h.name||'';
+    row.getCell(5).value=ret.kbn;
+    row.getCell(6).value=h.group||'';
+    row.getCell(10).value=pt.meisaiHidden||'表示';
+    row.getCell(11).value=h.taxKbn||'1';
+    row.getCell(12).value=priceIn;
+    row.getCell(14).value=h.ship||0;
+    row.getCell(15).value=formatKuroshioDateTime(h.startDateTime)||'';
+    row.getCell(16).value=formatKuroshioDateTime(h.endDateTime)||'';
+    row.getCell(18).value=ret.days;
+    row.getCell(20).value='0';
+    row.getCell(23).value=h.teikiKbn||'非定期';
+    row.getCell(24).value=h.teikiT2||'';
+    row.getCell(26).value='0';
+    row.getCell(27).value='1';
+    row.getCell(31).value=pt.yupakeKbn||'0';
+    row.getCell(32).value='DM,Doukon';
+    row.getCell(33).value='0';
+    row.getCell(38).value='0';
+    row.getCell(43).value=priceIn;
+  });
+}
+
+function writeAccessCompositionData(ws,list){
+  var dataStartRow=4;
+  var styleRow=4;
+  var compositeNo=1;
+  var rowOffset=0;
   list.forEach(function(h){
-    var skuList = (h.skuList || []).filter(function(s){ return s.code; });
-    skuList.forEach(function(s){
-      sheet2Data.push([
-        compositeNo++,
-        h.code || '',
-        s.code || '',
-        s.qty || 1,
-        '', '', ''
-      ]);
+    filterAccessSkuList(h.skuList).forEach(function(s){
+      var rowIdx=dataStartRow+rowOffset;
+      if(rowOffset>0) copyAccessRowStyle(ws,styleRow,rowIdx);
+      var row=ws.getRow(rowIdx);
+      row.getCell(1).value=compositeNo++;
+      row.getCell(2).value=h.code||'';
+      row.getCell(3).value=s.code||'';
+      row.getCell(4).value=s.qty||1;
+      rowOffset++;
     });
   });
+}
 
-  var wb = XLSX.utils.book_new();
-  var ws1 = XLSX.utils.aoa_to_sheet(sheet1Data);
-  XLSX.utils.book_append_sheet(wb, ws1, '注文品番 (BtoC)');
-  var ws2 = XLSX.utils.aoa_to_sheet(sheet2Data);
-  XLSX.utils.book_append_sheet(wb, ws2, '構成_注文品番');
-
-  var d = new Date();
-  var pad = function(n){ return String(n).padStart(2, '0'); };
-  var fname = 'アクセス登録用_' + d.getFullYear() + pad(d.getMonth()+1) + pad(d.getDate()) + '_' + pad(d.getHours()) + pad(d.getMinutes()) + '.xlsx';
-  XLSX.writeFile(wb, fname);
-  alert(list.length + '件の品番をアクセス登録用Excelとして出力しました。');
+async function exportAccessImport(){
+  if(typeof ExcelJS==='undefined'){alert('ExcelJSが読み込まれていません。ページを再読み込みしてください。');return;}
+  var list=registeredList&&registeredList.length?registeredList:generated;
+  if(!list||!list.length){alert('登録済み品番がありません');return;}
+  try{
+    showLoading('テンプレート読み込み中...');
+    var buf=await loadAccessTemplate();
+    var workbook=new ExcelJS.Workbook();
+    await workbook.xlsx.load(buf);
+    workbook.worksheets.slice().forEach(function(ws){
+      if(ACCESS_KEEP_SHEETS.indexOf(ws.name)<0) workbook.removeWorksheet(ws.id);
+    });
+    var wsBtoC=workbook.getWorksheet('注文品番 (BtoC)');
+    var wsComposition=workbook.getWorksheet('構成_注文品番');
+    if(!wsBtoC||!wsComposition) throw new Error('必要なシートがテンプレートに含まれていません');
+    writeAccessBtoCData(wsBtoC,list);
+    writeAccessCompositionData(wsComposition,list);
+    var d=new Date();
+    var pad=function(n){return String(n).padStart(2,'0');};
+    var fname='品番登録_'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'_'+pad(d.getHours())+pad(d.getMinutes())+'.xlsx';
+    var outputBuf=await workbook.xlsx.writeBuffer();
+    hideLoading();
+    var blob=new Blob([outputBuf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url;
+    a.download=fname;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    alert(list.length+'件の品番をアクセス登録用Excelとして出力しました。');
+  }catch(err){
+    hideLoading();
+    console.error(err);
+    alert('テンプレートファイル（public/templates/access-register-template.xlsx）が見つかりません。リポジトリ管理者に連絡してください。\n\n詳細: '+(err.message||err));
+  }
 }
 
 // ============================================================
