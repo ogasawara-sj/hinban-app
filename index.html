@@ -2857,29 +2857,26 @@ async function exportShitokuSheet(){
 // ============================================================
 // アクセス登録用 Excel出力（社内テンプレート準拠）
 // ============================================================
-var ACCESS_TEMPLATE_URLS=[
-  'templates/access-register-template.xlsx',
-  'public/templates/access-register-template.xlsx'
-];
 var ACCESS_KEEP_SHEETS=['注文品番 (BtoC)','構成_注文品番','注文品番リスト','バージョン(非表示)'];
 
 async function loadAccessTemplate(){
   if(window._accessTemplateBuffer) return window._accessTemplateBuffer;
-  var lastStatus=0;
-  for(var i=0;i<ACCESS_TEMPLATE_URLS.length;i++){
-    try{
-      var res=await fetch(ACCESS_TEMPLATE_URLS[i]);
-      lastStatus=res.status;
-      if(res.ok){
-        var buf=await res.arrayBuffer();
-        window._accessTemplateBuffer=buf;
-        return buf;
-      }
-    }catch(e){}
+  var path='public/templates/access-register-template.xlsx';
+  var res=await fetch(path);
+  if(!res.ok){
+    throw new Error('テンプレートファイル（'+path+'）が見つかりません。リポジトリ管理者に連絡してください。');
   }
-  var err=new Error('テンプレート読み込み失敗');
-  err.status=lastStatus;
-  throw err;
+  var contentType=res.headers.get('content-type')||'';
+  if(contentType.indexOf('text/html')>=0){
+    throw new Error('テンプレートファイルのレスポンスが不正です。パスを確認してください。');
+  }
+  var buf=await res.arrayBuffer();
+  var view=new Uint8Array(buf.slice(0,4));
+  if(view[0]!==0x50||view[1]!==0x4B||view[2]!==0x03||view[3]!==0x04){
+    throw new Error('テンプレートファイルがXLSX形式ではありません。');
+  }
+  window._accessTemplateBuffer=buf;
+  return buf;
 }
 
 function getAccessReturnKbnAndDays(pt){
