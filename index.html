@@ -2868,12 +2868,21 @@ async function loadAccessTemplate(){
   }
   var contentType=res.headers.get('content-type')||'';
   if(contentType.indexOf('text/html')>=0){
-    throw new Error('テンプレートファイルのレスポンスが不正です。パスを確認してください。');
+    throw new Error('テンプレートファイルのレスポンスが不正です（Content-Type: '+contentType+'）');
   }
   var buf=await res.arrayBuffer();
-  var view=new Uint8Array(buf.slice(0,4));
-  if(view[0]!==0x50||view[1]!==0x4B||view[2]!==0x03||view[3]!==0x04){
-    throw new Error('テンプレートファイルがXLSX形式ではありません。');
+  var head=new Uint8Array(buf,0,Math.min(16,buf.byteLength));
+  var hexHead=Array.from(head).map(function(b){return b.toString(16).padStart(2,'0');}).join(' ');
+  console.log('[loadAccessTemplate] ファイルサイズ: '+buf.byteLength+' bytes');
+  console.log('[loadAccessTemplate] 先頭16バイト（hex）: '+hexHead);
+  if(buf.byteLength<4){
+    throw new Error('テンプレートファイルが小さすぎます（'+buf.byteLength+' bytes）');
+  }
+  var magic=new Uint8Array(buf,0,4);
+  var isZip=magic[0]===0x50&&magic[1]===0x4B&&magic[2]===0x03&&magic[3]===0x04;
+  if(!isZip){
+    console.error('[loadAccessTemplate] マジックバイトが不正: '+hexHead);
+    console.warn('マジックバイトはNGですが、ExcelJSの読み込みを試行します...');
   }
   window._accessTemplateBuffer=buf;
   return buf;
