@@ -594,6 +594,10 @@ body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sa
 const DAKUTEN={'ガ':'ｶﾞ','ギ':'ｷﾞ','グ':'ｸﾞ','ゲ':'ｹﾞ','ゴ':'ｺﾞ','ザ':'ｻﾞ','ジ':'ｼﾞ','ズ':'ｽﾞ','ゼ':'ｾﾞ','ゾ':'ｿﾞ','ダ':'ﾀﾞ','ヂ':'ﾁﾞ','ヅ':'ﾂﾞ','デ':'ﾃﾞ','ド':'ﾄﾞ','バ':'ﾊﾞ','ビ':'ﾋﾞ','ブ':'ﾌﾞ','ベ':'ﾍﾞ','ボ':'ﾎﾞ','パ':'ﾊﾟ','ピ':'ﾋﾟ','プ':'ﾌﾟ','ペ':'ﾍﾟ','ポ':'ﾎﾟ','ヴ':'ｳﾞ'};
 const SEION={'ア':'ｱ','イ':'ｲ','ウ':'ｳ','エ':'ｴ','オ':'ｵ','カ':'ｶ','キ':'ｷ','ク':'ｸ','ケ':'ｹ','コ':'ｺ','サ':'ｻ','シ':'ｼ','ス':'ｽ','セ':'ｾ','ソ':'ｿ','タ':'ﾀ','チ':'ﾁ','ツ':'ﾂ','テ':'ﾃ','ト':'ﾄ','ナ':'ﾅ','ニ':'ﾆ','ヌ':'ﾇ','ネ':'ﾈ','ノ':'ﾉ','ハ':'ﾊ','ヒ':'ﾋ','フ':'ﾌ','ヘ':'ﾍ','ホ':'ﾎ','マ':'ﾏ','ミ':'ﾐ','ム':'ﾑ','メ':'ﾒ','モ':'ﾓ','ヤ':'ﾔ','ユ':'ﾕ','ヨ':'ﾖ','ラ':'ﾗ','リ':'ﾘ','ル':'ﾙ','レ':'ﾚ','ロ':'ﾛ','ワ':'ﾜ','ヲ':'ｦ','ン':'ﾝ','ァ':'ｧ','ィ':'ｨ','ゥ':'ｩ','ェ':'ｪ','ォ':'ｫ','ャ':'ｬ','ュ':'ｭ','ョ':'ｮ','ッ':'ｯ','ー':'ｰ'};
 function zenToHan(s){let r='';for(const c of s){if(DAKUTEN[c])r+=DAKUTEN[c];else if(SEION[c])r+=SEION[c];else r+=c;}return r;}
+function toHalfWidthKana(str){
+  if(!str) return '';
+  return zenToHan(String(str).replace(/　/g,' '));
+}
 
 // ============================================================
 // MASTER DATA
@@ -1788,6 +1792,22 @@ function makeName(grpName,colorLabel,sizeName,ptLabel,shipFee,colorAbbr){
   const baseShort=grpName+clShort+sp+' '+ptLabel;
   return zenToHan((baseShort+suf).substring(0,40-suf.length)+suf);
 }
+function makeCrossColorName(groupCode,sizeName,color1Name,color2Name,shipFee){
+  var groupNameHalf=toHalfWidthKana(getGroupFormalName(groupCode));
+  var sizeHalf='';
+  if(sizeName&&sizeName!=='—'&&sizeName!=='サイズなし'){
+    sizeHalf=toHalfWidthKana(sizeNameForProductName({n:sizeName,c:''})||sizeName);
+  }
+  var c1Half=toHalfWidthKana(color1Name);
+  var c2Half=toHalfWidthKana(color2Name);
+  var parts=[groupNameHalf];
+  if(sizeHalf) parts.push(sizeHalf);
+  parts.push(c1Half+'×'+c2Half);
+  parts.push('ｾｯﾄ');
+  var base=parts.join(' ');
+  var suf=shipFee>0?'_':'';
+  return (base+suf).substring(0,40-suf.length)+suf;
+}
 function normalizeAssignPart(code, name){
   if(code && code !== '—') return String(code);
   if(name && name !== 'カラーなし' && name !== '—') return 'n:' + name;
@@ -2145,7 +2165,7 @@ function generate(){
               var colorLabel=cp.color1+'×'+cp.color2;
               var colorAbbr=resolved.c1.c+'×'+resolved.c2.c;
               var sizeLabel=sz.c==='—'?'':sz.n;
-              var name=makeName(grpName,colorLabel,sizeLabel,pt.label,pt.shipFee,colorAbbr);
+              var name=makeCrossColorName(g,sizeLabel,cp.color1,cp.color2,pt.shipFee);
               var skuList=buildSkuListForAssign(cg,szg,pt,null);
               generated.push({
                 code:'',
