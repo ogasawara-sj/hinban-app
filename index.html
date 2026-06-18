@@ -1841,6 +1841,20 @@ function updatePatternSizePair(pi,idx,field,code){
 function assignPartId(code, name){
   return normalizeAssignPart(code, name);
 }
+function countAssignSlotQty(cg, szg, col, sz){
+  var cArr=cg||[];
+  var sArr=szg||[];
+  var len=Math.max(cArr.length,sArr.length,1);
+  var n=0;
+  for(var i=0;i<len;i++){
+    var c=cArr[i];
+    var s=sArr[i];
+    var colOk=!col||(c&&assignPartId(c.c,c.n)===assignPartId(col.c,col.n));
+    var szOk=!sz||(s&&assignPartId(s.c,s.n)===assignPartId(sz.c,sz.n));
+    if(colOk&&szOk) n++;
+  }
+  return n||1;
+}
 function buildSkuListForAssign(cg, szg, pt, sizePair){
   var skuList = [];
 
@@ -1878,16 +1892,8 @@ function buildSkuListForAssign(cg, szg, pt, sizePair){
       var oA = skuAssignMap[oKey];
       var rBase = [colN, szN].filter(function(x){ return x && x !== 'カラーなし'; }).join(' ');
 
-      // cgの中で同じカラーが何回登場するかをカウント
-      var colorCount = col
-        ? (cg || []).filter(function(c){ return c && assignPartId(c.c, c.n) === assignPartId(col.c, col.n); }).length
-        : 1;
-      // szgの中で同じサイズが何回登場するかをカウント
-      var sizeCount = sz
-        ? (szg || []).filter(function(s){ return s && assignPartId(s.c, s.n) === assignPartId(sz.c, sz.n); }).length
-        : 1;
-      // 員数はカラーとサイズの登場回数を掛け合わせる
-      var qty = sizePair ? 1 : colorCount * sizeCount;
+      // 員数は cg/szg の同じスロット（枚数分の並列配列）でカラー×サイズが一致する数
+      var qty = sizePair ? 1 : countAssignSlotQty(cg, szg, col, sz);
 
       var oSkus = (oA && oA.skus) ? oA.skus.filter(function(s){ return s.code; }) : [];
       var bSkus = (bA && bA.skus) ? bA.skus.filter(function(s){ return s.code; }) : [];
