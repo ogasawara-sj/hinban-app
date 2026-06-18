@@ -546,6 +546,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sa
       <div class="irow">
         <input type="text" id="m-grp-code" placeholder="コード（例：NEWP）" style="width:120px;flex:none">
         <input type="text" id="m-grp-name" placeholder="商品名（例：新商品）">
+        <input type="text" id="m-grp-formal" placeholder="正式商品名（品番名生成用）" style="flex:1;min-width:160px">
         <input type="text" id="m-grp-cat"  placeholder="カテゴリ" style="width:140px;flex:none">
         <button class="btn btn-p" onclick="addGroupMaster()">追加</button>
       </div>
@@ -599,22 +600,23 @@ function zenToHan(s){let r='';for(const c of s){if(DAKUTEN[c])r+=DAKUTEN[c];else
 // ============================================================
 let staffList    = ['牧村','鈴木','田中','山田','佐藤','その他'];
 let groupMaster  = [
-  {code:'TRR3',name:'ﾌﾟﾚﾐｱﾘｯﾁ pr.3',cat:'ﾄｩﾙｰｽﾘｰﾊﾟｰ'},{code:'TRAF',name:'ｴｱﾌﾘｰ',cat:'ﾄｩﾙｰｽﾘｰﾊﾟｰ'},
-  {code:'TRPA',name:'洗えるﾌﾟﾗｽ',cat:'ﾄｩﾙｰｽﾘｰﾊﾟｰ'},{code:'TRPR3',name:'ﾌﾟﾚﾐｱﾘｯﾁ三つ折り',cat:'ﾄｩﾙｰｽﾘｰﾊﾟｰ'},
-  {code:'TRAF3',name:'ｴｱﾌﾘｰ三つ折り',cat:'ﾄｩﾙｰｽﾘｰﾊﾟｰ'},{code:'TRPRB',name:'ﾌﾟﾚﾐｱﾘｯﾁ枕',cat:'ﾄｩﾙｰｽﾘｰﾊﾟｰ'},
-  {code:'TRSP',name:'ｶﾊﾞｰ',cat:'ﾄｩﾙｰｽﾘｰﾊﾟｰ'},{code:'TRHT',name:'ﾎｯﾄﾏｯﾄ',cat:'ﾄｩﾙｰｽﾘｰﾊﾟｰ'},
-  {code:'TRND',name:'ﾈｯｸﾄﾞﾘｰﾑ',cat:'ﾄｩﾙｰｽﾘｰﾊﾟｰ'},{code:'TRR2',name:'ﾌﾟﾚﾐｱﾘｯﾁ pr.2',cat:'ﾄｩﾙｰｽﾘｰﾊﾟｰ'},
-  {code:'TR7A',name:'ﾄｩﾙｰｽﾘｰﾊﾟｰ7',cat:'ﾄｩﾙｰｽﾘｰﾊﾟｰ'},
-  {code:'RAH',name:'楽ちんﾋｱﾘﾝｸﾞ',cat:'健康・美容'},{code:'RAH6',name:'楽ちんﾋｱﾘﾝｸﾞ6',cat:'健康・美容'},
-  {code:'RASA',name:'ﾗｻ',cat:'健康・美容'},{code:'MQT',name:'ﾏｲｷｭｯﾄ',cat:'健康・美容'},
-  {code:'INV1',name:'ｲﾝｳﾞｨｺﾞﾚｰﾀｰ',cat:'健康・美容'},{code:'INV2',name:'ｲﾝｳﾞｨｺﾞﾚｰﾀｰ2',cat:'健康・美容'},
-  {code:'NICS',name:'ﾅｲｽﾃﾞｲ',cat:'健康・美容'},
-  {code:'CKP3',name:'ｸｯｷﾝｸﾞﾌﾟﾛV3',cat:'ｷｯﾁﾝ家電'},{code:'CCH7',name:'ここひえ7',cat:'ｷｯﾁﾝ家電'},
-  {code:'CCH8',name:'ここひえ8',cat:'ｷｯﾁﾝ家電'},{code:'CCHT3',name:'ここひえT3',cat:'ｷｯﾁﾝ家電'},
-  {code:'KRF',name:'ｶﾗｯﾄﾌﾗｲﾔｰ',cat:'ｷｯﾁﾝ家電'},
-  {code:'ACT',name:'ｱｸﾃｨﾌﾞｽﾚﾝﾀﾞｰ',cat:'ﾌｨｯﾄﾈｽ'},{code:'LGMX',name:'ﾚｯｸﾞﾏｼﾞｯｸX',cat:'ﾌｨｯﾄﾈｽ'},
-  {code:'SOY',name:'ｿｲﾘｯﾁ',cat:'ﾌｨｯﾄﾈｽ'},{code:'BPA',name:'ﾎﾞﾃﾞｨﾍﾟｱｰ',cat:'ﾌｨｯﾄﾈｽ'},
-  {code:'VOOM',name:'ｳﾙﾄﾗｳﾞｰﾑ',cat:'ﾌｨｯﾄﾈｽ'},
+  {code:'TRR3',name:'ﾌﾟﾚﾐｱﾘｯﾁ pr.3',cat:'ﾄｩﾙｰｽﾘｰﾊﾟｰ',formalName:''},{code:'TRAF',name:'ｴｱﾌﾘｰ',cat:'ﾄｩﾙｰｽﾘｰﾊﾟｰ',formalName:'トゥルスリーパーエアフリースマート'},
+  {code:'TRAFS',name:'ｴｱﾌﾘｰｽﾏｰﾄ',cat:'ﾄｩﾙｰｽﾘｰﾊﾟｰ',formalName:'トゥルスリーパーエアフリースマート'},
+  {code:'TRPA',name:'洗えるﾌﾟﾗｽ',cat:'ﾄｩﾙｰｽﾘｰﾊﾟｰ',formalName:''},{code:'TRPR3',name:'ﾌﾟﾚﾐｱﾘｯﾁ三つ折り',cat:'ﾄｩﾙｰｽﾘｰﾊﾟｰ',formalName:''},
+  {code:'TRAF3',name:'ｴｱﾌﾘｰ三つ折り',cat:'ﾄｩﾙｰｽﾘｰﾊﾟｰ',formalName:''},{code:'TRPRB',name:'ﾌﾟﾚﾐｱﾘｯﾁ枕',cat:'ﾄｩﾙｰｽﾘｰﾊﾟｰ',formalName:''},
+  {code:'TRSP',name:'ｶﾊﾞｰ',cat:'ﾄｩﾙｰｽﾘｰﾊﾟｰ',formalName:'トゥルスリーパープレミアム'},{code:'TRHT',name:'ﾎｯﾄﾏｯﾄ',cat:'ﾄｩﾙｰｽﾘｰﾊﾟｰ',formalName:''},
+  {code:'TRND',name:'ﾈｯｸﾄﾞﾘｰﾑ',cat:'ﾄｩﾙｰｽﾘｰﾊﾟｰ',formalName:''},{code:'TRR2',name:'ﾌﾟﾚﾐｱﾘｯﾁ pr.2',cat:'ﾄｩﾙｰｽﾘｰﾊﾟｰ',formalName:''},
+  {code:'TR7A',name:'ﾄｩﾙｰｽﾘｰﾊﾟｰ7',cat:'ﾄｩﾙｰｽﾘｰﾊﾟｰ',formalName:''},
+  {code:'RAH',name:'楽ちんﾋｱﾘﾝｸﾞ',cat:'健康・美容',formalName:''},{code:'RAH6',name:'楽ちんﾋｱﾘﾝｸﾞ6',cat:'健康・美容',formalName:''},
+  {code:'RASA',name:'ﾗｻ',cat:'健康・美容',formalName:''},{code:'MQT',name:'ﾏｲｷｭｯﾄ',cat:'健康・美容',formalName:''},
+  {code:'INV1',name:'ｲﾝｳﾞｨｺﾞﾚｰﾀｰ',cat:'健康・美容',formalName:''},{code:'INV2',name:'ｲﾝｳﾞｨｺﾞﾚｰﾀｰ2',cat:'健康・美容',formalName:''},
+  {code:'NICS',name:'ﾅｲｽﾃﾞｲ',cat:'健康・美容',formalName:''},
+  {code:'CKP3',name:'ｸｯｷﾝｸﾞﾌﾟﾛV3',cat:'ｷｯﾁﾝ家電',formalName:''},{code:'CCH7',name:'ここひえ7',cat:'ｷｯﾁﾝ家電',formalName:''},
+  {code:'CCH8',name:'ここひえ8',cat:'ｷｯﾁﾝ家電',formalName:''},{code:'CCHT3',name:'ここひえT3',cat:'ｷｯﾁﾝ家電',formalName:''},
+  {code:'KRF',name:'ｶﾗｯﾄﾌﾗｲﾔｰ',cat:'ｷｯﾁﾝ家電',formalName:''},
+  {code:'ACT',name:'ｱｸﾃｨﾌﾞｽﾚﾝﾀﾞｰ',cat:'ﾌｨｯﾄﾈｽ',formalName:''},{code:'LGMX',name:'ﾚｯｸﾞﾏｼﾞｯｸX',cat:'ﾌｨｯﾄﾈｽ',formalName:''},
+  {code:'SOY',name:'ｿｲﾘｯﾁ',cat:'ﾌｨｯﾄﾈｽ',formalName:''},{code:'BPA',name:'ﾎﾞﾃﾞｨﾍﾟｱｰ',cat:'ﾌｨｯﾄﾈｽ',formalName:''},
+  {code:'VOOM',name:'ｳﾙﾄﾗｳﾞｰﾑ',cat:'ﾌｨｯﾄﾈｽ',formalName:''},
 ];
 let colorMaster  = [
   {n:'ﾌﾞﾗｯｸ',c:'BK'},{n:'ﾌﾞﾙｰｸﾞﾚｰ',c:'BG'},{n:'ｸﾞﾚｰｼﾞｭ',c:'GR'},{n:'ｸﾞﾚｰ',c:'GY'},
@@ -643,7 +645,7 @@ let bonuses      = [];
 let sku3List     = []; // STEP3で設定するSKUリスト
 
 const P2DB={
-  TRR3:{oc:363,sc:1757,cc:0.011284,cod:0.004331},TRAF:{oc:363,sc:1757,cc:0.011284,cod:0.004331},
+  TRR3:{oc:363,sc:1757,cc:0.011284,cod:0.004331},TRAF:{oc:363,sc:1757,cc:0.011284,cod:0.004331},TRAFS:{oc:363,sc:1757,cc:0.011284,cod:0.004331},
   TRPA:{oc:363,sc:1757,cc:0.011284,cod:0.004331},TRPR3:{oc:363,sc:1757,cc:0.011284,cod:0.004331},
   TRAF3:{oc:363,sc:1757,cc:0.011284,cod:0.004331},TRPRB:{oc:363,sc:1757,cc:0.011284,cod:0.004331},
   TRSP:{oc:363,sc:1757,cc:0.011284,cod:0.004331},TRHT:{oc:363,sc:1176,cc:0.012,cod:0.004268},
@@ -662,11 +664,11 @@ const STATUS_LIST=['取得OK','MS依頼済','Access登録済み','修正依頼',
 
 // Wizard state
 let colors=[], sizes=[], patterns=[
-  {id:1,label:'1枚購入',sheets:1,shipFee:990,bonus:false,colorMode:'single',patternSkuIds:[],unit:'枚',returnDays:'39日',yupakeKbn:'0',meisaiHidden:'表示',returnAfterOpenDays:'8'},
-  {id:2,label:'2枚セット',sheets:2,shipFee:0,bonus:true,colorMode:'set',patternSkuIds:[],unit:'枚',returnDays:'39日',yupakeKbn:'0',meisaiHidden:'表示',returnAfterOpenDays:'8'},
+  {id:1,label:'1枚購入',sheets:1,shipFee:990,bonus:false,colorMode:'single',patternSkuIds:[],unit:'枚',returnDays:'39日',yupakeKbn:'0',meisaiHidden:'表示',returnAfterOpenDays:'8',crossGroup:false,pairGroup:'',sizePairs:[]},
+  {id:2,label:'2枚セット',sheets:2,shipFee:0,bonus:true,colorMode:'set',patternSkuIds:[],unit:'枚',returnDays:'39日',yupakeKbn:'0',meisaiHidden:'表示',returnAfterOpenDays:'8',crossGroup:false,pairGroup:'',sizePairs:[]},
 ];
 let generated=[], registeredList=[], seqCounters={};
-let skuAssignMap={}, commonSkus=[];
+let skuAssignMap={}, commonSkus=[], pairAssignMap={};
 
 // ============================================================
 // STORAGE（localStorage + IndexedDB、window.storage から移行）
@@ -845,11 +847,29 @@ function applyMasterBundle(d){
   if(d.shipOptions&&d.shipOptions.length) shipOptions=d.shipOptions;
   if(d.campaignHistory) campaignHistory=d.campaignHistory;
   if(d.skuMaster&&typeof d.skuMaster==='object') skuMaster=d.skuMaster;
+  normalizeGroupMaster();
+}
+function normalizeGroupMaster(){
+  var defaultFormal={TRAFS:'トゥルスリーパーエアフリースマート',TRAF:'トゥルスリーパーエアフリースマート',TRSP:'トゥルスリーパープレミアム'};
+  groupMaster.forEach(function(g){
+    if(g.formalName===undefined) g.formalName='';
+    if(!g.formalName&&defaultFormal[g.code]) g.formalName=defaultFormal[g.code];
+  });
+}
+function normalizeRegisteredList(){
+  registeredList.forEach(function(r){
+    if(r.pairGroup===undefined) r.pairGroup=null;
+    if(r.pairSKU===undefined) r.pairSKU=null;
+    if(r.sizePair===undefined) r.sizePair=null;
+  });
 }
 async function loadMaster(){
   try{
     var reg=await persistGet(PERSIST_KEYS.REGISTERED);
-    if(Array.isArray(reg)) registeredList=reg;
+    if(Array.isArray(reg)){
+      registeredList=reg;
+      normalizeRegisteredList();
+    }
     var skuData=await persistGet(PERSIST_KEYS.SKU_CACHE);
     if(skuData&&Array.isArray(skuData.cache)){
       skuCache=skuData.cache;
@@ -860,6 +880,7 @@ async function loadMaster(){
     if(staff&&staff.length){staffList=staff;loaded=true;}
     var grp=await persistGet(PERSIST_KEYS.GROUP);
     if(grp&&grp.length){groupMaster=grp;loaded=true;}
+    normalizeGroupMaster();
     var col=await persistGet(PERSIST_KEYS.COLOR);
     if(col&&col.length){colorMaster=col;loaded=true;}
     var sz=await persistGet(PERSIST_KEYS.SIZE);
@@ -877,6 +898,7 @@ async function loadMaster(){
     var badge=document.getElementById('total-badge');
     if(badge) badge.textContent='登録済 '+registeredList.length+'件';
   }catch(e){console.warn('loadMaster',e);}
+  normalizeGroupMaster();
   renderAll();
 }
 function deleteAllRegistered(){
@@ -1479,6 +1501,42 @@ function renderPts(){
         </select>
       </div>
 
+      ${(p.sheets||1)>=2?`
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--bd)">
+        <div class="tog-row">
+          <button type="button" class="tog ${p.crossGroup?'on':''}" onclick="toggleCrossGroup(${pi})"></button>
+          <span style="font-weight:600">異グループセットを含む</span>
+          <span style="font-size:11px;color:var(--gray-400)">（メイン＋別商品グループの2枚セット）</span>
+        </div>
+        ${p.crossGroup?`
+        <div class="g2" style="margin-top:10px">
+          <div class="f" style="margin-bottom:0">
+            <label>ペア商品グループ</label>
+            <select onchange="setPairGroup(${pi},this.value)" style="width:100%;padding:7px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px">
+              <option value="">選択してください</option>
+              ${pairGroupSelectHTML(pi,p.pairGroup||'')}
+            </select>
+          </div>
+          <div class="f" style="margin-bottom:0">
+            <label>ペア商品名（正式商品名）</label>
+            <input type="text" readonly value="${p.pairGroup?getGroupFormalName(p.pairGroup):''}"
+              style="width:100%;padding:7px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px;background:var(--gray-50)">
+          </div>
+        </div>
+        <div style="margin-top:10px">
+          <div style="font-size:11px;color:var(--gray-600);font-weight:500;margin-bottom:6px">サイズペア（メインサイズ × ペアサイズ）</div>
+          ${(p.sizePairs||[]).map(function(sp,si){
+            return '<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap">'
+              +'<select onchange="updatePatternSizePair('+pi+','+si+',\'main\',this.value)" style="padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">'+sizePairSelectHTML(sp.main)+'</select>'
+              +'<span style="font-size:12px;color:var(--gray-400)">×</span>'
+              +'<select onchange="updatePatternSizePair('+pi+','+si+',\'pair\',this.value)" style="padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">'+sizePairSelectHTML(sp.pair)+'</select>'
+              +'<button onclick="removePatternSizePair('+pi+','+si+')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px">削除</button>'
+              +'</div>';
+          }).join('')}
+          <button class="btn btn-ghost" onclick="addPatternSizePair(${pi})" style="font-size:12px;margin-top:4px">＋ サイズペア追加</button>
+        </div>`:''}
+      </div>`:''}
+
       ${patternSkus.length?`
       <div style="border-top:1px solid var(--bd);padding-top:10px">
         <div style="font-size:11px;color:var(--gray-600);font-weight:500;margin-bottom:6px">パターン別SKU</div>
@@ -1516,7 +1574,10 @@ function addPt(){
     returnDays: '39日',
     yupakeKbn: '0',
     meisaiHidden: '表示',
-    returnAfterOpenDays: '8'
+    returnAfterOpenDays: '8',
+    crossGroup: false,
+    pairGroup: '',
+    sizePairs: []
   });
   renderPts();
   if(typeof renderSkuAssignTable === 'function') renderSkuAssignTable();
@@ -1531,13 +1592,18 @@ function updateCount(){
   let total=0;const det=[];
   patterns.forEach(p=>{
     const mode=p.colorMode||'single',sh=p.sheets||1;
-    // カラー数
-    let cn=0;
-    if(!selC.length)cn=1;
-    else if(sh<=1)cn=selC.length;
-    else cn=getCombinationsWithRep(selC,sh).length;
-    // サイズ数（2枚以上はC(n,sh)の組み合わせ）
-    const sn=sh<=1?selS.length:Math.max(1,getCombinationsWithRep(selS,sh).length);
+    let cn=0,sn=0;
+    if(p.crossGroup&&p.pairGroup&&p.sizePairs&&p.sizePairs.length){
+      cn=!selC.length?1:selC.length;
+      sn=p.sizePairs.length;
+    }else{
+      // カラー数
+      if(!selC.length)cn=1;
+      else if(sh<=1)cn=selC.length;
+      else cn=getCombinationsWithRep(selC,sh).length;
+      // サイズ数（2枚以上はC(n,sh)の組み合わせ）
+      sn=sh<=1?selS.length:Math.max(1,getCombinationsWithRep(selS,sh).length);
+    }
     const pt=cn*sn;total+=pt;det.push(`${p.label}：${pt}品番`);
   });
   const el=document.getElementById('gen-count');
@@ -1624,10 +1690,89 @@ function makeAssignKey(ck, sk, colorName, sizeName){
   var s = normalizeAssignPart(sk, sizeName);
   return c + '_' + s;
 }
+function getGroupFormalName(code){
+  var g=groupMaster.find(function(x){return x.code===code;});
+  if(g&&g.formalName) return g.formalName;
+  return g?g.name:code||'';
+}
+function getSizeInfo(code){
+  var s=sizeMaster.find(function(x){return x.c===code;});
+  return s||{n:code||'—',c:code||'—'};
+}
+function sizeNameForProductName(sz){
+  var n=(sz&&sz.n)?sz.n:'';
+  if(n==='ｼﾝｸﾞﾙ'||n==='シングル'||sz.c==='S') return 'シングル';
+  if(n==='ﾀﾞﾌﾞﾙ'||n==='ダブル'||sz.c==='W'||sz.c==='D') return 'ダブル';
+  if(n==='ｾﾐﾀﾞﾌﾞﾙ'||n==='セミダブル'||sz.c==='M') return 'セミダブル';
+  if(n==='ｸｲｰﾝ'||n==='クイーン'||sz.c==='Q') return 'クイーン';
+  return n||sz.c||'';
+}
+function makeSizePairKey(mainCode,pairCode){
+  return 'pair_'+mainCode+'_'+pairCode;
+}
+function formatSizePairLabel(mainCode,pairCode){
+  var m=getSizeInfo(mainCode),p=getSizeInfo(pairCode);
+  var mn=m.c==='—'?'':m.n,pn=p.c==='—'?'':p.n;
+  if(!mn&&!pn) return '—';
+  if(!pn||mn===pn) return mn||pn;
+  return mn+'×'+pn;
+}
+function makeCrossGroupName(mainGrpCode,mainSizeCode,pairGrpCode,pairSizeCode,ptLabel,shipFee){
+  var mainFormal=getGroupFormalName(mainGrpCode);
+  var pairFormal=getGroupFormalName(pairGrpCode);
+  var mainSz=sizeNameForProductName(getSizeInfo(mainSizeCode));
+  var pairSz=sizeNameForProductName(getSizeInfo(pairSizeCode));
+  var ptSuffix=(ptLabel||'').replace(/^[\d０-９]+枚/,'')||'セット';
+  var base=mainFormal+mainSz+'×'+pairFormal+pairSz+ptSuffix;
+  var suf=shipFee>0?'_':'';
+  return zenToHan((base+suf).substring(0,40-suf.length)+suf);
+}
+function pairGroupSelectHTML(pi,selected){
+  var mainGrp=document.getElementById('s-group')?document.getElementById('s-group').value:'';
+  return groupMaster.filter(function(g){return g.code!==mainGrp;}).map(function(g){
+    return '<option value="'+g.code+'"'+(selected===g.code?' selected':'')+'>'+g.code+'：'+g.name+'</option>';
+  }).join('');
+}
+function sizePairSelectHTML(selectedCode){
+  return sizes.filter(function(s){return s.on;}).map(function(s){
+    return '<option value="'+s.c+'"'+(selectedCode===s.c?' selected':'')+'>'+s.n+' ('+s.c+')</option>';
+  }).join('');
+}
+function toggleCrossGroup(pi){
+  var p=patterns[pi];
+  if(!p) return;
+  p.crossGroup=!p.crossGroup;
+  if(p.crossGroup&&!p.sizePairs) p.sizePairs=[];
+  renderPts();
+  if(typeof renderSkuAssignTable==='function') renderSkuAssignTable();
+}
+function setPairGroup(pi,code){
+  patterns[pi].pairGroup=code;
+  renderPts();
+}
+function addPatternSizePair(pi){
+  var selS=sizes.filter(function(s){return s.on;});
+  if(selS.length<1){alert('STEP2でサイズを選択してください');return;}
+  if(!patterns[pi].sizePairs) patterns[pi].sizePairs=[];
+  patterns[pi].sizePairs.push({main:selS[0].c,pair:selS[0].c});
+  renderPts();
+  if(typeof renderSkuAssignTable==='function') renderSkuAssignTable();
+}
+function removePatternSizePair(pi,idx){
+  if(!patterns[pi].sizePairs) return;
+  patterns[pi].sizePairs.splice(idx,1);
+  renderPts();
+  if(typeof renderSkuAssignTable==='function') renderSkuAssignTable();
+}
+function updatePatternSizePair(pi,idx,field,code){
+  if(!patterns[pi].sizePairs||!patterns[pi].sizePairs[idx]) return;
+  patterns[pi].sizePairs[idx][field]=code;
+  if(typeof renderSkuAssignTable==='function') renderSkuAssignTable();
+}
 function assignPartId(code, name){
   return normalizeAssignPart(code, name);
 }
-function buildSkuListForAssign(cg, szg, pt){
+function buildSkuListForAssign(cg, szg, pt, sizePair){
   var skuList = [];
 
   // カラーのユニークリストとサイズのユニークリストを作る（コードが—でも名称で識別）
@@ -1673,28 +1818,43 @@ function buildSkuListForAssign(cg, szg, pt){
         ? (szg || []).filter(function(s){ return s && assignPartId(s.c, s.n) === assignPartId(sz.c, sz.n); }).length
         : 1;
       // 員数はカラーとサイズの登場回数を掛け合わせる
-      var qty = colorCount * sizeCount;
+      var qty = pt.crossGroup ? 1 : colorCount * sizeCount;
 
       var oSkus = (oA && oA.skus) ? oA.skus.filter(function(s){ return s.code; }) : [];
       var bSkus = (bA && bA.skus) ? bA.skus.filter(function(s){ return s.code; }) : [];
       if(oSkus.length){
         oSkus.forEach(function(s){
-          skuList.push({code: s.code, name: s.name || s.code, qty: 1, role: rBase + '(' + pt.label + '専用)'});
+          skuList.push({code: s.code, name: s.name || s.code, qty: 1, role: 'メイン(' + pt.label + '専用)'});
         });
       } else if(bSkus.length){
         bSkus.forEach(function(s){
-          skuList.push({code: s.code, name: s.name || s.code, qty: qty, role: rBase});
+          skuList.push({code: s.code, name: s.name || s.code, qty: qty, role: 'メイン'});
         });
       } else {
-        skuList.push({code: '[' + (rBase||'—') + '未設定]', name: rBase || '本体', qty: qty, role: 'ﾒｲﾝ'});
+        skuList.push({code: '[' + (rBase||'—') + '未設定]', name: rBase || '本体', qty: qty, role: 'メイン'});
       }
     });
   });
+
+  if(pt.crossGroup && sizePair && pt.pairGroup){
+    var pKey=makeSizePairKey(sizePair.main,sizePair.pair);
+    var pA=pairAssignMap[pKey];
+    var pSkus=(pA&&pA.skus)?pA.skus.filter(function(s){return s.code;}):[];
+    if(pSkus.length){
+      pSkus.forEach(function(s){
+        skuList.push({code:s.code,name:s.name||s.code,qty:1,role:'ペアセット'});
+      });
+    }else{
+      skuList.push({code:'['+formatSizePairLabel(sizePair.main,sizePair.pair)+'未設定]',name:'ペアSKU',qty:1,role:'ペアセット'});
+    }
+  }
+
   commonSkus.forEach(function(s){
     var item = Object.assign({}, s);
     if(s.followSheets){
       item.qty = pt.sheets || 1;
     }
+    if(!item.role) item.role='セット構成';
     skuList.push(item);
   });
   if(pt.bonus && bonuses.length){
@@ -1705,7 +1865,7 @@ function buildSkuListForAssign(cg, szg, pt){
 function refreshGeneratedSkus(){
   if(!generated.length) return;
   generated.forEach(function(h){
-    if(h.szg) h.skuList = buildSkuListForAssign(h.cg || [], h.szg, h.pt);
+    if(h.szg) h.skuList = buildSkuListForAssign(h.cg || [], h.szg, h.pt, h.sizePair||null);
   });
 }
 function generate(){
@@ -1722,8 +1882,70 @@ function generate(){
       generated=[];
       const grpName=g;
 
+      for(var vi=0;vi<patterns.length;vi++){
+        var vp=patterns[vi];
+        if(vp.crossGroup){
+          if(!vp.pairGroup){
+            alert('「'+vp.label+'」のペア商品グループを選択してください');
+            hideLoading();
+            return;
+          }
+          if(!vp.sizePairs||!vp.sizePairs.length){
+            alert('「'+vp.label+'」のサイズペアを1つ以上追加してください');
+            hideLoading();
+            return;
+          }
+        }
+      }
+
       patterns.forEach(function(pt){
         const sh=pt.sheets||1;
+
+        if(pt.crossGroup&&pt.pairGroup&&pt.sizePairs&&pt.sizePairs.length){
+          var colorItems=selC.length?selC:[{n:'カラーなし',c:'—',on:true}];
+          colorItems.forEach(function(col){
+            pt.sizePairs.forEach(function(sp){
+              var mainSzObj=getSizeInfo(sp.main);
+              var pairSzObj=getSizeInfo(sp.pair);
+              var cg=(col.n==='カラーなし'||col.c==='—')?[]:[col];
+              var szg=[mainSzObj];
+              var rawCL=cg.length===0?'':cg[0].n;
+              var colorLabel=(rawCL==='カラーなし'||rawCL==='—')?'':rawCL;
+              var colorAbbr=cg.length===0?'':cg[0].c;
+              var sizeLabel=formatSizePairLabel(sp.main,sp.pair);
+              var name=makeCrossGroupName(g,sp.main,pt.pairGroup,sp.pair,pt.label,pt.shipFee);
+              var skuList=buildSkuListForAssign(cg,szg,pt,sp);
+              generated.push({
+                code:'',
+                name:name,
+                group:g,
+                cg:cg,
+                szg:szg,
+                sz:mainSzObj,
+                pt:pt,
+                skuList:skuList,
+                ship:pt.shipFee,
+                price:0,
+                month:document.getElementById('s-month').value,
+                campaign:document.getElementById('s-name').value,
+                staff:document.getElementById('s-staff').value,
+                status:'取得OK',
+                colorLabel:colorLabel,
+                colorAbbr:colorAbbr,
+                sizeLabel:sizeLabel,
+                sizePair:sp,
+                pairGroup:pt.pairGroup,
+                pairSKU:null,
+                startDateTime:getStartDateInputValue(),
+                endDateTime:getEndDateInputValue(),
+                taxKbn:'1',
+                teikiKbn:'非定期',
+                teikiT2:''
+              });
+            });
+          });
+          return;
+        }
 
         let cgs=[];
         if(!selC.length){
@@ -1751,7 +1973,7 @@ function generate(){
             const sizeLabel=szg.length===1?(szg[0].c==='—'?'':szg[0].n):szg.map(function(s){return s.c==='—'?'':s.n;}).filter(Boolean).join('×');
             const name=makeName(grpName, colorLabel, sizeLabel, pt.label, pt.shipFee, colorAbbr);
 
-            const skuList=buildSkuListForAssign(cg, szg, pt);
+            const skuList=buildSkuListForAssign(cg, szg, pt, null);
 
             generated.push({
               code:code,
@@ -1771,6 +1993,9 @@ function generate(){
               colorLabel:colorLabel,
               colorAbbr:colorAbbr,
               sizeLabel:sizeLabel,
+              sizePair:null,
+              pairGroup:null,
+              pairSKU:null,
               startDateTime:getStartDateInputValue(),
               endDateTime:getEndDateInputValue(),
               taxKbn:'1',
@@ -2166,10 +2391,10 @@ function doRegister(){
   },300);
 }
 function resetWizardForm(){
-  bonuses=[];patternSkus=[];sku3List=[];spSkuList=[];skuAssignMap={};commonSkus=[];
+  bonuses=[];patternSkus=[];sku3List=[];spSkuList=[];skuAssignMap={};commonSkus=[];pairAssignMap={};
   patterns=[
-    {id:1,label:'1枚購入',sheets:1,shipFee:990,bonus:false,colorMode:'single',patternSkuIds:[],unit:'枚',returnDays:'39日',yupakeKbn:'0',meisaiHidden:'表示',returnAfterOpenDays:'8'},
-    {id:2,label:'2枚セット',sheets:2,shipFee:0,bonus:true,colorMode:'set',patternSkuIds:[],unit:'枚',returnDays:'39日',yupakeKbn:'0',meisaiHidden:'表示',returnAfterOpenDays:'8'},
+    {id:1,label:'1枚購入',sheets:1,shipFee:990,bonus:false,colorMode:'single',patternSkuIds:[],unit:'枚',returnDays:'39日',yupakeKbn:'0',meisaiHidden:'表示',returnAfterOpenDays:'8',crossGroup:false,pairGroup:'',sizePairs:[]},
+    {id:2,label:'2枚セット',sheets:2,shipFee:0,bonus:true,colorMode:'set',patternSkuIds:[],unit:'枚',returnDays:'39日',yupakeKbn:'0',meisaiHidden:'表示',returnAfterOpenDays:'8',crossGroup:false,pairGroup:'',sizePairs:[]},
   ];
   ['s-month','s-name','s-staff','s-group'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   var sd=document.getElementById('s-startdt');if(sd)sd.value='';
@@ -2433,18 +2658,26 @@ function renderMasterGroupList(){
     <div style="font-size:11px;font-weight:700;color:var(--gray-400);padding:6px 0 3px;text-transform:uppercase">${cat}</div>
     ${groupMaster.filter(g=>g.cat===cat).map((g,_)=>{
       const gi=groupMaster.indexOf(g);
-      return listItem(`${g.name}`,g.code,`groupMaster.splice(${gi},1);saveMaster();renderMasterGroupList();renderGroupSelect()`);
+      return`<div style="display:flex;align-items:center;gap:8px;padding:5px 10px;background:var(--gray-50);border:1px solid var(--bd);border-radius:5px;margin-bottom:4px;font-size:12px;flex-wrap:wrap">
+        <span class="mono">${g.code}</span>
+        <span style="min-width:80px">${g.name}</span>
+        <input type="text" value="${g.formalName||''}" placeholder="正式商品名"
+          onchange="groupMaster[${gi}].formalName=this.value;saveMaster()"
+          style="flex:1;min-width:160px;padding:4px 8px;border:1px solid var(--bd);border-radius:4px;font-size:12px">
+        <button onclick="groupMaster.splice(${gi},1);saveMaster();renderMasterGroupList();renderGroupSelect()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px">×</button>
+      </div>`;
     }).join('')}`).join('');
 }
 function addGroupMaster(){
   const code=document.getElementById('m-grp-code').value.trim().toUpperCase();
   const name=document.getElementById('m-grp-name').value.trim();
+  const formal=document.getElementById('m-grp-formal').value.trim();
   const cat=document.getElementById('m-grp-cat').value.trim()||'その他';
   if(!code||!name){alert('コードと商品名は必須です');return;}
   if(groupMaster.find(g=>g.code===code)){alert(`「${code}」は既に登録されています`);return;}
   if(!P2DB[code])P2DB[code]={oc:300,sc:900,cc:0.01,cod:0.01};
-  groupMaster.push({code,name,cat});
-  ['m-grp-code','m-grp-name','m-grp-cat'].forEach(id=>document.getElementById(id).value='');
+  groupMaster.push({code,name,cat,formalName:formal});
+  ['m-grp-code','m-grp-name','m-grp-formal','m-grp-cat'].forEach(id=>document.getElementById(id).value='');
   saveMaster();renderMasterGroupList();renderGroupSelect();
 }
 
@@ -3754,6 +3987,116 @@ document.addEventListener('click',e=>{
 // ============================================================
 // STEP4: SKU割り当て表
 // ============================================================
+function ensurePairAssignSkus(key){
+  if(!pairAssignMap[key]) pairAssignMap[key]={skus:[]};
+  if(!pairAssignMap[key].skus){
+    pairAssignMap[key].skus=[{code:'',name:''}];
+  }
+  if(!pairAssignMap[key].skus.length) pairAssignMap[key].skus.push({code:'',name:''});
+}
+function onPairSkuAssignInput(key,idx,code,inputEl){
+  var clean=(code||'').replace(/[Ａ-Ｚａ-ｚ０-９]/g,function(c){
+    return String.fromCharCode(c.charCodeAt(0)-0xFEE0);
+  }).toUpperCase().replace(/[^A-Z0-9]/g,'');
+  if(inputEl&&clean!==code) inputEl.value=clean;
+  code=clean;
+  ensurePairAssignSkus(key);
+  while(pairAssignMap[key].skus.length<=idx) pairAssignMap[key].skus.push({code:'',name:''});
+  pairAssignMap[key].skus[idx].code=code;
+  var nameEl=document.getElementById('pa-name-'+key+'-'+idx);
+  if(!nameEl) return;
+  if(!code){
+    nameEl.value='';
+    nameEl.style.background='var(--gray-50)';
+    nameEl.removeAttribute('readonly');
+    refreshGeneratedSkus();
+    if(document.getElementById('p5').classList.contains('on')) renderPriceMatrix();
+    return;
+  }
+  var found=skuCache.find(function(s){return s.c.toUpperCase()===code.toUpperCase();});
+  if(found){
+    pairAssignMap[key].skus[idx].name=found.n;
+    nameEl.value=found.n;
+    nameEl.style.background='var(--green-lt)';
+    nameEl.setAttribute('readonly','');
+  }else if(code.length>=6){
+    nameEl.value='';
+    nameEl.placeholder='手動入力';
+    nameEl.style.background='var(--amber-lt)';
+    nameEl.removeAttribute('readonly');
+  }
+  refreshGeneratedSkus();
+  if(document.getElementById('p5').classList.contains('on')) renderPriceMatrix();
+}
+function handlePairSkuPaste(e,key,startIdx){
+  e.preventDefault();
+  var text=(e.clipboardData||window.clipboardData).getData('text');
+  var lines=text.split(/\r?\n/).map(function(s){return s.trim();}).filter(function(s){return s.length>0;});
+  if(!lines.length) return;
+  ensurePairAssignSkus(key);
+  lines.forEach(function(code,i){
+    var idx=startIdx+i;
+    while(pairAssignMap[key].skus.length<=idx) pairAssignMap[key].skus.push({code:'',name:''});
+    var clean=(code||'').replace(/[Ａ-Ｚａ-ｚ０-９]/g,function(c){
+      return String.fromCharCode(c.charCodeAt(0)-0xFEE0);
+    }).toUpperCase().replace(/[^A-Z0-9]/g,'');
+    pairAssignMap[key].skus[idx].code=clean;
+    var found=skuCache.find(function(s){return s.c.toUpperCase()===clean.toUpperCase();});
+    if(found) pairAssignMap[key].skus[idx].name=found.n;
+  });
+  renderSkuAssignTable();
+  refreshGeneratedSkus();
+}
+function removePairSkuRow(key,idx){
+  if(!pairAssignMap[key]||!pairAssignMap[key].skus) return;
+  pairAssignMap[key].skus.splice(idx,1);
+  if(!pairAssignMap[key].skus.length) pairAssignMap[key].skus=[{code:'',name:''}];
+  renderSkuAssignTable();
+  refreshGeneratedSkus();
+}
+function pairSkuInputs(key){
+  ensurePairAssignSkus(key);
+  var container=document.createElement('div');
+  pairAssignMap[key].skus.forEach(function(sku,i){
+    var row=document.createElement('div');
+    row.style.cssText='display:flex;gap:6px;align-items:center;margin-bottom:4px';
+    var codeInp=document.createElement('input');
+    codeInp.type='text';
+    codeInp.value=(sku&&sku.code)?sku.code:'';
+    codeInp.placeholder='ペアSKUコード';
+    codeInp.style.cssText='font-family:monospace;padding:5px 8px;width:110px;border:1px solid var(--bd);border-radius:4px;font-size:12px;flex-shrink:0';
+    codeInp.addEventListener('input',function(){onPairSkuAssignInput(key,i,codeInp.value,codeInp);});
+    codeInp.addEventListener('paste',function(e){handlePairSkuPaste(e,key,i);});
+    var nameInp=document.createElement('input');
+    nameInp.type='text';
+    nameInp.id='pa-name-'+key+'-'+i;
+    nameInp.value=sku.name||'';
+    nameInp.style.cssText='flex:1;min-width:0;padding:5px 8px;border:1px solid var(--bd);border-radius:4px;font-size:12px;background:var(--gray-50)';
+    nameInp.addEventListener('input',function(){
+      if(!nameInp.hasAttribute('readonly')) pairAssignMap[key].skus[i].name=nameInp.value;
+    });
+    var btnDel=document.createElement('button');
+    btnDel.type='button';
+    btnDel.textContent='×';
+    btnDel.style.cssText='background:none;border:none;color:#D94040;font-size:16px;cursor:pointer;padding:0 4px;flex-shrink:0;opacity:0.5';
+    btnDel.addEventListener('click',function(){removePairSkuRow(key,i);});
+    row.appendChild(codeInp);
+    row.appendChild(nameInp);
+    row.appendChild(btnDel);
+    container.appendChild(row);
+    if(sku.code) onPairSkuAssignInput(key,i,sku.code,codeInp);
+  });
+  var addBtn=document.createElement('button');
+  addBtn.type='button';
+  addBtn.textContent='＋ SKUを追加';
+  addBtn.style.cssText='font-size:11px;padding:3px 8px;border:1px dashed var(--bd);border-radius:4px;background:#fff;cursor:pointer;color:var(--gray-600);margin-top:2px';
+  addBtn.addEventListener('click',function(){
+    pairAssignMap[key].skus.push({code:'',name:''});
+    renderSkuAssignTable();
+  });
+  container.appendChild(addBtn);
+  return container;
+}
 function ensureAssignSkus(key){
   if(!skuAssignMap[key]) skuAssignMap[key]={skus:[]};
   if(!skuAssignMap[key].skus){
@@ -3955,6 +4298,50 @@ function renderSkuAssignTable(){
   table.appendChild(tbody);
   wrap.appendChild(table);
   el.appendChild(wrap);
+
+  var crossPatterns=patterns.filter(function(p){return p.crossGroup&&p.pairGroup&&p.sizePairs&&p.sizePairs.length;});
+  if(crossPatterns.length){
+    var pairCard=document.createElement('div');
+    pairCard.style.cssText='margin-top:16px;padding-top:14px;border-top:2px solid var(--purple-lt)';
+    pairCard.innerHTML='<div style="font-size:13px;font-weight:700;color:var(--purple);margin-bottom:8px">🔗 ペアSKU（サイズペアごと・カラー共通）</div>'
+      +'<div style="font-size:12px;color:var(--gray-600);margin-bottom:10px">異グループセット用。同じサイズペアの品番は同じペアSKUコードになります。</div>';
+    var pairTable=document.createElement('table');
+    pairTable.style.cssText='border-collapse:collapse;font-size:12px;width:100%';
+    var pairThead=document.createElement('thead');
+    var pairHr=document.createElement('tr');
+    ['サイズペア','ペアSKU'].forEach(function(txt,i){
+      var th=document.createElement('th');
+      th.style.cssText='padding:8px 12px;background:var(--purple-lt);border:1px solid var(--bd);font-size:11px;color:var(--purple);text-align:left';
+      th.textContent=txt;
+      pairHr.appendChild(th);
+    });
+    pairThead.appendChild(pairHr);
+    pairTable.appendChild(pairThead);
+    var pairTbody=document.createElement('tbody');
+    var seenKeys={};
+    crossPatterns.forEach(function(p){
+      p.sizePairs.forEach(function(sp){
+        var pKey=makeSizePairKey(sp.main,sp.pair);
+        if(seenKeys[pKey]) return;
+        seenKeys[pKey]=true;
+        ensurePairAssignSkus(pKey);
+        var tr=document.createElement('tr');
+        var labelTd=document.createElement('td');
+        labelTd.style.cssText='padding:8px 12px;background:var(--gray-50);border:1px solid var(--bd);font-weight:600;white-space:nowrap';
+        labelTd.textContent=formatSizePairLabel(sp.main,sp.pair)+' ('+getGroupFormalName(p.pairGroup)+')';
+        tr.appendChild(labelTd);
+        var skuTd=document.createElement('td');
+        skuTd.style.cssText='padding:6px 8px;border:1px solid var(--bd);vertical-align:top';
+        skuTd.appendChild(pairSkuInputs(pKey));
+        tr.appendChild(skuTd);
+        pairTbody.appendChild(tr);
+      });
+    });
+    pairTable.appendChild(pairTbody);
+    pairCard.appendChild(pairTable);
+    el.appendChild(pairCard);
+  }
+
   renderCommonSkuList();
 }
 
