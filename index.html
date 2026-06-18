@@ -3049,7 +3049,7 @@ async function exportAccessImport(){
     writeAccessCompositionData(wsComposition,list);
     var d=new Date();
     var pad=function(n){return String(n).padStart(2,'0');};
-    var fname='品番登録_'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'_'+pad(d.getHours())+pad(d.getMinutes())+'.xlsx';
+    var fname='品番登録システム_一括取込用_'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'.xlsx';
     var outputBuf=await workbook.xlsx.writeBuffer();
     hideLoading();
     var blob=new Blob([outputBuf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
