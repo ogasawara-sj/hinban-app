@@ -614,7 +614,8 @@ const HW_KANA_MAP={
   '「':'｢','」':'｣','　':' '
 };
 function toHalfWidthKana(str){
-  if(!str) return '';
+  if(str==null) return '';
+  if(typeof str!=='string') str=String(str);
   var result='';
   for(var i=0;i<str.length;i++){
     var c=str.charAt(i);
@@ -622,7 +623,10 @@ function toHalfWidthKana(str){
   }
   return result;
 }
-function displayBizKana(str){return toHalfWidthKana(str);}
+function displayBizKana(str){
+  if(str==null) return '';
+  return toHalfWidthKana(str);
+}
 function zenToHan(s){return toHalfWidthKana(s);}
 
 // ============================================================
@@ -1756,6 +1760,7 @@ function getEndDateInputValue(){
 }
 function escAttr(s){return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;');}
 function escHtml(s){return escAttr(s).replace(/</g,'&lt;');}
+function getNextCode(g){
   if(!seqCounters[g])seqCounters[g]=1;
   const d=8-g.length;let code,att=0;
   do{code=g+String(seqCounters[g]).padStart(d,'0');seqCounters[g]++;att++;}
