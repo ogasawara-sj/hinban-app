@@ -921,6 +921,14 @@ function normalizePattern(p){
   if(!p.sizePairs) p.sizePairs=[];
   if(p.pairGroup===undefined) p.pairGroup='';
 }
+function ensureCrossGroupSizePairs(p){
+  if(!p||!p.pairGroup) return;
+  var isCross=(p.pairModes&&p.pairModes.indexOf('crossGroup')>=0)||p.crossGroup;
+  if(!isCross) return;
+  if(!p.sizePairs||!p.sizePairs.length){
+    p.sizePairs=generateAllSizePairs();
+  }
+}
 function normalizeAllPatterns(){
   patterns.forEach(normalizePattern);
 }
@@ -958,8 +966,10 @@ function countPatternHinban(p,selC,selS){
   var sh=p.sheets||1;
   var count=0;
   if(modes.indexOf('crossGroup')>=0){
-    if(p.pairGroup&&p.sizePairs&&p.sizePairs.length){
-      count+=(selC.length||1)*p.sizePairs.length;
+    ensureCrossGroupSizePairs(p);
+    var pairCount=(p.sizePairs&&p.sizePairs.length)||countCrossGroupSizePairs();
+    if(p.pairGroup&&pairCount){
+      count+=(selC.length||1)*pairCount;
     }
     return count;
   }
@@ -1552,6 +1562,7 @@ function setPatternUnit(pi, unit){
 }
 function renderPts(){
   normalizeAllPatterns();
+  patterns.forEach(ensureCrossGroupSizePairs);
   const el=document.getElementById('pt-list');
   if(!el)return;
   el.innerHTML=patterns.map((p,pi)=>`
@@ -1632,17 +1643,14 @@ function renderPts(){
               style="width:100%;padding:7px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px;background:var(--gray-50)">
           </div>
         </div>
-        <div style="margin-top:10px">
-          <div style="font-size:11px;color:var(--gray-600);font-weight:500;margin-bottom:6px">サイズペア（メインサイズ × ペアサイズ）</div>
-          ${(p.sizePairs||[]).map(function(sp,si){
-            return '<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap">'
-              +'<select onchange="updatePatternSizePair('+pi+','+si+',\'main\',this.value)" style="padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">'+sizePairSelectHTML(sp.main,false)+'</select>'
-              +'<span style="font-size:12px;color:var(--gray-400)">×</span>'
-              +'<select onchange="updatePatternSizePair('+pi+','+si+',\'pair\',this.value)" style="padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">'+sizePairSelectHTML(sp.pair,true)+'</select>'
-              +'<button onclick="removePatternSizePair('+pi+','+si+')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px">削除</button>'
-              +'</div>';
-          }).join('')}
-          <button class="btn btn-ghost" onclick="addPatternSizePair(${pi})" style="font-size:12px;margin-top:4px">＋ サイズペア追加</button>
+        <div style="margin-top:10px;padding:10px 12px;background:var(--gray-50);border-radius:var(--r);font-size:12px;color:var(--gray-600);line-height:1.7">
+          ℹ️ ベースサイズ（STEP2で選択）× ペアサイズ（サイズマスタ全件）の組み合わせを自動生成します。
+          ${p.pairGroup
+            ? (function(){
+                var n=(p.sizePairs&&p.sizePairs.length)||countCrossGroupSizePairs();
+                return n?'<br>現在 <strong>'+n+'通り</strong> のサイズペアが生成されます（STEP4でSKUを入力）':'<br><span style="color:var(--amber)">STEP2でサイズを選択してください</span>';
+              })()
+            : '<br>ペア商品グループを選択すると組み合わせ数が表示されます'}
         </div>`:''}
       </div>`:''}
 
@@ -1810,6 +1818,42 @@ function sizeNameForProductName(sz){
 function makeSizePairKey(mainCode,pairCode){
   return 'pair_'+mainCode+'_'+pairCode;
 }
+function getPairSizeKey(pairSizeCode){
+  return pairSizeCode||'';
+}
+function normalizePairAssignMap(){
+  Object.keys(pairAssignMap).forEach(function(k){
+    if(k.indexOf('pair_')!==0) return;
+    var rest=k.substring(5);
+    var lastUnderscore=rest.lastIndexOf('_');
+    if(lastUnderscore<0) return;
+    var pairSz=rest.substring(lastUnderscore+1);
+    var entry=pairAssignMap[k];
+    if(!entry) return;
+    var hasNew=pairAssignMap[pairSz]&&pairAssignMap[pairSz].skus&&pairAssignMap[pairSz].skus.some(function(s){return s.code;});
+    if(!hasNew) pairAssignMap[pairSz]=entry;
+    delete pairAssignMap[k];
+  });
+}
+function resolvePairAssignEntry(pairSizeCode,sizePair){
+  normalizePairAssignMap();
+  var key=getPairSizeKey(pairSizeCode);
+  if(pairAssignMap[key]) return pairAssignMap[key];
+  if(sizePair&&sizePair.main){
+    var oldKey=makeSizePairKey(sizePair.main,sizePair.pair);
+    if(pairAssignMap[oldKey]) return pairAssignMap[oldKey];
+  }
+  return null;
+}
+function formatCrossGroupSizeLabel(mainGrp,mainSize,pairGrp,pairSize){
+  var ms=mainSize||'—',ps=pairSize||'—';
+  return mainGrp+'-'+ms+' × '+pairGrp+'-'+ps;
+}
+function countCrossGroupSizePairs(){
+  var selS=sizes.filter(function(s){return s.on&&s.c!=='—';});
+  var pairSizes=sizeMaster.filter(function(s){return s.c!=='—';});
+  return selS.length*pairSizes.length;
+}
 function formatSizePairLabel(mainCode,pairCode){
   var m=getSizeInfo(mainCode),p=getSizeInfo(pairCode);
   var mn=m.c==='—'?'':m.n,pn=p.c==='—'?'':p.n;
@@ -1862,6 +1906,7 @@ function toggleCrossGroupPairMode(pi){
   }else{
     p.pairModes=['crossGroup'];
     if(!p.sizePairs) p.sizePairs=[];
+    ensureCrossGroupSizePairs(p);
   }
   normalizePattern(p);
   renderPts();
@@ -1970,15 +2015,16 @@ function buildSkuListForAssign(cg, szg, pt, sizePair){
   });
 
   if(sizePair && pt.pairGroup){
-    var pKey=makeSizePairKey(sizePair.main,sizePair.pair);
-    var pA=pairAssignMap[pKey];
+    var pKey=getPairSizeKey(sizePair.pair);
+    var pA=resolvePairAssignEntry(sizePair.pair,sizePair);
     var pSkus=(pA&&pA.skus)?pA.skus.filter(function(s){return s.code;}):[];
     if(pSkus.length){
       pSkus.forEach(function(s){
         skuList.push({code:s.code,name:s.name||s.code,qty:1,role:'ペアセット'});
       });
     }else{
-      skuList.push({code:'['+formatSizePairLabel(sizePair.main,sizePair.pair)+'未設定]',name:'ペアSKU',qty:1,role:'ペアセット'});
+      var pairSzLabel=getSizeInfo(sizePair.pair).n;
+      skuList.push({code:'['+(pairSzLabel||sizePair.pair)+'未設定]',name:'ペアSKU',qty:1,role:'ペアセット'});
     }
   }
 
@@ -1997,6 +2043,7 @@ function buildSkuListForAssign(cg, szg, pt, sizePair){
 }
 function refreshGeneratedSkus(){
   if(!generated.length) return;
+  normalizePairAssignMap();
   generated.forEach(function(h){
     if(h.szg) h.skuList = buildSkuListForAssign(h.cg || [], h.szg, h.pt, h.sizePair||null);
   });
@@ -2024,8 +2071,9 @@ function generate(){
             hideLoading();
             return;
           }
+          ensureCrossGroupSizePairs(vp);
           if(!vp.sizePairs||!vp.sizePairs.length){
-            alert('「'+vp.label+'」のサイズペアを1つ以上追加してください');
+            alert('「'+vp.label+'」：STEP2でサイズを選択してください');
             hideLoading();
             return;
           }
@@ -2037,7 +2085,9 @@ function generate(){
         const sh=pt.sheets||1;
         const modes=getPatternPairModes(pt);
 
-        if(modes.indexOf('crossGroup')>=0&&pt.pairGroup&&pt.sizePairs&&pt.sizePairs.length){
+        if(modes.indexOf('crossGroup')>=0&&pt.pairGroup){
+          ensureCrossGroupSizePairs(pt);
+          if(!pt.sizePairs||!pt.sizePairs.length) return;
           var colorItems=selC.length?selC:[{n:'カラーなし',c:'—',on:true}];
           colorItems.forEach(function(col){
             pt.sizePairs.forEach(function(sp){
@@ -2048,7 +2098,7 @@ function generate(){
               var rawCL=cg.length===0?'':cg[0].n;
               var colorLabel=(rawCL==='カラーなし'||rawCL==='—')?'':rawCL;
               var colorAbbr=cg.length===0?'':cg[0].c;
-              var sizeLabel=formatSizePairLabel(sp.main,sp.pair);
+              var sizeLabel=formatCrossGroupSizeLabel(g,sp.main,pt.pairGroup,sp.pair);
               var name=makeCrossGroupName(g,sp.main,pt.pairGroup,sp.pair,pt.label,pt.shipFee);
               var skuList=buildSkuListForAssign(cg,szg,pt,sp);
               generated.push({
@@ -4382,6 +4432,7 @@ function makeCellTd(key, isOverride, sheets){
 function renderSkuAssignTable(){
   const el=document.getElementById('sku-assign-table');
   if(!el) return;
+  normalizePairAssignMap();
   const selC=colors.filter(function(c){return c.on;});
   const selS=sizes.filter(function(s){return s.on;});
   if(!selC.length && !selS.length){
@@ -4440,17 +4491,18 @@ function renderSkuAssignTable(){
   wrap.appendChild(table);
   el.appendChild(wrap);
 
-  var crossPatterns=patterns.filter(function(p){return hasPairMode(p,'crossGroup')&&p.pairGroup&&p.sizePairs&&p.sizePairs.length;});
+  var crossPatterns=patterns.filter(function(p){return hasPairMode(p,'crossGroup')&&p.pairGroup;});
   if(crossPatterns.length){
+    var pairSizes=sizeMaster.filter(function(s){return s.c!=='—';});
     var pairCard=document.createElement('div');
     pairCard.style.cssText='margin-top:16px;padding-top:14px;border-top:2px solid var(--purple-lt)';
-    pairCard.innerHTML='<div style="font-size:13px;font-weight:700;color:var(--purple);margin-bottom:8px">🔗 ペアSKU（サイズペアごと・カラー共通）</div>'
-      +'<div style="font-size:12px;color:var(--gray-600);margin-bottom:10px">異グループセット用。同じサイズペアの品番は同じペアSKUコードになります。</div>';
+    pairCard.innerHTML='<div style="font-size:13px;font-weight:700;color:var(--purple);margin-bottom:8px">🔗 ペアSKU（ペアサイズごと・カラー共通）</div>'
+      +'<div style="font-size:12px;color:var(--gray-600);margin-bottom:10px">異グループセット用。同じペアサイズの品番は同じペアSKUになります（1サイズ1回の入力で済みます）。</div>';
     var pairTable=document.createElement('table');
     pairTable.style.cssText='border-collapse:collapse;font-size:12px;width:100%';
     var pairThead=document.createElement('thead');
     var pairHr=document.createElement('tr');
-    ['サイズペア','ペアSKU'].forEach(function(txt,i){
+    ['ペアサイズ','ペアSKU'].forEach(function(txt){
       var th=document.createElement('th');
       th.style.cssText='padding:8px 12px;background:var(--purple-lt);border:1px solid var(--bd);font-size:11px;color:var(--purple);text-align:left';
       th.textContent=txt;
@@ -4461,15 +4513,16 @@ function renderSkuAssignTable(){
     var pairTbody=document.createElement('tbody');
     var seenKeys={};
     crossPatterns.forEach(function(p){
-      p.sizePairs.forEach(function(sp){
-        var pKey=makeSizePairKey(sp.main,sp.pair);
-        if(seenKeys[pKey]) return;
-        seenKeys[pKey]=true;
+      pairSizes.forEach(function(sz){
+        var seenKey=p.pairGroup+'_'+sz.c;
+        if(seenKeys[seenKey]) return;
+        seenKeys[seenKey]=true;
+        var pKey=getPairSizeKey(sz.c);
         ensurePairAssignSkus(pKey);
         var tr=document.createElement('tr');
         var labelTd=document.createElement('td');
         labelTd.style.cssText='padding:8px 12px;background:var(--gray-50);border:1px solid var(--bd);font-weight:600;white-space:nowrap';
-        labelTd.textContent=displayBizKana(formatSizePairLabel(sp.main,sp.pair)+' ('+getGroupFormalName(p.pairGroup)+')');
+        labelTd.textContent=displayBizKana(sz.n)+' ('+displayBizKana(getGroupFormalName(p.pairGroup))+')';
         tr.appendChild(labelTd);
         var skuTd=document.createElement('td');
         skuTd.style.cssText='padding:6px 8px;border:1px solid var(--bd);vertical-align:top';
