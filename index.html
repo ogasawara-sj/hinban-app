@@ -591,9 +591,39 @@ body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sa
 // ============================================================
 // KATAKANA
 // ============================================================
-const DAKUTEN={'ガ':'ｶﾞ','ギ':'ｷﾞ','グ':'ｸﾞ','ゲ':'ｹﾞ','ゴ':'ｺﾞ','ザ':'ｻﾞ','ジ':'ｼﾞ','ズ':'ｽﾞ','ゼ':'ｾﾞ','ゾ':'ｿﾞ','ダ':'ﾀﾞ','ヂ':'ﾁﾞ','ヅ':'ﾂﾞ','デ':'ﾃﾞ','ド':'ﾄﾞ','バ':'ﾊﾞ','ビ':'ﾋﾞ','ブ':'ﾌﾞ','ベ':'ﾍﾞ','ボ':'ﾎﾞ','パ':'ﾊﾟ','ピ':'ﾋﾟ','プ':'ﾌﾟ','ペ':'ﾍﾟ','ポ':'ﾎﾟ','ヴ':'ｳﾞ'};
-const SEION={'ア':'ｱ','イ':'ｲ','ウ':'ｳ','エ':'ｴ','オ':'ｵ','カ':'ｶ','キ':'ｷ','ク':'ｸ','ケ':'ｹ','コ':'ｺ','サ':'ｻ','シ':'ｼ','ス':'ｽ','セ':'ｾ','ソ':'ｿ','タ':'ﾀ','チ':'ﾁ','ツ':'ﾂ','テ':'ﾃ','ト':'ﾄ','ナ':'ﾅ','ニ':'ﾆ','ヌ':'ﾇ','ネ':'ﾈ','ノ':'ﾉ','ハ':'ﾊ','ヒ':'ﾋ','フ':'ﾌ','ヘ':'ﾍ','ホ':'ﾎ','マ':'ﾏ','ミ':'ﾐ','ム':'ﾑ','メ':'ﾒ','モ':'ﾓ','ヤ':'ﾔ','ユ':'ﾕ','ヨ':'ﾖ','ラ':'ﾗ','リ':'ﾘ','ル':'ﾙ','レ':'ﾚ','ロ':'ﾛ','ワ':'ﾜ','ヲ':'ｦ','ン':'ﾝ','ァ':'ｧ','ィ':'ｨ','ゥ':'ｩ','ェ':'ｪ','ォ':'ｫ','ャ':'ｬ','ュ':'ｭ','ョ':'ｮ','ッ':'ｯ','ー':'ｰ'};
-function zenToHan(s){let r='';for(const c of s){if(DAKUTEN[c])r+=DAKUTEN[c];else if(SEION[c])r+=SEION[c];else r+=c;}return r;}
+const HW_KANA_MAP={
+  'ア':'ｱ','イ':'ｲ','ウ':'ｳ','エ':'ｴ','オ':'ｵ',
+  'カ':'ｶ','キ':'ｷ','ク':'ｸ','ケ':'ｹ','コ':'ｺ',
+  'サ':'ｻ','シ':'ｼ','ス':'ｽ','セ':'ｾ','ソ':'ｿ',
+  'タ':'ﾀ','チ':'ﾁ','ツ':'ﾂ','テ':'ﾃ','ト':'ﾄ',
+  'ナ':'ﾅ','ニ':'ﾆ','ヌ':'ﾇ','ネ':'ﾈ','ノ':'ﾉ',
+  'ハ':'ﾊ','ヒ':'ﾋ','フ':'ﾌ','ヘ':'ﾍ','ホ':'ﾎ',
+  'マ':'ﾏ','ミ':'ﾐ','ム':'ﾑ','メ':'ﾒ','モ':'ﾓ',
+  'ヤ':'ﾔ','ユ':'ﾕ','ヨ':'ﾖ',
+  'ラ':'ﾗ','リ':'ﾘ','ル':'ﾙ','レ':'ﾚ','ロ':'ﾛ',
+  'ワ':'ﾜ','ヲ':'ｦ','ン':'ﾝ',
+  'ガ':'ｶﾞ','ギ':'ｷﾞ','グ':'ｸﾞ','ゲ':'ｹﾞ','ゴ':'ｺﾞ',
+  'ザ':'ｻﾞ','ジ':'ｼﾞ','ズ':'ｽﾞ','ゼ':'ｾﾞ','ゾ':'ｿﾞ',
+  'ダ':'ﾀﾞ','ヂ':'ﾁﾞ','ヅ':'ﾂﾞ','デ':'ﾃﾞ','ド':'ﾄﾞ',
+  'バ':'ﾊﾞ','ビ':'ﾋﾞ','ブ':'ﾌﾞ','ベ':'ﾍﾞ','ボ':'ﾎﾞ',
+  'パ':'ﾊﾟ','ピ':'ﾋﾟ','プ':'ﾌﾟ','ペ':'ﾍﾟ','ポ':'ﾎﾟ',
+  'ャ':'ｬ','ュ':'ｭ','ョ':'ｮ','ッ':'ｯ',
+  'ァ':'ｧ','ィ':'ｨ','ゥ':'ｩ','ェ':'ｪ','ォ':'ｫ',
+  'ヴ':'ｳﾞ',
+  'ー':'ｰ','・':'･','。':'｡','、':'､',
+  '「':'｢','」':'｣','　':' '
+};
+function toHalfWidthKana(str){
+  if(!str) return '';
+  var result='';
+  for(var i=0;i<str.length;i++){
+    var c=str.charAt(i);
+    result+=HW_KANA_MAP[c]||c;
+  }
+  return result;
+}
+function displayBizKana(str){return toHalfWidthKana(str);}
+function zenToHan(s){return toHalfWidthKana(s);}
 
 // ============================================================
 // MASTER DATA
@@ -1594,7 +1624,7 @@ function renderPts(){
           </div>
           <div class="f" style="margin-bottom:0">
             <label>ペア商品名（正式商品名）</label>
-            <input type="text" readonly value="${p.pairGroup?getGroupFormalName(p.pairGroup):''}"
+            <input type="text" readonly value="${p.pairGroup?escAttr(displayBizKana(getGroupFormalName(p.pairGroup))):''}"
               style="width:100%;padding:7px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px;background:var(--gray-50)">
           </div>
         </div>
@@ -1602,9 +1632,9 @@ function renderPts(){
           <div style="font-size:11px;color:var(--gray-600);font-weight:500;margin-bottom:6px">サイズペア（メインサイズ × ペアサイズ）</div>
           ${(p.sizePairs||[]).map(function(sp,si){
             return '<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap">'
-              +'<select onchange="updatePatternSizePair('+pi+','+si+',\'main\',this.value)" style="padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">'+sizePairSelectHTML(sp.main)+'</select>'
+              +'<select onchange="updatePatternSizePair('+pi+','+si+',\'main\',this.value)" style="padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">'+sizePairSelectHTML(sp.main,false)+'</select>'
               +'<span style="font-size:12px;color:var(--gray-400)">×</span>'
-              +'<select onchange="updatePatternSizePair('+pi+','+si+',\'pair\',this.value)" style="padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">'+sizePairSelectHTML(sp.pair)+'</select>'
+              +'<select onchange="updatePatternSizePair('+pi+','+si+',\'pair\',this.value)" style="padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">'+sizePairSelectHTML(sp.pair,true)+'</select>'
               +'<button onclick="removePatternSizePair('+pi+','+si+')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px">削除</button>'
               +'</div>';
           }).join('')}
@@ -1724,7 +1754,8 @@ function getEndDateInputValue(){
   var v=s.value;
   return v.indexOf('T')>=0?v.substring(0,10):v;
 }
-function getNextCode(g){
+function escAttr(s){return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;');}
+function escHtml(s){return escAttr(s).replace(/</g,'&lt;');}
   if(!seqCounters[g])seqCounters[g]=1;
   const d=8-g.length;let code,att=0;
   do{code=g+String(seqCounters[g]).padStart(d,'0');seqCounters[g]++;att++;}
@@ -1737,12 +1768,12 @@ function makeName(grpName,colorLabel,sizeName,ptLabel,shipFee,colorAbbr){
   // まずフルカラー名で試す
   const cl=colorLabel?' '+colorLabel:'';
   const base=grpName+cl+sp+' '+ptLabel;
-  const full=zenToHan((base+suf).substring(0,40-suf.length)+suf);
+  const full=toHalfWidthKana((base+suf).substring(0,40-suf.length)+suf);
   if(full.length<=40) return full;
   // 40文字超 → カラーをアルファベット略称に切り替え
   const clShort=colorAbbr?' '+colorAbbr:'';
   const baseShort=grpName+clShort+sp+' '+ptLabel;
-  return zenToHan((baseShort+suf).substring(0,40-suf.length)+suf);
+  return toHalfWidthKana((baseShort+suf).substring(0,40-suf.length)+suf);
 }
 function normalizeAssignPart(code, name){
   if(code && code !== '—') return String(code);
@@ -1789,7 +1820,19 @@ function makeCrossGroupName(mainGrpCode,mainSizeCode,pairGrpCode,pairSizeCode,pt
   var ptSuffix=(ptLabel||'').replace(/^[\d０-９]+枚/,'')||'セット';
   var base=mainFormal+mainSz+'×'+pairFormal+pairSz+ptSuffix;
   var suf=shipFee>0?'_':'';
-  return zenToHan((base+suf).substring(0,40-suf.length)+suf);
+  return toHalfWidthKana((base+suf).substring(0,40-suf.length)+suf);
+}
+function generateAllSizePairs(){
+  var selS=sizes.filter(function(s){return s.on&&s.c!=='—';});
+  var pairSizes=sizeMaster.filter(function(s){return s.c!=='—';});
+  if(!selS.length||!pairSizes.length) return [];
+  var pairs=[];
+  selS.forEach(function(main){
+    pairSizes.forEach(function(pair){
+      pairs.push({main:main.c,pair:pair.c});
+    });
+  });
+  return pairs;
 }
 function pairGroupSelectHTML(pi,selected){
   var mainGrp=document.getElementById('s-group')?document.getElementById('s-group').value:'';
@@ -1797,9 +1840,13 @@ function pairGroupSelectHTML(pi,selected){
     return '<option value="'+g.code+'"'+(selected===g.code?' selected':'')+'>'+g.code+'：'+g.name+'</option>';
   }).join('');
 }
-function sizePairSelectHTML(selectedCode){
-  return sizes.filter(function(s){return s.on;}).map(function(s){
-    return '<option value="'+s.c+'"'+(selectedCode===s.c?' selected':'')+'>'+s.n+' ('+s.c+')</option>';
+function sizePairSelectHTML(selectedCode,forPair){
+  var list=forPair
+    ?sizeMaster.filter(function(s){return s.c!=='—';})
+    :sizes.filter(function(s){return s.on;});
+  if(!list.length) list=sizeMaster.filter(function(s){return s.c!=='—';});
+  return list.map(function(s){
+    return '<option value="'+s.c+'"'+(selectedCode===s.c?' selected':'')+'>'+displayBizKana(s.n)+' ('+s.c+')</option>';
   }).join('');
 }
 function toggleCrossGroupPairMode(pi){
@@ -1817,7 +1864,13 @@ function toggleCrossGroupPairMode(pi){
 }
 function setPairGroup(pi,code){
   patterns[pi].pairGroup=code;
+  if(code){
+    patterns[pi].sizePairs=generateAllSizePairs();
+  }else{
+    patterns[pi].sizePairs=[];
+  }
   renderPts();
+  if(typeof renderSkuAssignTable==='function') renderSkuAssignTable();
 }
 function addPatternSizePair(pi){
   var selS=sizes.filter(function(s){return s.on;});
@@ -2210,8 +2263,8 @@ function renderPriceMatrix(){
                     oninput="onCodeEdit(${i}, this.value, this)">
                 </div>
               </td>
-              <td style="font-size:12px;font-weight:500;cursor:pointer" onclick="toggleSkuRow4(${i})" title="クリックでSKU確認">${h.sizeLabel||'—'}</td>
-              <td style="font-size:12px">${h.colorLabel||'—'}</td>
+              <td style="font-size:12px;font-weight:500;cursor:pointer" onclick="toggleSkuRow4(${i})" title="クリックでSKU確認">${escHtml(displayBizKana(h.sizeLabel||'—'))}</td>
+              <td style="font-size:12px">${escHtml(displayBizKana(h.colorLabel||'—'))}</td>
               <td><input type="number" id="pr-${i}" value="${h.price||''}" min="0" placeholder="0"
                 onchange="generated[${i}].price=+this.value;updTax(${i})" style="width:90px"></td>
               <td id="tx-${i}" style="text-align:right;font-size:12px;color:var(--gray-400)">${h.price?yen(Math.round(h.price*1.1)):'—'}</td>
@@ -2226,7 +2279,7 @@ function renderPriceMatrix(){
               <td style="text-align:center">
                 <span style="font-weight:600;color:${skuOk?'var(--green)':'var(--red)'}">${h.skuList.length}</span>
               </td>
-              <td><input type="text" value="${h.name}" id="nm-${i}"
+              <td><input type="text" value="${escAttr(displayBizKana(h.name))}" id="nm-${i}"
                 oninput="generated[${i}].name=this.value;updNL(${i})" maxlength="40"
                 class="step5-editable-input" style="width:100%"></td>
               <td id="nl-${i}" style="text-align:center;font-size:11px;color:${h.name.length>38?'var(--red)':'var(--green)'}">${h.name.length}/40</td>
@@ -2300,7 +2353,7 @@ function renderSkuTable(skuList){
     <tbody>
       ${skuList.map(s=>`<tr style="border-bottom:1px solid var(--bd)">
         <td style="padding:4px 8px"><span class="mono">${s.code||'—'}</span></td>
-        <td style="padding:4px 8px">${s.name||'—'}</td>
+        <td style="padding:4px 8px">${escHtml(displayBizKana(s.name||'—'))}</td>
         <td style="padding:4px 8px">
           <span style="font-size:10px;padding:1px 6px;border-radius:8px;background:var(--blue-lt);color:var(--blue)">${s.role||'—'}</span>
         </td>
@@ -2408,7 +2461,7 @@ function buildConfirm(){
                 <span class="mono">${h.code||'—'}</span>
               </div>
             </td>
-            <td style="font-size:12px">${h.name}</td>
+            <td style="font-size:12px">${escHtml(displayBizKana(h.name))}</td>
             <td style="text-align:right">¥${(h.price||0).toLocaleString('ja-JP')}</td>
             <td style="text-align:right;color:var(--gray-400)">¥${Math.round((h.price||0)*1.1).toLocaleString('ja-JP')}</td>
             <td style="text-align:center">
@@ -2537,7 +2590,7 @@ function renderList(){
     const idx=registeredList.indexOf(r);
     return`<tr>
       <td><span class="mono">${r.code}</span></td>
-      <td style="font-size:12px;max-width:240px">${r.name}</td>
+      <td style="font-size:12px;max-width:240px">${escHtml(displayBizKana(r.name))}</td>
       <td style="font-size:11px">${r.group}</td>
       <td style="font-size:12px">${r.month||'—'}</td>
       <td style="font-size:12px">${r.staff||'—'}</td>
@@ -3054,7 +3107,7 @@ async function exportShitokuSheet(){
     var staff=h.staff||'';
     var group=h.group||'';
     var code=h.code||'';
-    var name=h.name||'';
+    var name=displayBizKana(h.name||'');
     var priceEx=h.price||0;
     var ship=h.ship||0;
     var taxKbn=h.taxKbn||'1';
@@ -3101,6 +3154,7 @@ async function exportShitokuSheet(){
       ws.getCell(y,5).value=staff;
       ws.getCell(y,9).value=code;
       ws.getCell(y,11).value=s.code;
+      ws.getCell(y,12).value=displayBizKana(s.name||'');
       ws.getCell(y,13).value=taxKbn;
       ws.getCell(y,14).value=s.qty||1;
       if(isFirst){
@@ -3269,7 +3323,7 @@ function writeAccessBtoCData(ws,list){
     row.getCell(1).value=idx+1;
     row.getCell(2).value=h.code||'';
     row.getCell(3).value='Z01C';
-    row.getCell(4).value=h.name||'';
+    row.getCell(4).value=displayBizKana(h.name||'');
     row.getCell(5).value=ret.kbn;
     row.getCell(6).value=h.group||'';
     row.getCell(10).value=pt.meisaiHidden||'表示';
@@ -3400,7 +3454,7 @@ function exportToShitokuSheet(){
     var staff = h.staff || '';
     var group = h.group || '';
     var code = h.code || '';
-    var name = h.name || '';
+    var name = displayBizKana(h.name || '');
     var priceEx = h.price || 0;
     var priceIn = Math.round((h.price || 0) * 1.1);
     var ship = h.ship || 0;
@@ -3451,7 +3505,7 @@ function exportToShitokuSheet(){
         code,            // I: 注文品番（同じ品番コード）
         '',              // J: 注文品番名（空）
         s.code,          // K: SKU
-        '',              // L: SKU品番名
+        displayBizKana(s.name || ''),  // L: SKU品番名
         taxKbn,          // M: 消費税区分
         s.qty || 1,      // N: 数量
         '', '', '', '',  // O-R
@@ -3494,7 +3548,7 @@ function exportExcel(mode){
   ];
   registeredList.forEach(r=>{
     priceRows.push([
-      r.code,r.name,
+      r.code,displayBizKana(r.name),
       r.price||0,Math.round((r.price||0)*1.1),
       r.ship||0,'60日',
       r.group,r.month||'',r.campaign||'',r.staff||'',
@@ -3527,7 +3581,7 @@ function exportExcel(mode){
       i+1,           // No
       r.code,        // 注文品番
       'Z01C',        // 販売組織（固定）
-      r.name,        // 注文品番名
+      displayBizKana(r.name),        // 注文品番名
       '',            // 返品不可区分
       r.group,       // 商品グループ
       '',            // 商品サブグループ
@@ -4152,7 +4206,7 @@ function pairSkuInputs(key){
     var nameInp=document.createElement('input');
     nameInp.type='text';
     nameInp.id='pa-name-'+key+'-'+i;
-    nameInp.value=sku.name||'';
+    nameInp.value=displayBizKana(sku.name||'');
     nameInp.style.cssText='flex:1;min-width:0;padding:5px 8px;border:1px solid var(--bd);border-radius:4px;font-size:12px;background:var(--gray-50)';
     nameInp.addEventListener('input',function(){
       if(!nameInp.hasAttribute('readonly')) pairAssignMap[key].skus[i].name=nameInp.value;
@@ -4275,7 +4329,7 @@ function skuInputs(key, isOverride, sheets){
     var nameInp = document.createElement('input');
     nameInp.type = 'text';
     nameInp.id = 'sa-name-' + key + '-' + i;
-    nameInp.value = sku.name || '';
+    nameInp.value = displayBizKana(sku.name || '');
     nameInp.style.cssText = 'flex:1;min-width:0;padding:5px 8px;border:1px solid var(--bd);border-radius:4px;font-size:12px;background:var(--gray-50);overflow:hidden;text-overflow:ellipsis';
     nameInp.addEventListener('input', function(){
       if(!nameInp.hasAttribute('readonly')){
@@ -4295,7 +4349,7 @@ function skuInputs(key, isOverride, sheets){
     container.appendChild(row);
     if(sku.code) onSkuAssignInput(key, i, sku.code, codeInp);
     else if(sku.name && !sku.code){
-      nameInp.value = sku.name;
+      nameInp.value = displayBizKana(sku.name);
       nameInp.style.background = 'var(--gray-50)';
     }
   });
@@ -4410,7 +4464,7 @@ function renderSkuAssignTable(){
         var tr=document.createElement('tr');
         var labelTd=document.createElement('td');
         labelTd.style.cssText='padding:8px 12px;background:var(--gray-50);border:1px solid var(--bd);font-weight:600;white-space:nowrap';
-        labelTd.textContent=formatSizePairLabel(sp.main,sp.pair)+' ('+getGroupFormalName(p.pairGroup)+')';
+        labelTd.textContent=displayBizKana(formatSizePairLabel(sp.main,sp.pair)+' ('+getGroupFormalName(p.pairGroup)+')');
         tr.appendChild(labelTd);
         var skuTd=document.createElement('td');
         skuTd.style.cssText='padding:6px 8px;border:1px solid var(--bd);vertical-align:top';
