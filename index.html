@@ -898,6 +898,13 @@ function normalizeRegisteredList(){
     if(r.colorPair===undefined) r.colorPair=null;
     if(r.genPairMode===undefined) r.genPairMode=null;
     if(r.pt) normalizePattern(r.pt);
+    if(Array.isArray(r.skuList)){
+      r.skuList.forEach(function(s){
+        if(!s) return;
+        var code=getAccessSkuCode(s);
+        if(code) s.code=code;
+      });
+    }
   });
 }
 function normalizePattern(p){
@@ -3283,8 +3290,8 @@ async function exportShitokuSheet(){
 // ============================================================
 var ACCESS_KEEP_SHEETS=['注文品番 (BtoC)','構成_注文品番','注文品番リスト','バージョン(非表示)'];
 
-async function loadAccessTemplate(){
-  if(window._accessTemplateBuffer) return window._accessTemplateBuffer;
+async function loadAccessTemplate(forceReload){
+  if(!forceReload&&window._accessTemplateBuffer) return window._accessTemplateBuffer;
   var path='public/templates/access-register-template.xlsx';
   var res=await fetch(path);
   if(!res.ok){
@@ -3321,10 +3328,49 @@ function getAccessReturnKbnAndDays(pt){
   return {kbn:'可',days:'60'};
 }
 
+function normalizeAccessSkuCode(code){
+  if(code==null) return '';
+  var s=String(code).trim();
+  s=s.replace(/[Ａ-Ｚａ-ｚ０-９]/g,function(c){
+    return String.fromCharCode(c.charCodeAt(0)-0xFEE0);
+  });
+  return s.toUpperCase().replace(/[^A-Z0-9]/g,'');
+}
+
+function getAccessSkuCode(entry){
+  if(!entry) return '';
+  var raw=entry.code!=null&&String(entry.code)!==''?entry.code:(entry.c!=null?entry.c:'');
+  return normalizeAccessSkuCode(raw);
+}
+
 function filterAccessSkuList(skuList){
   return (skuList||[]).filter(function(s){
-    return s.code&&String(s.code).indexOf('[')!==0;
+    var code=getAccessSkuCode(s);
+    return code&&code.indexOf('[')!==0;
   });
+}
+
+function aggregateAccessSkuQty(skuList){
+  var skuMap=new Map();
+  filterAccessSkuList(skuList).forEach(function(s){
+    var code=getAccessSkuCode(s);
+    if(!code) return;
+    var qty=Number(s.qty)||1;
+    if(skuMap.has(code)){
+      skuMap.set(code,skuMap.get(code)+qty);
+    }else{
+      skuMap.set(code,qty);
+    }
+  });
+  return skuMap;
+}
+
+function clearAccessCompositionSheetRows(ws,dataStartRow){
+  var endRow=Math.max(ws.rowCount||0,dataStartRow+999);
+  for(var r=dataStartRow;r<=endRow;r++){
+    var row=ws.getRow(r);
+    for(var c=1;c<=7;c++) row.getCell(c).value=null;
+  }
 }
 
 function copyAccessRowStyle(ws,fromRow,toRow){
@@ -3434,21 +3480,11 @@ function writeAccessBtoCData(ws,list){
 function writeAccessCompositionData(ws,list){
   var dataStartRow=4;
   var styleRow=4;
+  clearAccessCompositionSheetRows(ws,dataStartRow);
   var compositeNo=1;
   var rowOffset=0;
   list.forEach(function(h){
-    var skuList=filterAccessSkuList(h.skuList);
-    var skuMap=new Map();
-    skuList.forEach(function(s){
-      if(!s.code) return;
-      var code=s.code;
-      var qty=Number(s.qty)||1;
-      if(skuMap.has(code)){
-        skuMap.set(code,skuMap.get(code)+qty);
-      }else{
-        skuMap.set(code,qty);
-      }
-    });
+    var skuMap=aggregateAccessSkuQty(h.skuList);
     skuMap.forEach(function(totalQty,code){
       var rowIdx=dataStartRow+rowOffset;
       if(rowIdx!==styleRow) copyAccessRowStyle(ws,styleRow,rowIdx);
@@ -3473,7 +3509,7 @@ async function exportAccessImport(){
   if(!list||!list.length){alert('登録済み品番がありません');return;}
   try{
     showLoading('テンプレート読み込み中...');
-    var buf=await loadAccessTemplate();
+    var buf=await loadAccessTemplate(true);
     var workbook=new ExcelJS.Workbook();
     await workbook.xlsx.load(buf);
     workbook.worksheets.slice().forEach(function(ws){
