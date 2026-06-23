@@ -3437,15 +3437,27 @@ function writeAccessCompositionData(ws,list){
   var compositeNo=1;
   var rowOffset=0;
   list.forEach(function(h){
-    filterAccessSkuList(h.skuList).forEach(function(s){
+    var skuList=filterAccessSkuList(h.skuList);
+    var skuMap=new Map();
+    skuList.forEach(function(s){
+      if(!s.code) return;
+      var code=s.code;
+      var qty=Number(s.qty)||1;
+      if(skuMap.has(code)){
+        skuMap.set(code,skuMap.get(code)+qty);
+      }else{
+        skuMap.set(code,qty);
+      }
+    });
+    skuMap.forEach(function(totalQty,code){
       var rowIdx=dataStartRow+rowOffset;
       if(rowIdx!==styleRow) copyAccessRowStyle(ws,styleRow,rowIdx);
       var row=ws.getRow(rowIdx);
       row.getCell(1).value=compositeNo++;
       row.getCell(2).value=h.code||'';
-      row.getCell(3).value=s.code||'';
+      row.getCell(3).value=code;
       var c4=row.getCell(4);
-      c4.value=Number(s.qty)||1;
+      c4.value=totalQty;
       c4.numFmt='0';
       row.getCell(5).value=null;
       row.getCell(6).value=null;
