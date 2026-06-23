@@ -3112,6 +3112,8 @@ async function exportShitokuSheet(){
   var source=(generated&&generated.length)?generated:registeredList;
   if(!source||!source.length){alert('品番が生成されていません');return;}
 
+  showLoading('Excel生成中...');
+  try{
   var wb=new ExcelJS.Workbook();
   var ws=wb.addWorksheet('取得用シート',{
     properties:{tabColor:{argb:'FFFFFF00'}},
@@ -3267,8 +3269,9 @@ async function exportShitokuSheet(){
   var pad=function(n){return String(n).padStart(2,'0');};
   var fname='品番登録_'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'_'+pad(d.getHours())+pad(d.getMinutes())+'.xlsx';
 
-  try{
+    updateLoading('ファイル出力中...');
     var buffer=await wb.xlsx.writeBuffer();
+    await dismissLoadingOverlay();
     var blob=new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
     var url=URL.createObjectURL(blob);
     var a=document.createElement('a');
@@ -3280,6 +3283,7 @@ async function exportShitokuSheet(){
     URL.revokeObjectURL(url);
     alert(source.length+'件の品番（'+totalRows+'行）を出力しました。\n\n使い方：\n1. ダウンロードしたExcelを開く\n2. データ行を選択してコピー\n3. 社内の「取得用シート」の空いている行を選択\n4. 形式を選択して貼り付け→「数式」を選んで貼り付け');
   }catch(err){
+    await dismissLoadingOverlay();
     alert('Excel出力エラー: '+err.message);
     console.error(err);
   }
@@ -3507,9 +3511,10 @@ async function exportAccessImport(){
   if(typeof ExcelJS==='undefined'){alert('ExcelJSが読み込まれていません。ページを再読み込みしてください。');return;}
   var list=registeredList&&registeredList.length?registeredList:generated;
   if(!list||!list.length){alert('登録済み品番がありません');return;}
+  showLoading('テンプレート読み込み中...');
   try{
-    showLoading('テンプレート読み込み中...');
     var buf=await loadAccessTemplate(true);
+    updateLoading('Excel生成中...');
     var workbook=new ExcelJS.Workbook();
     await workbook.xlsx.load(buf);
     workbook.worksheets.slice().forEach(function(ws){
@@ -3523,8 +3528,9 @@ async function exportAccessImport(){
     var d=new Date();
     var pad=function(n){return String(n).padStart(2,'0');};
     var fname='品番登録システム_一括取込用_'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'.xlsx';
+    updateLoading('ファイル出力中...');
     var outputBuf=await workbook.xlsx.writeBuffer();
-    hideLoading();
+    await dismissLoadingOverlay();
     var blob=new Blob([outputBuf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
     var url=URL.createObjectURL(blob);
     var a=document.createElement('a');
@@ -3536,9 +3542,9 @@ async function exportAccessImport(){
     URL.revokeObjectURL(url);
     alert(list.length+'件の品番をアクセス登録用Excelとして出力しました。');
   }catch(err){
-    hideLoading();
+    await dismissLoadingOverlay();
     console.error(err);
-    alert('テンプレートファイル（public/templates/access-register-template.xlsx）が見つかりません。リポジトリ管理者に連絡してください。\n\n詳細: '+(err.message||err));
+    alert('出力に失敗しました：'+(err.message||err));
   }
 }
 
@@ -4668,9 +4674,24 @@ function showLoading(msg){
   if(el){el.classList.add('on');}
   if(tx){tx.textContent=msg||'処理中...';}
 }
+function updateLoading(msg){
+  const tx=document.getElementById('loading-text');
+  if(tx){tx.textContent=msg||'処理中...';}
+}
 function hideLoading(){
   const el=document.getElementById('loading-overlay');
   if(el) el.classList.remove('on');
+}
+function yieldToUi(){
+  return new Promise(function(resolve){
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){ resolve(); });
+    });
+  });
+}
+async function dismissLoadingOverlay(){
+  hideLoading();
+  await yieldToUi();
 }
 // 外クリックで商品グループリストを閉じる
 document.addEventListener('click', function(e){
