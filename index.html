@@ -3583,6 +3583,97 @@ function setOfferFormula(cell,formula){
   if(!formula) return;
   var f=formula.charAt(0)==='='?formula.substring(1):formula;
   cell.value={formula:f};
+  if(cell.model){
+    delete cell.model.sharedFormula;
+    delete cell.model.si;
+    delete cell.model.ref;
+  }
+}
+
+function offerColLettersToNum(letters){
+  var n=0;
+  for(var i=0;i<letters.length;i++) n=n*26+letters.charCodeAt(i)-64;
+  return n;
+}
+
+function offerColNumToLetters(n){
+  var s='';
+  while(n>0){
+    var m=(n-1)%26;
+    s=String.fromCharCode(65+m)+s;
+    n=Math.floor((n-1)/26);
+  }
+  return s;
+}
+
+function offerShiftFormulaRefs(formula,dRow,dCol){
+  if(!formula||(!dRow&&!dCol)) return formula;
+  return formula.replace(/(\$?)([A-Z]{1,3})(\$?)(\d+)/g,function(_,absCol,col,absRow,row){
+    var colNum=offerColLettersToNum(col);
+    var rowNum=parseInt(row,10);
+    if(absCol!=='$'&&dCol) colNum+=dCol;
+    if(absRow!=='$'&&dRow) rowNum+=dRow;
+    if(rowNum<1) rowNum=1;
+    if(colNum<1) colNum=1;
+    return (absCol||'')+offerColNumToLetters(colNum)+(absRow||'')+rowNum;
+  });
+}
+
+function offerGetCellFormulaModel(cell){
+  if(!cell) return null;
+  var m=cell.model;
+  if(m&&m.formula) return m;
+  var v=cell.value;
+  if(v&&typeof v==='object'&&v.formula){
+    return {formula:v.formula,result:v.result,si:v.si,sharedFormula:v.sharedFormula,ref:v.ref};
+  }
+  return m;
+}
+
+function flattenOfferWorksheetSharedFormulas(ws){
+  var masters={};
+  ws.eachRow({includeEmpty:true},function(row,rowNumber){
+    row.eachCell({includeEmpty:true},function(cell,colNumber){
+      var m=offerGetCellFormulaModel(cell);
+      if(!m||!m.formula) return;
+      var si=m.si;
+      if(si===undefined||si===null){
+        if(m.sharedFormula||m.ref) si='auto_'+rowNumber+'_'+colNumber;
+        else return;
+      }
+      var key=String(si);
+      if(!masters[key]){
+        masters[key]={formula:m.formula,row:rowNumber,col:colNumber};
+      }
+    });
+  });
+  ws.eachRow({includeEmpty:true},function(row,rowNumber){
+    row.eachCell({includeEmpty:true},function(cell,colNumber){
+      var m=offerGetCellFormulaModel(cell);
+      if(!m) return;
+      var formula=m.formula;
+      var si=m.si;
+      if((!formula||formula==='')&&si!==undefined&&si!==null&&masters[String(si)]){
+        var master=masters[String(si)];
+        formula=offerShiftFormulaRefs(master.formula,rowNumber-master.row,colNumber-master.col);
+      }
+      if(!formula) return;
+      var next={formula:formula};
+      if(m.result!==undefined&&m.result!==null) next.result=m.result;
+      cell.value=next;
+      if(cell.model){
+        delete cell.model.sharedFormula;
+        delete cell.model.si;
+        delete cell.model.ref;
+      }
+    });
+  });
+}
+
+function flattenOfferWorkbookSharedFormulas(workbook){
+  workbook.worksheets.forEach(function(ws){
+    flattenOfferWorksheetSharedFormulas(ws);
+  });
 }
 
 function excelSerialFromYmd(y,m,d){
@@ -3791,6 +3882,7 @@ async function exportOfferList(){
     updateLoading('Excel生成中...');
     var workbook=new ExcelJS.Workbook();
     await workbook.xlsx.load(buf);
+    flattenOfferWorkbookSharedFormulas(workbook);
     var ws=workbook.getWorksheet(OFFER_LIST_SHEET_NAME);
     if(!ws) throw new Error('シート「'+OFFER_LIST_SHEET_NAME+'」がテンプレートに含まれていません');
     writeOfferListMeta(ws,list);
