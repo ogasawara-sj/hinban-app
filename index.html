@@ -423,6 +423,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sa
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
       <button class="btn btn-p" onclick="exportShitokuSheet()">📋 取得用シート用Excel出力</button>
       <button class="btn btn-p" onclick="exportAccessImport()">📋 アクセス登録用Excel出力</button>
+      <button class="btn btn-p" onclick="exportOfferList()">📋 オファーリスト用Excel出力</button>
       <button class="btn" onclick="deleteAllRegistered()" style="background:var(--red);color:#fff;border-color:var(--red)">🗑️ 全品番を削除</button>
     </div>
   </div>
@@ -3541,6 +3542,276 @@ async function exportAccessImport(){
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     alert(list.length+'件の品番をアクセス登録用Excelとして出力しました。');
+  }catch(err){
+    await dismissLoadingOverlay();
+    console.error(err);
+    alert('出力に失敗しました：'+(err.message||err));
+  }
+}
+
+// ============================================================
+// オファーリスト用 Excel出力（CRM企画用テンプレート準拠）
+// ============================================================
+var OFFER_LIST_SHEET_NAME='オファーリスト';
+var OFFER_MAIN_BLOCK_START_ROW=19;
+var OFFER_TEMPLATE_UPGRADE_ROW=75;
+var OFFER_MAX_SKU_ROWS_PER_ITEM=8;
+
+async function loadOfferListTemplate(){
+  var path='public/templates/offer-list-template.xlsx';
+  var res=await fetch(path);
+  if(!res.ok){
+    throw new Error('オファーリストテンプレート（'+path+'）が見つかりません。public/templates/ に配置してください。');
+  }
+  var contentType=res.headers.get('content-type')||'';
+  if(contentType.indexOf('text/html')>=0){
+    throw new Error('オファーリストテンプレートのレスポンスが不正です（Content-Type: '+contentType+'）');
+  }
+  var buf=await res.arrayBuffer();
+  if(buf.byteLength<4){
+    throw new Error('オファーリストテンプレートが小さすぎます（'+buf.byteLength+' bytes）');
+  }
+  var magic=new Uint8Array(buf,0,4);
+  var isZip=magic[0]===0x50&&magic[1]===0x4B&&magic[2]===0x03&&magic[3]===0x04;
+  if(!isZip){
+    throw new Error('オファーリストテンプレートが正しい.xlsx形式ではありません（先頭: '+Array.from(magic).map(function(b){return b.toString(16).padStart(2,'0');}).join(' ')+'）。.xlsx形式で再保存してください。');
+  }
+  return buf;
+}
+
+function setOfferFormula(cell,formula){
+  if(!formula) return;
+  var f=formula.charAt(0)==='='?formula.substring(1):formula;
+  cell.value={formula:f};
+}
+
+function excelSerialFromYmd(y,m,d){
+  return (Date.UTC(y,m-1,d)-Date.UTC(1899,11,30))/86400000;
+}
+
+function toOfferExcelSerialDate(value){
+  if(!value){
+    var now=new Date();
+    return excelSerialFromYmd(now.getFullYear(),now.getMonth()+1,now.getDate());
+  }
+  var match=String(value).match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+  if(match){
+    return excelSerialFromYmd(Number(match[1]),Number(match[2]),Number(match[3]));
+  }
+  var d=new Date(value);
+  if(!isNaN(d.getTime())){
+    return excelSerialFromYmd(d.getFullYear(),d.getMonth()+1,d.getDate());
+  }
+  var now2=new Date();
+  return excelSerialFromYmd(now2.getFullYear(),now2.getMonth()+1,now2.getDate());
+}
+
+function setOfferDateCell(cell,serial){
+  cell.value=serial;
+  cell.numFmt='yyyy/mm/dd';
+}
+
+function getOfferListPrimaryStaff(list){
+  var counts={};
+  list.forEach(function(h){
+    var s=(h.staff||'').trim();
+    if(!s) return;
+    counts[s]=(counts[s]||0)+1;
+  });
+  var best='',max=0;
+  Object.keys(counts).forEach(function(s){
+    if(counts[s]>max){max=counts[s];best=s;}
+  });
+  return best;
+}
+
+function getOfferListKuroshioDate(list){
+  var dates=list.map(function(h){return h.startDateTime||'';}).filter(Boolean).sort();
+  return dates.length?dates[0]:'';
+}
+
+function getOfferListFileGroupLabel(list){
+  var counts={};
+  list.forEach(function(h){
+    var g=h.group||'';
+    if(!g) return;
+    counts[g]=(counts[g]||0)+1;
+  });
+  var best='',max=0;
+  Object.keys(counts).forEach(function(s){
+    if(counts[s]>max){max=counts[s];best=s;}
+  });
+  return best||'GROUP';
+}
+
+function offerSkuEntriesFromHinban(h){
+  var skuMap=aggregateAccessSkuQty(h.skuList);
+  var entries=[];
+  skuMap.forEach(function(qty,code){entries.push({code:code,qty:qty});});
+  if(!entries.length) entries.push({code:'',qty:1});
+  if(entries.length>OFFER_MAX_SKU_ROWS_PER_ITEM){
+    entries=entries.slice(0,OFFER_MAX_SKU_ROWS_PER_ITEM);
+  }
+  return entries;
+}
+
+function cloneOfferRowStyle(ws,rowNum){
+  var sourceRow=ws.getRow(rowNum);
+  var cells={};
+  sourceRow.eachCell({includeEmpty:true},function(cell,colNum){
+    cells[colNum]={
+      style:cell.style?JSON.parse(JSON.stringify(cell.style)):null,
+      numFmt:cell.numFmt
+    };
+  });
+  return {height:sourceRow.height,cells:cells};
+}
+
+function applyOfferRowStyle(ws,stashed,rowNum){
+  if(!stashed) return;
+  var destRow=ws.getRow(rowNum);
+  if(stashed.height) destRow.height=stashed.height;
+  Object.keys(stashed.cells).forEach(function(colNum){
+    var dc=destRow.getCell(Number(colNum));
+    var sc=stashed.cells[colNum];
+    if(sc.style) dc.style=JSON.parse(JSON.stringify(sc.style));
+    if(sc.numFmt) dc.numFmt=sc.numFmt;
+  });
+}
+
+function clearOfferMainRows(ws,fromRow,toRow){
+  if(fromRow>toRow) return;
+  for(var r=fromRow;r<=toRow;r++){
+    var row=ws.getRow(r);
+    for(var c=1;c<=45;c++) row.getCell(c).value=null;
+  }
+}
+
+function writeOfferListMeta(ws,list){
+  setOfferDateCell(ws.getCell('D5'),toOfferExcelSerialDate(null));
+  ws.getCell('D6').value='CRM Print & Digital Sec.';
+  ws.getCell('D7').value=getOfferListPrimaryStaff(list);
+  ws.getCell('D8').value=null;
+  setOfferDateCell(ws.getCell('D9'),toOfferExcelSerialDate(getOfferListKuroshioDate(list)));
+}
+
+function writeOfferListHeaderRow(ws,hdrRow,skuFirst,skuLast,h,hdrStyle){
+  applyOfferRowStyle(ws,hdrStyle,hdrRow);
+  var priceIn=Math.round((h.price||0)*1.1);
+  var ship=Number(h.ship)||0;
+  var retDays=getReturnDaysNumForShitoku(h.pt);
+  var row=ws.getRow(hdrRow);
+  setOfferFormula(row.getCell(1),'LENB(D'+hdrRow+')');
+  setOfferFormula(row.getCell(2),'LENB(E'+hdrRow+')');
+  row.getCell(3).value=h.group||'';
+  row.getCell(4).value=h.code||'';
+  row.getCell(5).value=displayBizKana(h.name||'');
+  setOfferFormula(row.getCell(11),'SUM(K'+skuFirst+':K'+skuLast+')');
+  setOfferFormula(row.getCell(12),'SUM(L'+skuFirst+':L'+skuLast+')');
+  setOfferFormula(row.getCell(13),'ROUNDUP(N'+hdrRow+'/1.1,0)');
+  var c14=row.getCell(14);
+  c14.value=priceIn;
+  c14.numFmt='#,##0';
+  setOfferFormula(row.getCell(15),'ROUNDUP(P'+hdrRow+'/1.1,0)');
+  row.getCell(16).value=null;
+  setOfferFormula(row.getCell(17),'1-(N'+hdrRow+'/L'+hdrRow+')');
+  setOfferFormula(row.getCell(18),'K'+hdrRow+'-M'+hdrRow);
+  setOfferFormula(row.getCell(19),'L'+hdrRow+'-N'+hdrRow);
+  setOfferFormula(row.getCell(20),'1-(P'+hdrRow+'/N'+hdrRow+')');
+  setOfferFormula(row.getCell(21),'M'+hdrRow+'-O'+hdrRow);
+  setOfferFormula(row.getCell(22),'N'+hdrRow+'-P'+hdrRow);
+  setOfferFormula(row.getCell(23),'ROUNDUP(X'+hdrRow+'/1.1,0)');
+  var c24=row.getCell(24);
+  c24.value=ship;
+  c24.numFmt='#,##0';
+  row.getCell(25).value='可';
+  var c26=row.getCell(26);
+  c26.value=retDays;
+  c26.numFmt='0';
+  row.getCell(27).value='標準税';
+  row.getCell(28).value='無';
+  row.getCell(29).value='無';
+  row.getCell(30).value='可';
+  row.getCell(31).value='対象外';
+  row.getCell(32).value='無';
+  row.getCell(34).value=null;
+  row.getCell(40).value='無';
+}
+
+function writeOfferListSkuRow(ws,rowNum,sku,skuStyle){
+  applyOfferRowStyle(ws,skuStyle,rowNum);
+  var row=ws.getRow(rowNum);
+  row.getCell(6).value=sku.code||'';
+  var c8=row.getCell(8);
+  c8.value=Number(sku.qty)||1;
+  c8.numFmt='0';
+  setOfferFormula(row.getCell(7),'IFERROR(VLOOKUP(F'+rowNum+',[4]EX0054_在庫表!$A:$B,2,FALSE),"")');
+  setOfferFormula(row.getCell(9),'IFERROR(VLOOKUP(F'+rowNum+',[5]入力シート!$C:$AH,18,FALSE),0)');
+  setOfferFormula(row.getCell(10),'ROUNDDOWN(I'+rowNum+'*1.1,0)');
+  setOfferFormula(row.getCell(11),'IFERROR((I'+rowNum+'*H'+rowNum+'),"")');
+  setOfferFormula(row.getCell(12),'IFERROR((J'+rowNum+'*H'+rowNum+'),"")');
+}
+
+function writeOfferListData(ws,list){
+  var hdrStyle=cloneOfferRowStyle(ws,OFFER_MAIN_BLOCK_START_ROW);
+  var skuStyle=cloneOfferRowStyle(ws,OFFER_MAIN_BLOCK_START_ROW+1);
+  var blocks=list.map(function(h){
+    return {h:h,skus:offerSkuEntriesFromHinban(h)};
+  });
+  var totalRows=blocks.reduce(function(sum,b){return sum+1+b.skus.length;},0);
+  var templateSpan=OFFER_TEMPLATE_UPGRADE_ROW-OFFER_MAIN_BLOCK_START_ROW;
+  var upgradeRow=OFFER_TEMPLATE_UPGRADE_ROW;
+  if(totalRows>templateSpan){
+    var extra=totalRows-templateSpan;
+    var inserts=new Array(extra);
+    for(var i=0;i<extra;i++) inserts[i]=[];
+    ws.spliceRows.apply(ws,[OFFER_TEMPLATE_UPGRADE_ROW,0].concat(inserts));
+    upgradeRow=OFFER_TEMPLATE_UPGRADE_ROW+extra;
+  }
+  var cur=OFFER_MAIN_BLOCK_START_ROW;
+  blocks.forEach(function(block){
+    var skuFirst=cur+1;
+    var skuLast=cur+block.skus.length;
+    writeOfferListHeaderRow(ws,cur,skuFirst,skuLast,block.h,hdrStyle);
+    block.skus.forEach(function(sku,idx){
+      writeOfferListSkuRow(ws,cur+1+idx,sku,skuStyle);
+    });
+    cur=skuLast+1;
+  });
+  clearOfferMainRows(ws,cur,upgradeRow-1);
+}
+
+async function exportOfferList(){
+  if(typeof ExcelJS==='undefined'){alert('ExcelJSが読み込まれていません。ページを再読み込みしてください。');return;}
+  var list=registeredList&&registeredList.length?registeredList:null;
+  if(!list||!list.length){alert('登録済み品番がありません');return;}
+  showLoading('テンプレート読み込み中...');
+  try{
+    var buf=await loadOfferListTemplate();
+    updateLoading('Excel生成中...');
+    var workbook=new ExcelJS.Workbook();
+    await workbook.xlsx.load(buf);
+    var ws=workbook.getWorksheet(OFFER_LIST_SHEET_NAME);
+    if(!ws) throw new Error('シート「'+OFFER_LIST_SHEET_NAME+'」がテンプレートに含まれていません');
+    writeOfferListMeta(ws,list);
+    writeOfferListData(ws,list);
+    var d=new Date();
+    var pad=function(n){return String(n).padStart(2,'0');};
+    var groupLabel=getOfferListFileGroupLabel(list);
+    var fname='オファーリスト_'+groupLabel+'_'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'.xlsx';
+    updateLoading('ファイル出力中...');
+    var outputBuf=await workbook.xlsx.writeBuffer();
+    await dismissLoadingOverlay();
+    var blob=new Blob([outputBuf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url;
+    a.download=fname;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    alert(list.length+'件の品番をオファーリスト用Excelとして出力しました。');
   }catch(err){
     await dismissLoadingOverlay();
     console.error(err);
