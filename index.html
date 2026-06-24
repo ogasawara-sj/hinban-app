@@ -3583,11 +3583,7 @@ function setOfferFormula(cell,formula){
   if(!formula) return;
   var f=formula.charAt(0)==='='?formula.substring(1):formula;
   cell.value={formula:f};
-  if(cell.model){
-    delete cell.model.sharedFormula;
-    delete cell.model.si;
-    delete cell.model.ref;
-  }
+  offerClearCellFormulaMeta(cell);
 }
 
 function offerColLettersToNum(letters){
@@ -3619,61 +3615,106 @@ function offerShiftFormulaRefs(formula,dRow,dCol){
   });
 }
 
-function offerGetCellFormulaModel(cell){
+function offerGetCellFormulaText(cell){
+  if(!cell) return null;
+  try{
+    if(cell.formula) return cell.formula;
+  }catch(e){}
+  var m=cell.model;
+  if(m&&m.formula) return m.formula;
+  var v=cell.value;
+  if(v&&typeof v==='object'){
+    if(v.formula) return v.formula;
+    if(typeof v.sharedFormula==='string'&&v.sharedFormula) return v.sharedFormula;
+  }
+  return null;
+}
+
+function offerGetCellFormulaSi(cell){
   if(!cell) return null;
   var m=cell.model;
-  if(m&&m.formula) return m;
+  if(m&&m.si!==undefined&&m.si!==null) return m.si;
   var v=cell.value;
-  if(v&&typeof v==='object'&&v.formula){
-    return {formula:v.formula,result:v.result,si:v.si,sharedFormula:v.sharedFormula,ref:v.ref};
+  if(v&&typeof v==='object'&&v.si!==undefined&&v.si!==null) return v.si;
+  return null;
+}
+
+function offerClearCellFormulaMeta(cell){
+  if(!cell) return;
+  if(cell.model){
+    delete cell.model.formula;
+    delete cell.model.sharedFormula;
+    delete cell.model.si;
+    delete cell.model.ref;
+    delete cell.model.shareType;
   }
-  return m;
+}
+
+function offerGetWorksheetSharedFormulaDefs(ws){
+  if(ws._sharedFormulas&&ws._sharedFormulas.length) return ws._sharedFormulas;
+  if(ws.model&&ws.model.sharedFormulas&&ws.model.sharedFormulas.length) return ws.model.sharedFormulas;
+  return [];
+}
+
+function offerClearWorksheetSharedFormulaDefs(ws){
+  if(ws._sharedFormulas) ws._sharedFormulas=[];
+  if(ws.model&&ws.model.sharedFormulas) ws.model.sharedFormulas=[];
 }
 
 function flattenOfferWorksheetSharedFormulas(ws){
+  var sharedDefs=offerGetWorksheetSharedFormulaDefs(ws);
   var masters={};
   ws.eachRow({includeEmpty:true},function(row,rowNumber){
     row.eachCell({includeEmpty:true},function(cell,colNumber){
-      var m=offerGetCellFormulaModel(cell);
-      if(!m||!m.formula) return;
-      var si=m.si;
-      if(si===undefined||si===null){
-        if(m.sharedFormula||m.ref) si='auto_'+rowNumber+'_'+colNumber;
-        else return;
+      var formula=offerGetCellFormulaText(cell);
+      var si=offerGetCellFormulaSi(cell);
+      if(formula){
+        if(si!==null&&si!==undefined&&!masters[String(si)]){
+          masters[String(si)]={formula:formula,row:rowNumber,col:colNumber};
+        }
+        return;
       }
-      var key=String(si);
-      if(!masters[key]){
-        masters[key]={formula:m.formula,row:rowNumber,col:colNumber};
+      if(si!==null&&si!==undefined&&sharedDefs[si]&&sharedDefs[si].formula&&!masters[String(si)]){
+        masters[String(si)]={formula:sharedDefs[si].formula,row:rowNumber,col:colNumber};
       }
     });
   });
   ws.eachRow({includeEmpty:true},function(row,rowNumber){
     row.eachCell({includeEmpty:true},function(cell,colNumber){
-      var m=offerGetCellFormulaModel(cell);
-      if(!m) return;
-      var formula=m.formula;
-      var si=m.si;
-      if((!formula||formula==='')&&si!==undefined&&si!==null&&masters[String(si)]){
-        var master=masters[String(si)];
-        formula=offerShiftFormulaRefs(master.formula,rowNumber-master.row,colNumber-master.col);
+      var formula=offerGetCellFormulaText(cell);
+      var si=offerGetCellFormulaSi(cell);
+      if((!formula||formula==='')&&si!==null&&si!==undefined){
+        if(masters[String(si)]){
+          var master=masters[String(si)];
+          formula=offerShiftFormulaRefs(master.formula,rowNumber-master.row,colNumber-master.col);
+        }else if(sharedDefs[si]&&sharedDefs[si].formula){
+          formula=offerShiftFormulaRefs(sharedDefs[si].formula,0,0);
+        }
       }
       if(!formula) return;
       var next={formula:formula};
-      if(m.result!==undefined&&m.result!==null) next.result=m.result;
+      var m=cell.model;
+      var v=cell.value;
+      var result=m&&m.result!==undefined?m.result:(v&&typeof v==='object'?v.result:undefined);
+      if(result!==undefined&&result!==null) next.result=result;
       cell.value=next;
-      if(cell.model){
-        delete cell.model.sharedFormula;
-        delete cell.model.si;
-        delete cell.model.ref;
-      }
+      offerClearCellFormulaMeta(cell);
     });
   });
+  offerClearWorksheetSharedFormulaDefs(ws);
 }
 
 function flattenOfferWorkbookSharedFormulas(workbook){
   workbook.worksheets.forEach(function(ws){
     flattenOfferWorksheetSharedFormulas(ws);
   });
+}
+
+function truncateOfferListSheetBelowMain(ws){
+  var lastRow=Math.max(ws.actualRowCount||0,ws.rowCount||0,OFFER_TEMPLATE_UPGRADE_ROW-1);
+  if(lastRow>=OFFER_TEMPLATE_UPGRADE_ROW){
+    ws.spliceRows(OFFER_TEMPLATE_UPGRADE_ROW,lastRow-(OFFER_TEMPLATE_UPGRADE_ROW-1));
+  }
 }
 
 function excelSerialFromYmd(y,m,d){
@@ -3774,7 +3815,11 @@ function clearOfferMainRows(ws,fromRow,toRow){
   if(fromRow>toRow) return;
   for(var r=fromRow;r<=toRow;r++){
     var row=ws.getRow(r);
-    for(var c=1;c<=45;c++) row.getCell(c).value=null;
+    for(var c=1;c<=45;c++){
+      var cell=row.getCell(c);
+      cell.value=null;
+      offerClearCellFormulaMeta(cell);
+    }
   }
 }
 
@@ -3851,13 +3896,13 @@ function writeOfferListData(ws,list){
   });
   var totalRows=blocks.reduce(function(sum,b){return sum+1+b.skus.length;},0);
   var templateSpan=OFFER_TEMPLATE_UPGRADE_ROW-OFFER_MAIN_BLOCK_START_ROW;
-  var upgradeRow=OFFER_TEMPLATE_UPGRADE_ROW;
+  var mainEndRow=OFFER_TEMPLATE_UPGRADE_ROW-1;
   if(totalRows>templateSpan){
     var extra=totalRows-templateSpan;
     var inserts=new Array(extra);
     for(var i=0;i<extra;i++) inserts[i]=[];
     ws.spliceRows.apply(ws,[OFFER_TEMPLATE_UPGRADE_ROW,0].concat(inserts));
-    upgradeRow=OFFER_TEMPLATE_UPGRADE_ROW+extra;
+    mainEndRow=OFFER_TEMPLATE_UPGRADE_ROW-1+extra;
   }
   var cur=OFFER_MAIN_BLOCK_START_ROW;
   blocks.forEach(function(block){
@@ -3869,7 +3914,7 @@ function writeOfferListData(ws,list){
     });
     cur=skuLast+1;
   });
-  clearOfferMainRows(ws,cur,upgradeRow-1);
+  clearOfferMainRows(ws,cur,mainEndRow);
 }
 
 async function exportOfferList(){
@@ -3885,8 +3930,11 @@ async function exportOfferList(){
     flattenOfferWorkbookSharedFormulas(workbook);
     var ws=workbook.getWorksheet(OFFER_LIST_SHEET_NAME);
     if(!ws) throw new Error('シート「'+OFFER_LIST_SHEET_NAME+'」がテンプレートに含まれていません');
+    truncateOfferListSheetBelowMain(ws);
+    flattenOfferWorksheetSharedFormulas(ws);
     writeOfferListMeta(ws,list);
     writeOfferListData(ws,list);
+    flattenOfferWorkbookSharedFormulas(workbook);
     var d=new Date();
     var pad=function(n){return String(n).padStart(2,'0');};
     var groupLabel=getOfferListFileGroupLabel(list);
