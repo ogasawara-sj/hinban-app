@@ -3581,14 +3581,55 @@ async function loadOfferListTemplate(){
 
 function offerNormalizeFormulaText(formula){
   if(!formula) return null;
-  var f=String(formula);
+  var f=String(formula).trim();
+  if(!f) return null;
   return f.charAt(0)==='='?f.substring(1):f;
 }
 
 function setOfferFormula(cell,formula){
-  if(!formula) return;
-  offerClearSharedFormulaMeta(cell);
-  cell.value={formula:offerNormalizeFormulaText(formula)};
+  offerAssignStandaloneFormula(cell,formula);
+}
+
+function cleanupOfferWorkbookNames(workbook){
+  if(!workbook) return;
+  try{
+    if(workbook.definedNames){
+      workbook.definedNames.model=[];
+      if(workbook.definedNames.matrixMap) workbook.definedNames.matrixMap={};
+    }
+  }catch(e){
+    console.warn('名前付き範囲のクリアに失敗:',e);
+  }
+}
+
+function validateOfferWorksheetFormulas(ws){
+  if(!ws) return;
+  ws.eachRow({includeEmpty:true},function(row){
+    row.eachCell({includeEmpty:true},function(cell){
+      var v=cell.value;
+      if(v&&typeof v==='object'&&('formula' in v)){
+        var f=v.formula;
+        if(!f||typeof f!=='string'||!String(f).trim()){
+          offerClearSharedFormulaMeta(cell);
+          cell.value=null;
+          return;
+        }
+      }
+      if(offerCellHasSharedFormulaMeta(cell)){
+        var resolved=offerGetCellFormulaText(cell);
+        if(!resolved||!String(resolved).trim()){
+          offerClearSharedFormulaMeta(cell);
+          cell.value=null;
+        }
+      }
+      try{
+        if(cell.type===6&&!offerGetCellFormulaText(cell)){
+          offerClearSharedFormulaMeta(cell);
+          cell.value=null;
+        }
+      }catch(e){}
+    });
+  });
 }
 
 function offerColLettersToNum(letters){
@@ -3668,11 +3709,13 @@ function offerGetCellFormulaSi(cell){
 
 function offerClearSharedFormulaMeta(cell){
   if(!cell) return;
+  try{ delete cell._sharedFormula; }catch(e){}
   if(cell.model){
     delete cell.model.sharedFormula;
     delete cell.model.si;
     delete cell.model.ref;
     delete cell.model.shareType;
+    delete cell.model.formulaType;
   }
   var v=cell.value;
   if(v&&typeof v==='object'){
@@ -3684,9 +3727,10 @@ function offerClearSharedFormulaMeta(cell){
 }
 
 function offerAssignStandaloneFormula(cell,formula,result){
-  if(!formula) return;
+  var f=offerNormalizeFormulaText(formula);
+  if(!f) return;
   offerClearSharedFormulaMeta(cell);
-  var next={formula:offerNormalizeFormulaText(formula)};
+  var next={formula:f};
   if(result!==undefined&&result!==null) next.result=result;
   cell.value=next;
 }
@@ -3974,6 +4018,7 @@ async function exportOfferList(){
     updateLoading('Excel生成中...');
     var workbook=new ExcelJS.Workbook();
     await workbook.xlsx.load(buf);
+    cleanupOfferWorkbookNames(workbook);
     flattenOfferWorkbookSharedFormulas(workbook);
     var ws=workbook.getWorksheet(OFFER_LIST_SHEET_NAME);
     if(!ws) throw new Error('シート「'+OFFER_LIST_SHEET_NAME+'」がテンプレートに含まれていません');
@@ -3981,7 +4026,9 @@ async function exportOfferList(){
     flattenOfferWorksheetSharedFormulas(ws);
     writeOfferListMeta(ws,list);
     writeOfferListData(ws,list);
+    validateOfferWorksheetFormulas(ws);
     flattenOfferWorkbookSharedFormulas(workbook);
+    cleanupOfferWorkbookNames(workbook);
     var d=new Date();
     var pad=function(n){return String(n).padStart(2,'0');};
     var groupLabel=getOfferListFileGroupLabel(list);
