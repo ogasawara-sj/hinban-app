@@ -4010,32 +4010,17 @@ function writeOfferListData(ws,list){
 
 async function exportOfferList(){
   if(typeof ExcelJS==='undefined'){alert('ExcelJSが読み込まれていません。ページを再読み込みしてください。');return;}
-  var list=registeredList&&registeredList.length?registeredList:null;
-  if(!list||!list.length){alert('登録済み品番がありません');return;}
   showLoading('テンプレート読み込み中...');
   try{
     var buf=await loadOfferListTemplate();
-    updateLoading('Excel生成中...');
     var workbook=new ExcelJS.Workbook();
     await workbook.xlsx.load(buf);
-    cleanupOfferWorkbookNames(workbook);
-    flattenOfferWorkbookSharedFormulas(workbook);
-    var ws=workbook.getWorksheet(OFFER_LIST_SHEET_NAME);
-    if(!ws) throw new Error('シート「'+OFFER_LIST_SHEET_NAME+'」がテンプレートに含まれていません');
-    truncateOfferListSheetBelowMain(ws);
-    flattenOfferWorksheetSharedFormulas(ws);
-    writeOfferListMeta(ws,list);
-    writeOfferListData(ws,list);
-    validateOfferWorksheetFormulas(ws);
-    flattenOfferWorkbookSharedFormulas(workbook);
-    cleanupOfferWorkbookNames(workbook);
-    var d=new Date();
-    var pad=function(n){return String(n).padStart(2,'0');};
-    var groupLabel=getOfferListFileGroupLabel(list);
-    var fname='オファーリスト_'+groupLabel+'_'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'.xlsx';
     updateLoading('ファイル出力中...');
     var outputBuf=await workbook.xlsx.writeBuffer();
     await dismissLoadingOverlay();
+    var d=new Date();
+    var pad=function(n){return String(n).padStart(2,'0');};
+    var fname='オファーリスト_テスト_'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'.xlsx';
     var blob=new Blob([outputBuf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
     var url=URL.createObjectURL(blob);
     var a=document.createElement('a');
@@ -4045,7 +4030,7 @@ async function exportOfferList(){
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    alert(list.length+'件の品番をオファーリスト用Excelとして出力しました。');
+    alert('テンプレートをそのまま出力しました（テスト）');
   }catch(err){
     await dismissLoadingOverlay();
     console.error(err);
