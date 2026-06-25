@@ -3943,16 +3943,20 @@ function writeOfferListSingleHinban(ws,h,startRow){
   ws.getCell('AE'+hdrRow).value='対象外';
   ws.getCell('AF'+hdrRow).value='無';
   var skuList=(h.skuList||[]).filter(function(s){return s&&s.code;});
-  skuList.forEach(function(sku,idx){
-    if(idx>=OFFER_MAX_SKU_ROWS_PER_ITEM) return;
+  for(var idx=0;idx<OFFER_MAX_SKU_ROWS_PER_ITEM;idx++){
     var r=hdrRow+1+idx;
-    ws.getCell('F'+r).value=displayBizKana(sku.code||'');
-    ws.getCell('H'+r).value=Number(sku.qty)||1;
-  });
-  for(var clearIdx=skuList.length;clearIdx<OFFER_MAX_SKU_ROWS_PER_ITEM;clearIdx++){
-    var clearRow=hdrRow+1+clearIdx;
-    ws.getCell('F'+clearRow).value=null;
-    ws.getCell('H'+clearRow).value=null;
+    var sku=skuList[idx];
+    if(sku){
+      ws.getCell('F'+r).value=displayBizKana(sku.code||'');
+      ws.getCell('H'+r).value=Number(sku.qty)||1;
+      setOfferFormula(ws.getCell('G'+r),'IFERROR(VLOOKUP(F'+r+',[4]EX0054_在庫表!$A:$B,2,FALSE),"")');
+      setOfferFormula(ws.getCell('I'+r),'IFERROR(VLOOKUP(F'+r+',[5]入力シート!$C:$AH,18,FALSE),0)');
+    }else{
+      ws.getCell('F'+r).value=null;
+      ws.getCell('H'+r).value=null;
+      ws.getCell('G'+r).value=null;
+      ws.getCell('I'+r).value=null;
+    }
   }
 }
 
