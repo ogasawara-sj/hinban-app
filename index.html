@@ -4010,11 +4010,17 @@ function writeOfferListData(ws,list){
 
 async function exportOfferList(){
   if(typeof ExcelJS==='undefined'){alert('ExcelJSが読み込まれていません。ページを再読み込みしてください。');return;}
+  var list=registeredList&&registeredList.length?registeredList:null;
+  if(!list||!list.length){alert('登録済み品番がありません');return;}
   showLoading('テンプレート読み込み中...');
   try{
     var buf=await loadOfferListTemplate();
     var workbook=new ExcelJS.Workbook();
     await workbook.xlsx.load(buf);
+    var ws=workbook.getWorksheet(OFFER_LIST_SHEET_NAME);
+    if(!ws) throw new Error('シート「'+OFFER_LIST_SHEET_NAME+'」が見つかりません');
+    updateLoading('Excel生成中...');
+    writeOfferListMeta(ws,list);
     updateLoading('ファイル出力中...');
     var outputBuf=await workbook.xlsx.writeBuffer();
     await dismissLoadingOverlay();
@@ -4030,7 +4036,7 @@ async function exportOfferList(){
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    alert('テンプレートをそのまま出力しました（テスト）');
+    alert('メタ情報を書き込んだテンプレートを出力しました（ステップ2）');
   }catch(err){
     await dismissLoadingOverlay();
     console.error(err);
