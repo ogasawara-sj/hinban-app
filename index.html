@@ -3554,6 +3554,7 @@ async function exportAccessImport(){
 // ============================================================
 var OFFER_LIST_SHEET_NAME='オファーリスト';
 var OFFER_MAIN_BLOCK_START_ROW=19;
+var OFFER_BLOCK_ROWS=9;
 var OFFER_TEMPLATE_UPGRADE_ROW=75;
 var OFFER_MAX_SKU_ROWS_PER_ITEM=8;
 
@@ -3947,6 +3948,43 @@ function writeOfferListSingleHinban(ws,h,startRow){
     ws.getCell('F'+r).value=displayBizKana(sku.code||'');
     ws.getCell('H'+r).value=Number(sku.qty)||1;
   });
+  for(var clearIdx=skuList.length;clearIdx<OFFER_MAX_SKU_ROWS_PER_ITEM;clearIdx++){
+    var clearRow=hdrRow+1+clearIdx;
+    ws.getCell('F'+clearRow).value=null;
+    ws.getCell('H'+clearRow).value=null;
+  }
+}
+
+function copyOfferBlock(ws,srcStartRow,destStartRow,blockSize){
+  var rowOffset=destStartRow-srcStartRow;
+  for(var i=0;i<blockSize;i++){
+    var srcRowNum=srcStartRow+i;
+    var destRowNum=destStartRow+i;
+    var srcRow=ws.getRow(srcRowNum);
+    var destRow=ws.getRow(destRowNum);
+    if(srcRow.height) destRow.height=srcRow.height;
+    srcRow.eachCell({includeEmpty:true},function(srcCell,colNumber){
+      var destCell=destRow.getCell(colNumber);
+      if(srcCell.style) destCell.style=JSON.parse(JSON.stringify(srcCell.style));
+      if(srcCell.numFmt) destCell.numFmt=srcCell.numFmt;
+      var formula=offerGetCellFormulaText(srcCell);
+      if(!formula&&offerCellHasSharedFormulaMeta(srcCell)){
+        formula=offerResolveSharedFormulaFromAddress(ws,srcCell,srcRowNum,colNumber);
+      }
+      if(formula){
+        offerAssignStandaloneFormula(destCell,offerShiftFormulaRefs(offerNormalizeFormulaText(formula),rowOffset,0));
+        return;
+      }
+      var srcVal=srcCell.value;
+      if(srcVal===null||srcVal===undefined) return;
+      if(typeof srcVal==='object'){
+        if(srcVal.formula) return;
+        destCell.value=JSON.parse(JSON.stringify(srcVal));
+      }else{
+        destCell.value=srcVal;
+      }
+    });
+  }
 }
 
 function writeOfferListHeaderRow(ws,hdrRow,skuFirst,skuLast,h,hdrStyle){
@@ -4048,13 +4086,20 @@ async function exportOfferList(){
     if(!ws) throw new Error('シート「'+OFFER_LIST_SHEET_NAME+'」が見つかりません');
     updateLoading('Excel生成中...');
     writeOfferListMeta(ws,list);
-    writeOfferListSingleHinban(ws,list[0],OFFER_MAIN_BLOCK_START_ROW);
+    for(var bi=1;bi<list.length;bi++){
+      var destStart=OFFER_MAIN_BLOCK_START_ROW+bi*OFFER_BLOCK_ROWS;
+      copyOfferBlock(ws,OFFER_MAIN_BLOCK_START_ROW,destStart,OFFER_BLOCK_ROWS);
+    }
+    list.forEach(function(h,idx){
+      writeOfferListSingleHinban(ws,h,OFFER_MAIN_BLOCK_START_ROW+idx*OFFER_BLOCK_ROWS);
+    });
     updateLoading('ファイル出力中...');
     var outputBuf=await workbook.xlsx.writeBuffer();
     await dismissLoadingOverlay();
     var d=new Date();
     var pad=function(n){return String(n).padStart(2,'0');};
-    var fname='オファーリスト_テスト_'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'.xlsx';
+    var groupLabel=getOfferListFileGroupLabel(list);
+    var fname='オファーリスト_'+groupLabel+'_'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'.xlsx';
     var blob=new Blob([outputBuf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
     var url=URL.createObjectURL(blob);
     var a=document.createElement('a');
@@ -4064,7 +4109,7 @@ async function exportOfferList(){
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    alert('1品番分書き込んだテンプレートを出力しました（ステップ3）');
+    alert(list.length+'件の品番をオファーリスト用Excelとして出力しました。');
   }catch(err){
     await dismissLoadingOverlay();
     console.error(err);
