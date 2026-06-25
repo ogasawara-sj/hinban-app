@@ -3555,6 +3555,7 @@ async function exportAccessImport(){
 var OFFER_LIST_SHEET_NAME='オファーリスト';
 var OFFER_MAIN_BLOCK_START_ROW=19;
 var OFFER_BLOCK_ROWS=9;
+var OFFER_BLOCK_MAX_COL=45;
 var OFFER_TEMPLATE_UPGRADE_ROW=75;
 var OFFER_MAX_SKU_ROWS_PER_ITEM=8;
 
@@ -3955,7 +3956,35 @@ function writeOfferListSingleHinban(ws,h,startRow){
   }
 }
 
+function copyOfferBlockCell(ws,srcRowNum,destRowNum,colNumber,rowOffset){
+  var srcCell=ws.getCell(srcRowNum,colNumber);
+  var destCell=ws.getCell(destRowNum,colNumber);
+  if(srcCell.style) destCell.style=JSON.parse(JSON.stringify(srcCell.style));
+  else destCell.style={};
+  if(srcCell.numFmt) destCell.numFmt=srcCell.numFmt;
+  var formula=offerGetCellFormulaText(srcCell);
+  if(!formula&&offerCellHasSharedFormulaMeta(srcCell)){
+    formula=offerResolveSharedFormulaFromAddress(ws,srcCell,srcRowNum,colNumber);
+  }
+  if(formula){
+    offerAssignStandaloneFormula(destCell,offerShiftFormulaRefs(offerNormalizeFormulaText(formula),rowOffset,0));
+    return;
+  }
+  var srcVal=srcCell.value;
+  if(srcVal===null||srcVal===undefined){
+    destCell.value=null;
+    return;
+  }
+  if(typeof srcVal==='object'){
+    if(srcVal.formula) return;
+    destCell.value=JSON.parse(JSON.stringify(srcVal));
+  }else{
+    destCell.value=srcVal;
+  }
+}
+
 function copyOfferBlock(ws,srcStartRow,destStartRow,blockSize){
+  if(destStartRow===srcStartRow) return;
   var rowOffset=destStartRow-srcStartRow;
   for(var i=0;i<blockSize;i++){
     var srcRowNum=srcStartRow+i;
@@ -3963,27 +3992,10 @@ function copyOfferBlock(ws,srcStartRow,destStartRow,blockSize){
     var srcRow=ws.getRow(srcRowNum);
     var destRow=ws.getRow(destRowNum);
     if(srcRow.height) destRow.height=srcRow.height;
-    srcRow.eachCell({includeEmpty:true},function(srcCell,colNumber){
-      var destCell=destRow.getCell(colNumber);
-      if(srcCell.style) destCell.style=JSON.parse(JSON.stringify(srcCell.style));
-      if(srcCell.numFmt) destCell.numFmt=srcCell.numFmt;
-      var formula=offerGetCellFormulaText(srcCell);
-      if(!formula&&offerCellHasSharedFormulaMeta(srcCell)){
-        formula=offerResolveSharedFormulaFromAddress(ws,srcCell,srcRowNum,colNumber);
-      }
-      if(formula){
-        offerAssignStandaloneFormula(destCell,offerShiftFormulaRefs(offerNormalizeFormulaText(formula),rowOffset,0));
-        return;
-      }
-      var srcVal=srcCell.value;
-      if(srcVal===null||srcVal===undefined) return;
-      if(typeof srcVal==='object'){
-        if(srcVal.formula) return;
-        destCell.value=JSON.parse(JSON.stringify(srcVal));
-      }else{
-        destCell.value=srcVal;
-      }
-    });
+    for(var col=1;col<=OFFER_BLOCK_MAX_COL;col++){
+      copyOfferBlockCell(ws,srcRowNum,destRowNum,col,rowOffset);
+    }
+    if(typeof destRow.commit==='function') destRow.commit();
   }
 }
 
@@ -4084,6 +4096,7 @@ async function exportOfferList(){
     await workbook.xlsx.load(buf);
     var ws=workbook.getWorksheet(OFFER_LIST_SHEET_NAME);
     if(!ws) throw new Error('シート「'+OFFER_LIST_SHEET_NAME+'」が見つかりません');
+    truncateOfferListSheetBelowMain(ws);
     updateLoading('Excel生成中...');
     writeOfferListMeta(ws,list);
     for(var bi=1;bi<list.length;bi++){
