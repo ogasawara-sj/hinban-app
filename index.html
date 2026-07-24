@@ -2402,7 +2402,11 @@ function onCodeEdit(idx, newCode, inputEl){
 }
 
 // SKU一覧テーブルHTML生成（共通）
-function renderSkuTable(skuList){
+// options.deletable / options.hinbanIdx: 登録済み品番一覧で個別SKU削除ボタンを表示
+function renderSkuTable(skuList,options){
+  options=options||{};
+  var deletable=!!options.deletable;
+  var hinbanIdx=options.hinbanIdx;
   if(!skuList||!skuList.length){
     return `<div style="font-size:12px;color:var(--red)">SKUが設定されていません。初期設定でSKUマスタを読み込んでから再生成してください。</div>`;
   }
@@ -2412,15 +2416,20 @@ function renderSkuTable(skuList){
       <th style="padding:4px 8px;text-align:left;font-size:11px;color:var(--gray-400)">SKU名称</th>
       <th style="padding:4px 8px;text-align:left;font-size:11px;color:var(--gray-400);width:90px">役割</th>
       <th style="padding:4px 8px;text-align:center;font-size:11px;color:var(--gray-400);width:50px">数量</th>
+      ${deletable?'<th style="padding:4px 8px;text-align:center;font-size:11px;color:var(--gray-400);width:44px">削除</th>':''}
     </tr></thead>
     <tbody>
-      ${skuList.map(s=>`<tr style="border-bottom:1px solid var(--bd)">
+      ${skuList.map((s,si)=>`<tr style="border-bottom:1px solid var(--bd)">
         <td style="padding:4px 8px"><span class="mono">${s.code||'—'}</span></td>
         <td style="padding:4px 8px">${escHtml(displayBizKana(s.name||'—'))}</td>
         <td style="padding:4px 8px">
           <span style="font-size:10px;padding:1px 6px;border-radius:8px;background:var(--blue-lt);color:var(--blue)">${s.role||'—'}</span>
         </td>
         <td style="padding:4px 8px;text-align:center">${s.qty||1}</td>
+        ${deletable?`<td style="padding:4px 8px;text-align:center">
+          <button type="button" title="このSKUを削除" onclick="deleteSkuFromHinban(${hinbanIdx},${si})"
+            style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;line-height:1;padding:2px 6px">🗑️</button>
+        </td>`:''}
       </tr>`).join('')}
     </tbody>
   </table>`;
@@ -2637,6 +2646,27 @@ function resetAll(){
 // ============================================================
 // LIST PAGE
 // ============================================================
+function toggleListSkuRow(idx){
+  var el=document.getElementById('list-sku-row-'+idx);
+  var toggle=document.getElementById('list-sku-toggle-'+idx);
+  if(!el) return;
+  var open=el.style.display==='none';
+  el.style.display=open?'table-row':'none';
+  if(toggle) toggle.textContent=open?'⌃':'⌄';
+}
+
+function deleteSkuFromHinban(hinbanIdx,skuIndex){
+  var h=registeredList[hinbanIdx];
+  if(!h||!h.skuList||!h.skuList[skuIndex]) return;
+  var sku=h.skuList[skuIndex];
+  var label=sku.code||'—';
+  var namePart=sku.name?('（'+displayBizKana(sku.name)+'）'):'';
+  if(!confirm('品番 '+h.code+' からSKU '+label+namePart+' を削除しますか？')) return;
+  h.skuList.splice(skuIndex,1);
+  saveRegisteredList();
+  renderList();
+}
+
 function renderList(){
   const fg=document.getElementById('f-group').value,fm=document.getElementById('f-month').value;
   const fs=document.getElementById('f-staff').value,fst=document.getElementById('f-status').value;
@@ -2651,8 +2681,14 @@ function renderList(){
   if(!data.length){tb.innerHTML=`<tr><td colspan="11" style="text-align:center;padding:30px;color:var(--gray-400)">登録された品番がありません</td></tr>`;document.getElementById('list-footer').textContent='';return;}
   tb.innerHTML=data.map(r=>{
     const idx=registeredList.indexOf(r);
+    const skuCount=(r.skuList&&r.skuList.length)||0;
     return`<tr>
-      <td><span class="mono">${r.code}</span></td>
+      <td>
+        <div class="code-cell-wrap">
+          <button type="button" class="toggle-marker" onclick="toggleListSkuRow(${idx})" id="list-sku-toggle-${idx}" title="SKU構成を表示">⌄</button>
+          <span class="mono">${r.code}</span>
+        </div>
+      </td>
       <td style="font-size:12px;max-width:240px">${escHtml(displayBizKana(r.name))}</td>
       <td style="font-size:11px">${r.group}</td>
       <td style="font-size:12px">${r.month||'—'}</td>
@@ -2661,8 +2697,14 @@ function renderList(){
       <td style="text-align:right;color:var(--gray-400)">¥${Math.round((r.price||0)*1.1).toLocaleString('ja-JP')}</td>
       <td style="text-align:center;font-size:11px">${r.ship>0?r.ship+'円':'無料'}</td>
       <td><select class="status-sel" onchange="registeredList[${idx}].status=this.value;saveRegisteredList();renderList()">${STATUS_LIST.map(s=>`<option${r.status===s?' selected':''}>${s}</option>`).join('')}</select></td>
-      <td style="text-align:center">${r.skuList.length}</td>
+      <td style="text-align:center"><span style="font-weight:600;color:${skuCount===0?'var(--red)':'var(--green)'}">${skuCount}</span></td>
       <td><button onclick="if(confirm('削除しますか？')){registeredList.splice(${idx},1);document.getElementById('total-badge').textContent='登録済 '+registeredList.length+'件';saveRegisteredList();renderList()}" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px">削除</button></td>
+    </tr>
+    <tr id="list-sku-row-${idx}" style="display:none;background:var(--gray-50)">
+      <td colspan="11" style="padding:0 10px 12px 24px">
+        <div style="font-size:11px;font-weight:600;color:var(--gray-600);padding:8px 0 4px">📦 ${r.code} のSKU構成（個別削除可）</div>
+        ${renderSkuTable(r.skuList,{deletable:true,hinbanIdx:idx})}
+      </td>
     </tr>`;
   }).join('');
   document.getElementById('list-footer').textContent=`${data.length}件表示 / 合計 ${registeredList.length}件`;
@@ -3943,20 +3985,16 @@ function writeOfferListSingleHinban(ws,h,startRow){
   ws.getCell('AE'+hdrRow).value='対象外';
   ws.getCell('AF'+hdrRow).value='無';
   var skuList=(h.skuList||[]).filter(function(s){return s&&s.code;});
-  for(var idx=0;idx<OFFER_MAX_SKU_ROWS_PER_ITEM;idx++){
+  skuList.forEach(function(sku,idx){
+    if(idx>=OFFER_MAX_SKU_ROWS_PER_ITEM) return;
     var r=hdrRow+1+idx;
-    var sku=skuList[idx];
-    if(sku){
-      ws.getCell('F'+r).value=displayBizKana(sku.code||'');
-      ws.getCell('H'+r).value=Number(sku.qty)||1;
-      setOfferFormula(ws.getCell('G'+r),'IFERROR(VLOOKUP(F'+r+',[4]EX0054_在庫表!$A:$B,2,FALSE),"")');
-      setOfferFormula(ws.getCell('I'+r),'IFERROR(VLOOKUP(F'+r+',[5]入力シート!$C:$AH,18,FALSE),0)');
-    }else{
-      ws.getCell('F'+r).value=null;
-      ws.getCell('H'+r).value=null;
-      ws.getCell('G'+r).value=null;
-      ws.getCell('I'+r).value=null;
-    }
+    ws.getCell('F'+r).value=displayBizKana(sku.code||'');
+    ws.getCell('H'+r).value=Number(sku.qty)||1;
+  });
+  for(var clearIdx=skuList.length;clearIdx<OFFER_MAX_SKU_ROWS_PER_ITEM;clearIdx++){
+    var clearRow=hdrRow+1+clearIdx;
+    ws.getCell('F'+clearRow).value=null;
+    ws.getCell('H'+clearRow).value=null;
   }
 }
 
