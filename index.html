@@ -207,6 +207,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sa
   </div>
 </div>
 
+<div id="template-integrity-banner" style="display:none;position:sticky;top:52px;z-index:290;background:var(--red-lt);color:var(--red);border-bottom:2px solid var(--red);padding:10px 20px;font-size:13px;font-weight:600;line-height:1.7"></div>
 
 <!-- ==================== INIT PAGE ==================== -->
 <div class="page on" id="page-init" style="max-width:700px">
@@ -221,22 +222,27 @@ body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sa
       ℹ️ SharePointから最新のSKUマスタExcelをダウンロードして読み込みます。<br>
       読み込むと商品グループ・カラーが自動で最新化されます。
     </div>
-    <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
-      <button class="btn btn-g" onclick="updateSkuMasterAndProceed()" style="font-size:14px;padding:12px 24px">
-        📥 SKUマスタExcelを選択して読み込む
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+      <button class="btn btn-g" onclick="downloadAndLoadSkuMaster('init-sku-status')" style="font-size:14px;padding:12px 24px">
+        📥 SKUマスタをSharePointからダウンロードして読み込む
       </button>
       <button class="btn" onclick="proceedWithoutUpdate()" style="font-size:13px;color:var(--gray-400)">
         前回のデータで続ける →
+      </button>
+    </div>
+    <div style="margin-bottom:14px">
+      <button class="btn" onclick="updateSkuMasterAndProceed()" style="font-size:12px;color:var(--gray-400)">
+        すでにダウンロード済みのファイルを選択して読み込む
       </button>
     </div>
     <div id="init-sku-status" style="font-size:13px;color:var(--gray-400)"></div>
 
     <div style="background:var(--gray-50);border-radius:var(--r);padding:12px 14px;font-size:12px;color:var(--gray-600);line-height:1.9;margin-top:10px">
       <strong>手順：</strong><br>
-      1. SharePointを開き「SKUコード･サービス品コード管理台帳(ShareBoard用).xlsx」をダウンロード<br>
-      2. 上のボタンを押してファイルを選択<br>
+      1. 上のボタンを押すと「SKUコード･サービス品コード管理台帳(ShareBoard用).xlsx」のダウンロードと、ファイル選択ダイアログが自動で開きます<br>
+      2. ダウンロードフォルダに保存された最新ファイルを選択<br>
       3. 自動でFN・YR・RT・UA・UB・SS・INシートを読み取り、商品グループ・カラーを最新化<br>
-      <span style="color:var(--gray-400)">※ SharePointのファイルには一切書き込みません（読み取り専用）</span>
+      <span style="color:var(--gray-400)">※ SharePointの台帳には一切書き込みません（ダウンロードのみの読み取り専用アクセスです）</span>
     </div>
   </div>
 
@@ -480,18 +486,21 @@ body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sa
     <div class="card">
       <div class="card-title">SKUマスタ（SharePoint参照専用）</div>
       <div class="warn-box">⚠ このSKUマスタ台帳は<strong>読み取り専用</strong>です。追加・編集・削除は行いません。SharePointの台帳を正として、以下のボタンで最新データを取り込んでください。</div>
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap">
-        <button class="btn btn-g" onclick="updateSkuMaster()" style="font-size:13px;padding:9px 18px">
-          🔄 SKUマスタを更新（SharePointからExcelをダウンロードして読み込む）
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap">
+        <button class="btn btn-g" onclick="downloadAndLoadSkuMaster('sku-master-status-main')" style="font-size:13px;padding:9px 18px">
+          📥 SKUマスタをSharePointからダウンロードして更新
+        </button>
+        <button class="btn" onclick="updateSkuMaster()" style="font-size:12px;color:var(--gray-400)">
+          すでにダウンロード済みのファイルを選択
         </button>
         <div id="sku-master-status-main" style="font-size:12px;color:var(--gray-400)"></div>
       </div>
       <div style="background:var(--blue-lt);border-radius:var(--r);padding:12px;font-size:12px;color:var(--blue-dk);margin-bottom:14px;line-height:1.8">
         <strong>手順：</strong><br>
-        1. SharePointを開いて「SKUコード･サービス品コード管理台帳(ShareBoard用).xlsx」をダウンロード<br>
-        2. 上のボタンを押してダウンロードしたファイルを選択<br>
+        1. 上のボタンを押すと「SKUコード･サービス品コード管理台帳(ShareBoard用).xlsx」のダウンロードと、ファイル選択ダイアログが自動で開きます<br>
+        2. ダウンロードフォルダに保存された最新ファイルを選択<br>
         3. 自動でFN・YR・RT・UA・UB・SS・INシートを読み取りカラー判定まで実行します<br>
-        <span style="color:var(--gray-400)">※ SharePointのファイルには一切書き込みません</span>
+        <span style="color:var(--gray-400)">※ SharePointの台帳には一切書き込みません（ダウンロードのみの読み取り専用アクセスです）</span>
       </div>
       <div style="font-size:12px;font-weight:600;color:var(--gray-600);margin-bottom:8px">SKUを検索して確認</div>
       <div class="irow" style="margin-bottom:8px">
@@ -3337,6 +3346,15 @@ async function exportShitokuSheet(){
 // ============================================================
 var ACCESS_KEEP_SHEETS=['注文品番 (BtoC)','構成_注文品番','注文品番リスト','バージョン(非表示)'];
 
+// テンプレートが壊れていた場合の復旧手順（管理者=利用者本人が一人で対応できるように）
+var TEMPLATE_RESTORE_HINT='\n\n【復旧方法】\nC:\\hinban-app フォルダ内の「テンプレート復元.bat」をダブルクリックしてください。\n数秒で正常なテンプレートに自動修復されます（Gitの正常版に戻すだけなので、何度実行しても安全です）。';
+
+function isXlsxMagic(buf){
+  if(!buf||buf.byteLength<4) return false;
+  var m=new Uint8Array(buf,0,4);
+  return m[0]===0x50&&m[1]===0x4B&&m[2]===0x03&&m[3]===0x04;
+}
+
 async function loadAccessTemplate(forceReload){
   if(!forceReload&&window._accessTemplateBuffer) return window._accessTemplateBuffer;
   var path='public/templates/access-register-template.xlsx';
@@ -3356,11 +3374,9 @@ async function loadAccessTemplate(forceReload){
   if(buf.byteLength<4){
     throw new Error('テンプレートファイルが小さすぎます（'+buf.byteLength+' bytes）');
   }
-  var magic=new Uint8Array(buf,0,4);
-  var isZip=magic[0]===0x50&&magic[1]===0x4B&&magic[2]===0x03&&magic[3]===0x04;
-  if(!isZip){
+  if(!isXlsxMagic(buf)){
     console.error('[loadAccessTemplate] マジックバイトが不正: '+hexHead);
-    console.warn('マジックバイトはNGですが、ExcelJSの読み込みを試行します...');
+    throw new Error('アクセス登録用テンプレートが破損しています（正しい.xlsx形式ではありません。先頭バイト: '+hexHead+'）。'+TEMPLATE_RESTORE_HINT);
   }
   window._accessTemplateBuffer=buf;
   return buf;
@@ -3615,10 +3631,9 @@ async function loadOfferListTemplate(){
   if(buf.byteLength<4){
     throw new Error('オファーリストテンプレートが小さすぎます（'+buf.byteLength+' bytes）');
   }
-  var magic=new Uint8Array(buf,0,4);
-  var isZip=magic[0]===0x50&&magic[1]===0x4B&&magic[2]===0x03&&magic[3]===0x04;
-  if(!isZip){
-    throw new Error('オファーリストテンプレートが正しい.xlsx形式ではありません（先頭: '+Array.from(magic).map(function(b){return b.toString(16).padStart(2,'0');}).join(' ')+'）。.xlsx形式で再保存してください。');
+  if(!isXlsxMagic(buf)){
+    var hexHead=Array.from(new Uint8Array(buf,0,Math.min(16,buf.byteLength))).map(function(b){return b.toString(16).padStart(2,'0');}).join(' ');
+    throw new Error('オファーリストテンプレートが破損しています（正しい.xlsx形式ではありません。先頭バイト: '+hexHead+'）。'+TEMPLATE_RESTORE_HINT);
   }
   return buf;
 }
@@ -4464,6 +4479,24 @@ function processSkuWorkbook(wb){
     if(!existing || s.d > existing.d) dedup.set(key, s);
   }
   return [...dedup.values()];
+}
+
+// SKUコード・サービス品コード管理台帳（SharePoint）へのリンク。&download=1 を付与し、
+// Office Online（編集）ではなく直接ダウンロードのみのレスポンスを強制する。台帳側には一切書き込まない。
+const SKU_MASTER_SHAREPOINT_URL='https://oaklawnmarketing.sharepoint.com/:x:/r/Products/_layouts/15/Doc.aspx?sourcedoc=%7B6230C625-1886-4F42-B937-14E31B0F0F32%7D&file=SKU%E3%82%B3%E3%83%BC%E3%83%89%EF%BD%A5%E3%82%B5%E3%83%BC%E3%83%93%E3%82%B9%E5%93%81%E3%82%B3%E3%83%BC%E3%83%89%E7%AE%A1%E7%90%86%E5%8F%B0%E5%B8%B3(ShareBoard%E7%94%A8).xlsx&action=default&mobileredirect=true&DefaultItemOpen=1';
+
+// SKUマスタ：SharePointの台帳をダウンロード用リンクで新規タブに開き（読み取りのみ）、
+// 続けて既存のファイル選択ダイアログを自動で開く。ブラウザの仕様上、
+// 「ダウンロード→自動読込」を完全な1クリックにはできないため、選択操作のみ手動で残す。
+function downloadAndLoadSkuMaster(statusElId){
+  window.open(SKU_MASTER_SHAREPOINT_URL+'&download=1','_blank','noopener');
+  const statusEl=document.getElementById(statusElId);
+  if(statusEl) statusEl.innerHTML='<span style="color:var(--blue)">⏳ SharePointでダウンロードを開始しました。完了後、開いたファイル選択画面でダウンロードした最新ファイルを選んでください…</span>';
+  if(statusElId==='init-sku-status'){
+    updateSkuMasterAndProceed();
+  }else{
+    updateSkuMaster();
+  }
 }
 
 // SKUマスタ更新（ファイル選択ダイアログ）
@@ -5328,6 +5361,36 @@ document.addEventListener('click', function(e){
 });
 
 // ============================================================
+// テンプレート整合性チェック（起動時に自動実行）
+// ============================================================
+async function checkTemplatesIntegrity(){
+  var banner=document.getElementById('template-integrity-banner');
+  if(!banner) return;
+  var broken=[];
+  var targets=[
+    {path:'public/templates/access-register-template.xlsx',label:'アクセス登録用テンプレート'},
+    {path:'public/templates/offer-list-template.xlsx',label:'オファーリスト用テンプレート'}
+  ];
+  for(var i=0;i<targets.length;i++){
+    try{
+      var res=await fetch(targets[i].path,{cache:'no-store'});
+      if(!res.ok){broken.push(targets[i].label+'（ファイルが見つかりません）');continue;}
+      var buf=await res.arrayBuffer();
+      if(!isXlsxMagic(buf)) broken.push(targets[i].label);
+    }catch(e){
+      broken.push(targets[i].label+'（確認エラー）');
+    }
+  }
+  if(broken.length){
+    banner.style.display='block';
+    banner.innerHTML='⚠ '+broken.join('、')+'が破損しています。<br>'+
+      'C:\\hinban-app フォルダ内の「テンプレート復元.bat」をダブルクリックすると自動で修復されます（数秒で完了・何度実行しても安全です）。修復後この画面を再読み込みしてください。';
+  }else{
+    banner.style.display='none';
+  }
+}
+
+// ============================================================
 // INIT
 // ============================================================
 renderAll();
@@ -5335,6 +5398,7 @@ loadMaster().then(()=>{
   // 起動時は初期設定ページを表示
   showPage('init');
 });
+checkTemplatesIntegrity();
 
 function getCombinations(arr, r){
   if(r===1) return arr.map(function(x){ return [x]; });
