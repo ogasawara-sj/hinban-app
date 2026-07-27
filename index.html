@@ -4483,15 +4483,18 @@ function processSkuWorkbook(wb){
 
 // SKUコード・サービス品コード管理台帳（SharePoint）へのリンク。&download=1 を付与し、
 // Office Online（編集）ではなく直接ダウンロードのみのレスポンスを強制する。台帳側には一切書き込まない。
-const SKU_MASTER_SHAREPOINT_URL='https://oaklawnmarketing.sharepoint.com/:x:/r/Products/_layouts/15/Doc.aspx?sourcedoc=%7B6230C625-1886-4F42-B937-14E31B0F0F32%7D&file=SKU%E3%82%B3%E3%83%BC%E3%83%89%EF%BD%A5%E3%82%B5%E3%83%BC%E3%83%93%E3%82%B9%E5%93%81%E3%82%B3%E3%83%BC%E3%83%89%E7%AE%A1%E7%90%86%E5%8F%B0%E5%B8%B3(ShareBoard%E7%94%A8).xlsx&action=default&mobileredirect=true&DefaultItemOpen=1';
+// SharePointの台帳を「直接ダウンロード」するURL（download.aspx?UniqueId=<GUID>）。
+// ビューアを経由せず、押すとブラウザのDLが即開始する。台帳には一切書き込まない（読み取りDLのみ）。
+// ※このURLは実機でDL成功したものをそのまま使用（GUIDのハイフンは%2Dエンコード）。
+const SKU_MASTER_SHAREPOINT_URL='https://oaklawnmarketing.sharepoint.com/Products/_layouts/15/download.aspx?UniqueId=6230c625%2D1886%2D4f42%2Db937%2D14e31b0f0f32';
 
-// SKUマスタ：SharePointの台帳をダウンロード用リンクで新規タブに開き（読み取りのみ）、
+// SKUマスタ：SharePointの台帳を新規タブで開き（読み取りのみ）、
 // 続けて既存のファイル選択ダイアログを自動で開く。ブラウザの仕様上、
-// 「ダウンロード→自動読込」を完全な1クリックにはできないため、選択操作のみ手動で残す。
+// 「ダウンロード→自動読込」を完全な1クリックにはできないため、選択操作は手動で残す。
 function downloadAndLoadSkuMaster(statusElId){
-  window.open(SKU_MASTER_SHAREPOINT_URL+'&download=1','_blank','noopener');
+  window.open(SKU_MASTER_SHAREPOINT_URL,'_blank','noopener');
   const statusEl=document.getElementById(statusElId);
-  if(statusEl) statusEl.innerHTML='<span style="color:var(--blue)">⏳ SharePointでダウンロードを開始しました。完了後、開いたファイル選択画面でダウンロードした最新ファイルを選んでください…</span>';
+  if(statusEl) statusEl.innerHTML='<span style="color:var(--blue)">⏳ SharePointからダウンロードを開始しました。完了後、続いて開くファイル選択画面でダウンロードした最新ファイルを選んでください…</span>';
   if(statusElId==='init-sku-status'){
     updateSkuMasterAndProceed();
   }else{
