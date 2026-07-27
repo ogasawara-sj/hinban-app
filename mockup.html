@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>品番取得システム｜UI/UXモックアップ v3</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  /* フラットなコバルトブルー（グラデなし） */
+  --blue:#3B5BFF; --blue-dk:#2E49E0; --blue-lt:#EEF1FF; --blue-bd:#D3DBFF;
+  --ink:#1A1F36; --ink-2:#5A6172; --ink-3:#9AA1AE;
+  --line:#EAECF2; --line-2:#F2F4F8;
+  --bg:#F5F6FB; --surface:#FFFFFF; --surface-2:#F8F9FC;
+  --green:#16A34A; --green-lt:#E7F6EC; --green-bd:#BCE6C9;
+  --amber:#C77D00; --amber-lt:#FBF2DC;
+  --red:#EF4444; --red-lt:#FDECEC;
+  --r:10px; --r-lg:16px; --r-xl:22px; --r-pill:999px;
+  --sh-sm:0 1px 3px rgba(16,24,40,.04),0 1px 2px rgba(16,24,40,.03);
+  --sh:0 1px 3px rgba(16,24,40,.04),0 10px 28px rgba(16,24,40,.06);
+  --sh-lg:0 16px 40px rgba(16,24,40,.12);
+  --focus:0 0 0 3px rgba(59,91,255,.16);
+  --sidebar-w:240px;
+}
+html{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+body{font-family:-apple-system,"Segoe UI","Hiragino Kaku Gothic ProN",Meiryo,system-ui,sans-serif;font-size:14px;line-height:1.6;color:var(--ink);background:var(--bg);min-height:100vh}
+button{font-family:inherit}
+.mono{font-family:"SFMono-Regular","SF Mono",Menlo,Consolas,"Roboto Mono",monospace;font-variant-numeric:tabular-nums}
+
+/* mockup flag */
+.mock-flag{position:fixed;bottom:14px;right:16px;background:var(--ink);color:#fff;font-size:12px;font-weight:600;padding:7px 15px;border-radius:var(--r-pill);z-index:9999;box-shadow:var(--sh-lg);opacity:.93}
+.mock-flag b{color:#7D93FF}
+
+/* ===== SIDEBAR (light) ===== */
+.sidebar{position:fixed;top:0;left:0;bottom:0;width:var(--sidebar-w);background:var(--surface);border-right:1px solid var(--line);display:flex;flex-direction:column;z-index:100;padding:0 14px}
+.sb-brand{display:flex;align-items:center;gap:11px;padding:22px 12px 22px;font-weight:800;font-size:18px;letter-spacing:-.01em}
+.sb-brand .logo{width:34px;height:34px;border-radius:10px;background:var(--blue);display:grid;place-items:center;font-size:16px;color:#fff}
+.sb-sec{font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);padding:10px 12px 8px;font-weight:700}
+.sb-nav{display:flex;flex-direction:column;gap:4px}
+.sb-item{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;color:var(--ink-2);cursor:pointer;font-size:13.5px;font-weight:600;transition:.14s}
+.sb-item .ic{width:20px;text-align:center;font-size:15px}
+.sb-item:hover{background:var(--surface-2);color:var(--ink)}
+.sb-item.on{background:var(--blue);color:#fff;box-shadow:0 6px 16px rgba(59,91,255,.3)}
+.sb-item .cnt{margin-left:auto;background:var(--blue-lt);color:var(--blue);font-size:11px;font-weight:700;padding:1px 8px;border-radius:var(--r-pill)}
+.sb-item.on .cnt{background:rgba(255,255,255,.25);color:#fff}
+.sb-foot{margin-top:auto;padding:16px 6px}
+.sb-user{display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;transition:.14s;cursor:pointer}
+.sb-user:hover{background:var(--surface-2)}
+.sb-user .ava{width:34px;height:34px;border-radius:50%;background:var(--blue-lt);color:var(--blue);display:grid;place-items:center;font-weight:800;font-size:13px;flex-shrink:0}
+.sb-user .nm{font-size:13px;font-weight:700;line-height:1.2}
+.sb-user .rl{font-size:11px;color:var(--ink-3)}
+
+/* ===== MAIN ===== */
+.main{margin-left:var(--sidebar-w);min-height:100vh}
+.topbar{height:66px;background:var(--bg);display:flex;align-items:center;padding:0 32px;position:sticky;top:0;z-index:60;gap:16px}
+.tb-search{position:relative;flex:1;max-width:380px}
+.tb-search svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--ink-3)}
+.tb-search input{width:100%;padding:10px 14px 10px 40px;border:1px solid var(--line);border-radius:var(--r-pill);font-size:13px;font-family:inherit;background:var(--surface);outline:none}
+.tb-search input:focus{border-color:var(--blue);box-shadow:var(--focus)}
+.tb-right{margin-left:auto;display:flex;align-items:center;gap:14px}
+.tb-bell{width:40px;height:40px;border-radius:50%;background:var(--surface);border:1px solid var(--line);display:grid;place-items:center;cursor:pointer;position:relative;font-size:16px}
+.tb-bell::after{content:'';position:absolute;top:9px;right:11px;width:7px;height:7px;background:var(--red);border-radius:50%;border:2px solid var(--surface)}
+.tb-prof{display:flex;align-items:center;gap:10px}
+.tb-prof .ava{width:38px;height:38px;border-radius:50%;background:var(--blue);color:#fff;display:grid;place-items:center;font-weight:800;font-size:13px}
+.tb-prof .nm{font-size:13px;font-weight:700;line-height:1.2}
+.tb-prof .rl{font-size:11px;color:var(--ink-3)}
+
+.wrap{max-width:1060px;margin:0 auto;padding:22px 32px 96px}
+.view{display:none}.view.on{display:block;animation:fade .28s ease}
+@keyframes fade{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+
+/* ===== PAGE HEAD ===== */
+.phead{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:22px;flex-wrap:wrap}
+.phead h1{font-size:24px;font-weight:800;letter-spacing:-.02em}
+.phead p{color:var(--ink-3);font-size:13px;margin-top:4px}
+
+/* ===== STEPPER ===== */
+.stepper-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--sh-sm);padding:24px 28px;margin-bottom:16px}
+.progress{height:6px;background:var(--line-2);border-radius:var(--r-pill);overflow:hidden;margin-bottom:22px}
+.progress-fill{height:100%;background:var(--blue);border-radius:var(--r-pill);transition:width .45s cubic-bezier(.4,0,.2,1)}
+.stepper{display:flex;align-items:flex-start;position:relative}
+.step{flex:1;display:flex;flex-direction:column;align-items:center;gap:10px;cursor:pointer;position:relative;padding:0 2px}
+.step .dot{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:15px;background:var(--surface);border:2px solid var(--line);color:var(--ink-3);transition:.22s;z-index:2}
+.step .lbl{font-size:12px;color:var(--ink-3);text-align:center;font-weight:600;transition:.2s;line-height:1.35}
+.step::before{content:'';position:absolute;top:20px;left:-50%;width:100%;height:2px;background:var(--line);z-index:1}
+.step:first-child::before{display:none}
+.step.done .dot{background:var(--blue);border-color:var(--blue);color:#fff}
+.step.done::before{background:var(--blue)}
+.step.done .lbl{color:var(--ink-2)}
+.step.on .dot{background:var(--blue);border-color:var(--blue);color:#fff;box-shadow:0 0 0 5px var(--blue-lt)}
+.step.on .lbl{color:var(--blue);font-weight:800}
+
+/* ===== CONTEXT ===== */
+.ctx{display:flex;gap:14px;flex-wrap:wrap;align-items:stretch;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:15px 20px;margin-bottom:16px;box-shadow:var(--sh-sm)}
+.ctx-item{display:flex;flex-direction:column;gap:3px;min-width:0}
+.ctx-item .k{font-size:10.5px;color:var(--ink-3);font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.ctx-item .v{font-size:14px;color:var(--ink);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:230px}
+.ctx-item .v.muted{color:var(--ink-3);font-weight:600}
+.ctx-sep{width:1px;background:var(--line)}
+
+/* ===== CARD ===== */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--sh-sm);padding:26px 28px;margin-bottom:16px}
+.card-hd{display:flex;align-items:center;gap:13px;margin-bottom:20px}
+.card-hd .ic{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;font-size:17px;background:var(--blue-lt);flex-shrink:0}
+.card-hd .ic.g{background:var(--green-lt)}
+.card-hd h2{font-size:17px;font-weight:800;letter-spacing:-.01em}
+.card-hd .sub{font-size:12.5px;color:var(--ink-3);margin-top:2px}
+.card-hd-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px}
+.hint{background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r);padding:12px 15px;font-size:12.5px;color:var(--ink-2);margin-bottom:20px;display:flex;gap:9px;line-height:1.55}
+.hint .i{color:var(--blue);flex-shrink:0;font-weight:700}
+.hint.blue{background:var(--blue-lt);border-color:var(--blue-bd);color:var(--blue-dk)}
+.hint.green{background:var(--green-lt);border-color:var(--green-bd);color:var(--green)}
+
+/* ===== FORM ===== */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px}
+@media(max-width:760px){.grid2,.grid3{grid-template-columns:1fr}}
+.field{display:flex;flex-direction:column;gap:7px}
+.field label{font-size:12.5px;font-weight:700;color:var(--ink-2)}
+.field .req{color:var(--red);margin-left:2px}
+.field .opt{color:var(--ink-3);font-weight:500;font-size:11px;margin-left:5px}
+.inp{width:100%;padding:11px 14px;border:1px solid var(--line);border-radius:var(--r);font-size:14px;font-family:inherit;background:var(--surface);transition:.15s;outline:none}
+.inp::placeholder{color:#B3BBC9}
+.inp:focus{border-color:var(--blue);box-shadow:var(--focus)}
+.inp:hover:not(:focus){border-color:#D6DAE3}
+select.inp{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239AA1AE' stroke-width='3'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
+.field-note{font-size:11.5px;color:var(--ink-3);margin-top:9px}
+
+/* ===== CHIPS ===== */
+.chips{display:flex;flex-wrap:wrap;gap:10px}
+.chip{display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:var(--r-pill);border:1.5px solid var(--line);background:var(--surface);color:var(--ink-2);font-size:13px;font-weight:600;cursor:pointer;transition:.14s;user-select:none}
+.chip:hover{border-color:var(--blue-bd);background:var(--blue-lt);color:var(--blue)}
+.chip.on{background:var(--blue);border-color:var(--blue);color:#fff;box-shadow:0 4px 12px rgba(59,91,255,.28)}
+.chip .ck{width:15px;height:15px;display:none}
+.chip.on .ck{display:inline}
+.chip sub{font-size:10px;opacity:.7;margin-left:1px}
+.add-row{display:flex;gap:8px;margin-top:16px;align-items:center;flex-wrap:wrap;padding-top:16px;border-top:1px dashed var(--line)}
+.add-row .inp{width:auto;flex:1;min-width:120px}
+.add-row .inp.sm{flex:none;width:90px}
+
+/* ===== BUTTONS ===== */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:11px 19px;border-radius:var(--r);border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:13.5px;font-weight:700;cursor:pointer;transition:.15s;white-space:nowrap;user-select:none}
+.btn:hover{background:var(--surface-2);border-color:#D6DAE3}
+.btn:active{transform:translateY(1px)}
+.btn-primary{background:var(--blue);border-color:var(--blue);color:#fff;box-shadow:0 4px 12px rgba(59,91,255,.26)}
+.btn-primary:hover{background:var(--blue-dk);border-color:var(--blue-dk)}
+.btn-green{background:var(--green);border-color:var(--green);color:#fff;box-shadow:0 4px 12px rgba(22,163,74,.24)}
+.btn-green:hover{filter:brightness(.96)}
+.btn-ghost{background:transparent;border:1px dashed var(--line);color:var(--ink-3)}
+.btn-ghost:hover{border-color:var(--blue-bd);color:var(--blue);background:var(--blue-lt)}
+.btn-sm{padding:8px 14px;font-size:12.5px}
+.btn-lg{padding:14px 26px;font-size:14.5px}
+
+/* ===== ACTION BAR ===== */
+.actionbar{position:sticky;bottom:0;background:rgba(245,246,251,.9);backdrop-filter:blur(10px);border-top:1px solid var(--line);margin:22px -32px -96px;padding:15px 32px;display:flex;align-items:center;justify-content:space-between;gap:12px;z-index:50}
+.actionbar .meta{font-size:12.5px;color:var(--ink-3);font-weight:700}
+.actionbar .meta b{color:var(--blue)}
+.ab-right{display:flex;gap:10px}
+
+/* ===== PATTERN CARDS ===== */
+.pt{border:1px solid var(--line);border-radius:var(--r-lg);padding:18px 20px;margin-bottom:12px;background:var(--surface-2);transition:.15s}
+.pt:hover{border-color:var(--blue-bd);background:var(--surface)}
+.pt-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.pt-hd .name{display:flex;align-items:center;gap:10px;font-weight:800;font-size:14.5px}
+.pt-hd .name .num{width:26px;height:26px;border-radius:8px;background:var(--blue);color:#fff;display:grid;place-items:center;font-size:12px;font-weight:800}
+.pt-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+@media(max-width:760px){.pt-grid{grid-template-columns:1fr 1fr}}
+.pt-grid .field label{font-size:11.5px}
+.gen-note{margin-top:16px;background:var(--green-lt);border:1px solid var(--green-bd);border-radius:var(--r);padding:13px 16px;font-size:13px;color:var(--green);font-weight:700;display:flex;align-items:center;gap:8px}
+
+/* ===== TABLE ===== */
+.tbl-wrap{border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;overflow-x:auto;box-shadow:var(--sh-sm);background:var(--surface)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{background:var(--surface-2);padding:13px 16px;text-align:left;font-weight:700;font-size:11.5px;color:var(--ink-3);letter-spacing:.03em;border-bottom:1px solid var(--line);white-space:nowrap}
+tbody td{padding:14px 16px;border-bottom:1px solid var(--line-2);vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+tbody tr{transition:.1s}
+tbody tr:hover{background:var(--blue-lt)}
+.code{font-family:"SFMono-Regular","SF Mono",Menlo,Consolas,"Roboto Mono",monospace;font-variant-numeric:tabular-nums;font-size:13px;font-weight:600;letter-spacing:.03em;color:var(--blue);background:var(--blue-lt);padding:4px 9px;border-radius:7px}
+.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:var(--r-pill);font-size:11.5px;font-weight:700}
+.pill::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor}
+.pill-ok{background:var(--green-lt);color:var(--green)}
+.pill-wait{background:var(--amber-lt);color:var(--amber)}
+.pill-info{background:var(--blue-lt);color:var(--blue)}
+.price-in{width:112px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:13px;text-align:right;font-family:inherit;font-variant-numeric:tabular-nums}
+.price-in:focus{outline:none;border-color:var(--blue);box-shadow:var(--focus)}
+.taxin{font-size:11.5px;color:var(--ink-3);white-space:nowrap}
+.icon-btn{width:31px;height:31px;border-radius:8px;border:1px solid var(--line);background:var(--surface);cursor:pointer;display:grid;place-items:center;color:var(--ink-3);transition:.14s;font-size:13px}
+.icon-btn:hover{border-color:var(--red);color:var(--red);background:var(--red-lt)}
+
+/* ===== TOOLBAR ===== */
+.toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.toolbar .grp{display:flex;gap:8px;flex-wrap:wrap}
+.toolbar .spacer{flex:1}
+.sel-sm{padding:9px 32px 9px 13px;border:1px solid var(--line);border-radius:var(--r);font-size:12.5px;font-family:inherit;background:var(--surface);cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239AA1AE' stroke-width='3'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+.search{position:relative}
+.search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--ink-3)}
+.search input{padding:9px 13px 9px 35px;border:1px solid var(--line);border-radius:var(--r);font-size:12.5px;font-family:inherit;width:220px;outline:none;background:var(--surface)}
+.search input:focus{border-color:var(--blue);box-shadow:var(--focus)}
+
+/* ===== STAT / INIT ===== */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:20px 22px;box-shadow:var(--sh-sm);display:flex;align-items:center;gap:16px}
+.stat .badge{width:48px;height:48px;border-radius:13px;display:grid;place-items:center;font-size:22px;flex-shrink:0}
+.stat .badge.b{background:var(--blue-lt)}
+.stat .badge.g{background:var(--green-lt)}
+.stat .k{font-size:12px;color:var(--ink-3);font-weight:600}
+.stat .v{font-size:26px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.15}
+.stat .v.ok{color:var(--green)}
+.stat .foot{font-size:11.5px;color:var(--ink-3);margin-top:2px}
+.big-cta{border:1px solid var(--blue-bd)}
+.dl-btn{display:inline-flex;align-items:center;gap:10px;padding:15px 24px;font-size:15px;font-weight:700;border-radius:var(--r);background:var(--blue);color:#fff;border:none;cursor:pointer;box-shadow:0 6px 18px rgba(59,91,255,.3);transition:.16s}
+.dl-btn:hover{background:var(--blue-dk);transform:translateY(-1px)}
+.steps-mini{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+.steps-mini span{font-size:12px;color:var(--ink-2);background:var(--surface-2);border:1px solid var(--line);padding:7px 13px;border-radius:var(--r-pill)}
+
+/* ===== DENSE TABLE (一覧を詰めて表示) ===== */
+.dense thead th{padding:9px 14px}
+.dense tbody td{padding:8px 14px;font-size:12.5px}
+.dense .code{padding:3px 8px;font-size:12.5px}
+.dense .pill{padding:3px 10px;font-size:11px}
+.dense .icon-btn{width:27px;height:27px;font-size:12px}
+
+/* ===== MASTER TABS ===== */
+.mtabs{display:flex;gap:4px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:6px;margin-bottom:16px;box-shadow:var(--sh-sm)}
+.mtab{padding:9px 15px;border-radius:10px;font-size:13px;font-weight:700;color:var(--ink-2);cursor:pointer;transition:.14s;white-space:nowrap}
+.mtab:hover{background:var(--surface-2)}
+.mtab.on{background:var(--blue);color:#fff;box-shadow:0 4px 12px rgba(59,91,255,.26)}
+.msec{display:none}.msec.on{display:block;animation:fade .25s ease}
+.mlist{display:flex;flex-direction:column;gap:8px}
+.mrow{display:flex;align-items:center;gap:12px;padding:12px 15px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface-2);transition:.12s}
+.mrow:hover{border-color:var(--blue-bd);background:var(--surface)}
+.mrow .av{width:32px;height:32px;border-radius:50%;background:var(--blue-lt);color:var(--blue);display:grid;place-items:center;font-weight:800;font-size:12px;flex-shrink:0}
+.mrow .nm{font-weight:700}
+.mrow .meta{color:var(--ink-3);font-size:12px}
+.mrow .sp{margin-left:auto}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sb-brand"><span class="logo">📦</span>品番システム</div>
+  <div class="sb-sec">メニュー</div>
+  <nav class="sb-nav">
+    <div class="sb-item" onclick="showView('init',this)"><span class="ic">⚙</span>初期設定</div>
+    <div class="sb-item on" onclick="showView('wizard',this)"><span class="ic">✦</span>新規品番取得</div>
+    <div class="sb-item" onclick="showView('list',this)"><span class="ic">☰</span>品番一覧 / 価格表<span class="cnt">16</span></div>
+    <div class="sb-item" onclick="showView('master',this)"><span class="ic">🗂</span>マスタ管理</div>
+  </nav>
+  <div class="sb-foot">
+    <div class="sb-user"><div class="ava">OG</div><div><div class="nm">小笠原</div><div class="rl">CRM企画</div></div></div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="wrap">
+
+  <!-- ============ WIZARD ============ -->
+  <div class="view on" id="v-wizard">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <h1 style="font-size:24px;font-weight:800;letter-spacing:-.02em">新規品番取得</h1>
+      <button class="btn btn-sm">🔄 最初からやり直す</button>
+    </div>
+
+    <div class="stepper-card">
+      <div class="progress"><div class="progress-fill" id="prog" style="width:16.6%"></div></div>
+      <div class="stepper" id="stepper">
+        <div class="step on" onclick="goStep(1)"><div class="dot">1</div><div class="lbl">施策設定</div></div>
+        <div class="step" onclick="goStep(2)"><div class="dot">2</div><div class="lbl">サイズ・カラー</div></div>
+        <div class="step" onclick="goStep(3)"><div class="dot">3</div><div class="lbl">購入パターン</div></div>
+        <div class="step" onclick="goStep(4)"><div class="dot">4</div><div class="lbl">SKU割り当て</div></div>
+        <div class="step" onclick="goStep(5)"><div class="dot">5</div><div class="lbl">価格入力</div></div>
+        <div class="step" onclick="goStep(6)"><div class="dot">6</div><div class="lbl">確認・登録</div></div>
+      </div>
+    </div>
+
+    <div class="ctx">
+      <div class="ctx-item"><span class="k">施策月</span><span class="v">2026年8月</span></div>
+      <div class="ctx-sep"></div>
+      <div class="ctx-item"><span class="k">商品グループ</span><span class="v">TRAF ｴｱﾌﾘｰ</span></div>
+      <div class="ctx-sep"></div>
+      <div class="ctx-item"><span class="k">担当者</span><span class="v">小笠原</span></div>
+      <div class="ctx-sep"></div>
+      <div class="ctx-item"><span class="k">生成予定</span><span class="v muted" id="cx-count">— 品番</span></div>
+    </div>
+
+    <!-- STEP 1 -->
+    <div class="panel" data-step="1">
+      <div class="card">
+        <div class="card-hd"><div class="ic">📋</div><div><h2>施策情報</h2><div class="sub">この品番がどの施策・グループのものかを設定します</div></div></div>
+        <div class="grid2">
+          <div class="field"><label>施策月<span class="req">*</span></label><select class="inp"><option>2026年8月</option><option>2026年9月</option></select></div>
+          <div class="field"><label>施策名<span class="opt">任意</span></label><input class="inp" placeholder="例：TRS下取りDM春号" value="動作確認テストDM"></div>
+          <div class="field"><label>商品グループ<span class="req">*</span></label><input class="inp" placeholder="コードで検索または選択..." value="TRAF ｴｱﾌﾘｰ"></div>
+          <div class="field"><label>担当者<span class="req">*</span></label><select class="inp"><option>小笠原</option><option>田中</option><option>佐藤</option><option>鈴木</option></select><span class="field-note">マスタ管理で登録した担当者から選べます</span></div>
+          <div class="field"><label>KUROSHIO有効開始日時<span class="req">*</span></label><input class="inp" type="date" value="2026-08-01"></div>
+          <div class="field"><label>KUROSHIO有効終了日時<span class="opt">空欄可</span></label><input class="inp" type="date"></div>
+        </div>
+        <div class="field-note">※日付選択時は 00:00 が適用されます</div>
+      </div>
+    </div>
+
+    <!-- STEP 2 -->
+    <div class="panel" data-step="2" style="display:none">
+      <div class="card">
+        <div class="card-hd"><div class="ic">📐</div><div><h2>サイズ選択</h2><div class="sub">この品番で展開するサイズを選びます（複数可）</div></div></div>
+        <div class="chips">
+          <div class="chip on" onclick="tog(this)"><svg class="ck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 6"/></svg>シングル<sub>S</sub></div>
+          <div class="chip" onclick="tog(this)"><svg class="ck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 6"/></svg>セミダブル<sub>M</sub></div>
+          <div class="chip" onclick="tog(this)"><svg class="ck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 6"/></svg>ダブル<sub>W</sub></div>
+          <div class="chip" onclick="tog(this)"><svg class="ck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 6"/></svg>クイーン<sub>Q</sub></div>
+          <div class="chip" onclick="tog(this)"><svg class="ck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 6"/></svg>サイズなし<sub>—</sub></div>
+        </div>
+        <div class="add-row"><input class="inp" placeholder="サイズ名"><input class="inp sm" placeholder="略称"><button class="btn btn-sm">＋ 追加</button></div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><div class="ic">🎨</div><div><h2>カラー選択</h2><div class="sub">マスタ登録済みのカラーから選びます</div></div></div>
+        <div class="chips">
+          <div class="chip on" onclick="tog(this)"><svg class="ck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 6"/></svg>グレー</div>
+          <div class="chip" onclick="tog(this)"><svg class="ck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 6"/></svg>アイボリー</div>
+          <div class="chip" onclick="tog(this)"><svg class="ck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 6"/></svg>ネイビー</div>
+          <div class="chip" onclick="tog(this)"><svg class="ck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 6"/></svg>ベージュ</div>
+          <div class="chip" onclick="tog(this)"><svg class="ck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 6"/></svg>ブラック</div>
+        </div>
+        <div class="add-row"><input class="inp" placeholder="カラー名"><input class="inp sm" placeholder="略称"><button class="btn btn-sm">＋ 追加</button></div>
+      </div>
+    </div>
+
+    <!-- STEP 3 -->
+    <div class="panel" data-step="3" style="display:none">
+      <div class="card">
+        <div class="card-hd"><div class="ic">🛒</div><div><h2>購入パターン設定</h2><div class="sub">枚数パターンごとに送料・返品期間・特典を設定します</div></div></div>
+        <div class="pt">
+          <div class="pt-hd"><div class="name"><span class="num">1</span>1枚購入</div><button class="icon-btn">✕</button></div>
+          <div class="pt-grid">
+            <div class="field"><label>送料</label><select class="inp"><option>990円</option><option>無料</option></select></div>
+            <div class="field"><label>返品期間</label><select class="inp"><option>39日</option><option>60日</option></select></div>
+            <div class="field"><label>ゆうパケ対象</label><select class="inp"><option>0：対象外</option><option>1：対象</option></select></div>
+            <div class="field"><label>明細書非表示</label><select class="inp"><option>表示</option><option>1：非表示</option></select></div>
+          </div>
+        </div>
+        <div class="pt">
+          <div class="pt-hd"><div class="name"><span class="num">2</span>2枚セット</div><button class="icon-btn">✕</button></div>
+          <div class="pt-grid">
+            <div class="field"><label>送料</label><select class="inp"><option>無料</option><option>990円</option></select></div>
+            <div class="field"><label>返品期間</label><select class="inp"><option>39日</option><option>60日</option></select></div>
+            <div class="field"><label>ゆうパケ対象</label><select class="inp"><option>0：対象外</option><option>1：対象</option></select></div>
+            <div class="field"><label>明細書非表示</label><select class="inp"><option>表示</option><option>1：非表示</option></select></div>
+          </div>
+        </div>
+        <button class="btn btn-ghost" style="width:100%;margin-top:6px">＋ パターン追加</button>
+        <div class="gen-note">✨ 現在の設定で <b style="margin:0 3px">2品番</b> が生成されます（1枚購入：1品番／2枚セット：1品番）</div>
+      </div>
+    </div>
+
+    <!-- STEP 4 -->
+    <div class="panel" data-step="4" style="display:none">
+      <div class="card">
+        <div class="card-hd"><div class="ic">📦</div><div><h2>SKU割り当て</h2><div class="sub">カラー × サイズの組み合わせごとにSKUコードを入力</div></div></div>
+        <div class="hint"><span class="i">ℹ</span><span>1枚用SKUを入力すると2枚以上は自動で×数量になります。Excelから複数行を貼り付けできます。</span></div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>カラー / サイズ</th><th>メインSKU（1枚基準）</th><th>2枚セット上書き（任意）</th></tr></thead>
+            <tbody><tr><td><b>グレー / シングル</b></td>
+              <td><input class="inp mono" style="padding:9px 12px" value="TESTSKU001"></td>
+              <td><input class="inp mono" style="padding:9px 12px" placeholder="空欄=メインSKU×2"></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><div class="ic">🎁</div><div><h2>全品番共通の追加SKU</h2><div class="sub">延長保証・特典など、全品番に共通で付くSKU</div></div></div>
+        <div class="add-row" style="border:none;padding:0;margin:0">
+          <input class="inp mono" placeholder="SKUコード" style="flex:none;width:150px">
+          <input class="inp" placeholder="SKU名称（自動入力）">
+          <input class="inp sm" type="number" value="1">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-2);white-space:nowrap"><input type="checkbox">枚数に連動</label>
+          <button class="btn btn-primary btn-sm">＋ 追加</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 5 -->
+    <div class="panel" data-step="5" style="display:none">
+      <div class="card">
+        <div class="card-hd"><div class="ic">💴</div><div><h2>価格一括入力</h2><div class="sub">2件の品番を生成しました</div></div></div>
+        <div class="hint blue"><span class="i">⚡</span><span><b>一括適用</b>：税抜価格を入力して「全品番に適用」を押すと、全品番へ一度に反映できます。</span></div>
+        <div class="grid3" style="margin-bottom:18px">
+          <div class="field"><label>品番コード連番開始</label><div style="display:flex;gap:8px"><input class="inp mono" value="00099"><button class="btn btn-sm">適用</button></div></div>
+          <div class="field"><label>税抜価格</label><div style="display:flex;gap:8px"><input class="inp" placeholder="例：9,800"><button class="btn btn-primary btn-sm">全品番に適用</button></div></div>
+          <div class="field"><label>消費税区分</label><div style="display:flex;gap:8px"><select class="inp"><option>1：標準税</option></select><button class="btn btn-sm">適用</button></div></div>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>品番コード</th><th>サイズ構成</th><th>カラー</th><th class="num">税抜</th><th class="num">税込</th><th>SKU</th><th>品番名</th></tr></thead>
+            <tbody>
+              <tr><td><span class="code">TRAF0099</span></td><td>シングル</td><td>グレー</td><td class="num"><input class="price-in" value="9,800"></td><td class="num taxin">¥10,780</td><td>1</td><td style="color:var(--ink-2)">TRAF ｸﾞﾚｰ ｼﾝｸﾞﾙ 1枚購入</td></tr>
+              <tr><td><span class="code">TRAF0100</span></td><td>シングル×シングル</td><td>グレー</td><td class="num"><input class="price-in" value="9,800"></td><td class="num taxin">¥10,780</td><td>1</td><td style="color:var(--ink-2)">TRAF ｸﾞﾚｰ ｼﾝｸﾞﾙ×ｼﾝｸﾞﾙ 2枚ｾｯﾄ</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 6 -->
+    <div class="panel" data-step="6" style="display:none">
+      <div class="card">
+        <div class="card-hd"><div class="ic g">✅</div><div><h2>登録内容確認</h2><div class="sub">この内容で登録します。⌄でSKU構成を確認できます</div></div></div>
+        <div class="hint green"><span class="i">✓</span><span>KUROSHIO有効開始：2026/08/01 00:00　／　担当：小笠原　／　施策：動作確認テストDM</span></div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>品番コード</th><th>品番名</th><th class="num">税抜</th><th class="num">税込</th><th>SKU数</th><th>送料</th><th>ステータス</th></tr></thead>
+            <tbody>
+              <tr><td><span class="code">TRAF0099</span></td><td>TRAF ｸﾞﾚｰ ｼﾝｸﾞﾙ 1枚購入</td><td class="num">¥9,800</td><td class="num">¥10,780</td><td>1</td><td>990円</td><td><span class="pill pill-ok">取得OK</span></td></tr>
+              <tr><td><span class="code">TRAF0100</span></td><td>TRAF ｸﾞﾚｰ ｼﾝｸﾞﾙ×ｼﾝｸﾞﾙ 2枚ｾｯﾄ</td><td class="num">¥9,800</td><td class="num">¥10,780</td><td>1</td><td>無料</td><td><span class="pill pill-ok">取得OK</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="actionbar">
+      <button class="btn" id="ab-back" onclick="goStep(cur-1)" style="visibility:hidden">← 戻る</button>
+      <div class="meta">ステップ <b id="ab-cur">1</b> / 6</div>
+      <div class="ab-right"><button class="btn btn-primary" id="ab-next" onclick="goStep(cur+1)">次へ →</button></div>
+    </div>
+  </div>
+
+  <!-- ============ LIST ============ -->
+  <div class="view" id="v-list">
+    <div class="phead"><div><h1>品番一覧 / 価格表</h1><p>登録済みの品番を確認し、各種Excelを出力します</p></div></div>
+    <div class="toolbar">
+      <div class="grp">
+        <button class="btn btn-green btn-sm">📄 取得用シート出力</button>
+        <button class="btn btn-primary btn-sm">📄 アクセス登録出力</button>
+        <button class="btn btn-primary btn-sm">📄 オファーリスト出力</button>
+      </div>
+      <div class="spacer"></div>
+      <div class="search"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg><input placeholder="品番・品番名で検索"></div>
+      <select class="sel-sm"><option>全グループ</option></select>
+      <select class="sel-sm"><option>全ステータス</option></select>
+    </div>
+    <div class="tbl-wrap dense">
+      <table>
+        <thead><tr><th></th><th>品番コード</th><th>品番名</th><th>グループ</th><th>施策月</th><th class="num">税抜</th><th class="num">税込</th><th>送料</th><th>ステータス</th><th>SKU</th><th></th></tr></thead>
+        <tbody>
+          <tr><td style="color:var(--ink-3);cursor:pointer">⌄</td><td><span class="code">TRAF0099</span></td><td>TRAF ｸﾞﾚｰ ｼﾝｸﾞﾙ 1枚購入</td><td>TRAF</td><td>2026年8月</td><td class="num">¥9,800</td><td class="num">¥10,780</td><td>990円</td><td><span class="pill pill-ok">取得OK</span></td><td>1</td><td><button class="icon-btn">✕</button></td></tr>
+          <tr><td style="color:var(--ink-3);cursor:pointer">⌄</td><td><span class="code">TRAF0100</span></td><td>TRAF ｸﾞﾚｰ ｼﾝｸﾞﾙ×ｼﾝｸﾞﾙ 2枚ｾｯﾄ</td><td>TRAF</td><td>2026年8月</td><td class="num">¥9,800</td><td class="num">¥10,780</td><td>無料</td><td><span class="pill pill-wait">MS依頼済</span></td><td>1</td><td><button class="icon-btn">✕</button></td></tr>
+          <tr><td style="color:var(--ink-3);cursor:pointer">⌄</td><td><span class="code">MQT0021</span></td><td>ﾏｲｷｭｯﾄ ﾌﾞﾗｯｸ 1個</td><td>MQT</td><td>2026年8月</td><td class="num">¥12,800</td><td class="num">¥14,080</td><td>無料</td><td><span class="pill pill-info">Access登録済み</span></td><td>3</td><td><button class="icon-btn">✕</button></td></tr>
+          <tr><td style="color:var(--ink-3);cursor:pointer">⌄</td><td><span class="code">MQT0022</span></td><td>ﾏｲｷｭｯﾄ ﾈｲﾋﾞｰ 2個ｾｯﾄ</td><td>MQT</td><td>2026年8月</td><td class="num">¥23,800</td><td class="num">¥26,180</td><td>無料</td><td><span class="pill pill-ok">取得OK</span></td><td>3</td><td><button class="icon-btn">✕</button></td></tr>
+          <tr><td style="color:var(--ink-3);cursor:pointer">⌄</td><td><span class="code">CCH7015</span></td><td>ここひえ7 ﾎﾜｲﾄ 1台</td><td>CCH7</td><td>2026年7月</td><td class="num">¥9,980</td><td class="num">¥10,978</td><td>990円</td><td><span class="pill pill-ok">取得OK</span></td><td>2</td><td><button class="icon-btn">✕</button></td></tr>
+          <tr><td style="color:var(--ink-3);cursor:pointer">⌄</td><td><span class="code">CCH7016</span></td><td>ここひえ7 ﾎﾜｲﾄ 2台ｾｯﾄ</td><td>CCH7</td><td>2026年7月</td><td class="num">¥18,800</td><td class="num">¥20,680</td><td>無料</td><td><span class="pill pill-wait">MS依頼済</span></td><td>2</td><td><button class="icon-btn">✕</button></td></tr>
+          <tr><td style="color:var(--ink-3);cursor:pointer">⌄</td><td><span class="code">RAH0031</span></td><td>楽ちんﾋｱﾘﾝｸﾞ ﾍﾞｰｼﾞｭ 両耳</td><td>RAH</td><td>2026年7月</td><td class="num">¥29,800</td><td class="num">¥32,780</td><td>無料</td><td><span class="pill pill-info">Access登録済み</span></td><td>4</td><td><button class="icon-btn">✕</button></td></tr>
+          <tr><td style="color:var(--ink-3);cursor:pointer">⌄</td><td><span class="code">LGMX0008</span></td><td>ﾚｯｸﾞﾏｼﾞｯｸX ｸﾞﾚｰ 1台</td><td>LGMX</td><td>2026年9月</td><td class="num">¥39,800</td><td class="num">¥43,780</td><td>無料</td><td><span class="pill pill-ok">取得OK</span></td><td>2</td><td><button class="icon-btn">✕</button></td></tr>
+          <tr><td style="color:var(--ink-3);cursor:pointer">⌄</td><td><span class="code">SOY0012</span></td><td>ｿｲﾘｯﾁ ﾎﾜｲﾄ 1台</td><td>SOY</td><td>2026年9月</td><td class="num">¥14,800</td><td class="num">¥16,280</td><td>990円</td><td><span class="pill pill-wait">MS依頼済</span></td><td>1</td><td><button class="icon-btn">✕</button></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ============ INIT ============ -->
+  <div class="view" id="v-init">
+    <div class="phead"><div><h1>初期設定</h1><p>作業開始前にSKUマスタを最新化します</p></div></div>
+    <div class="card big-cta">
+      <div class="card-hd"><div class="ic">🔄</div><div><h2>STEP 0｜SKUマスタの更新</h2><div class="sub">作業開始前に必ず実施してください</div></div></div>
+      <p style="color:var(--ink-2);font-size:13px;margin-bottom:18px">SharePointの管理台帳から最新のSKUマスタをダウンロードして読み込みます。読み込むと商品グループ・カラーが自動で最新化されます。</p>
+      <button class="dl-btn">📥 SKUマスタをSharePointからダウンロードして読み込む</button>
+      <div class="steps-mini"><span>1. ボタンでSharePointからダウンロード</span><span>2. 保存された最新ファイルを選択</span><span>3. 自動で全シート読み取り・最新化</span></div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat"><div class="badge b">🗄</div><div><div class="k">SKUマスタ</div><div class="v ok">11,620件</div><div class="foot">更新：2026/6/18 15:33</div></div></div>
+      <div class="stat"><div class="badge g">📦</div><div><div class="k">登録済み品番</div><div class="v">16件</div><div class="foot">この端末に保存済み</div></div></div>
+    </div>
+  </div>
+
+  <!-- ============ MASTER ============ -->
+  <div class="view" id="v-master">
+    <div class="phead"><div><h1>マスタ管理</h1><p>担当者・カラー・サイズ・商品グループなどを管理します</p></div></div>
+
+    <div style="font-size:12px;color:var(--ink-3);margin-bottom:10px">品番取得の STEP1 → 6 で使う順に並べています</div>
+    <div class="mtabs">
+      <div class="mtab" onclick="mtab('camp',this)">📣 施策名<span style="opacity:.55;font-weight:600;margin-left:5px">S1</span></div>
+      <div class="mtab" onclick="mtab('group',this)">🗂 商品グループ<span style="opacity:.55;font-weight:600;margin-left:5px">S1</span></div>
+      <div class="mtab on" onclick="mtab('staff',this)">👤 担当者<span style="opacity:.55;font-weight:600;margin-left:5px">S1</span></div>
+      <div class="mtab" onclick="mtab('size',this)">📐 サイズ<span style="opacity:.55;font-weight:600;margin-left:5px">S2</span></div>
+      <div class="mtab" onclick="mtab('color',this)">🎨 カラー<span style="opacity:.55;font-weight:600;margin-left:5px">S2</span></div>
+      <div class="mtab" onclick="mtab('ship',this)">🚚 送料<span style="opacity:.55;font-weight:600;margin-left:5px">S3</span></div>
+    </div>
+
+    <!-- 担当者 -->
+    <div class="msec on" id="ms-staff">
+      <div class="card">
+        <div class="card-hd"><div class="ic">👤</div><div><h2>担当者マスタ</h2><div class="sub">ここで登録した担当者が STEP1「施策設定」で選択できるようになります</div></div></div>
+        <div class="hint blue"><span class="i">💡</span><span>担当者を追加すると、新規品番取得の担当者欄がこの一覧からの<b>選択式</b>になります。</span></div>
+        <div class="add-row" style="border:none;padding:0;margin:0 0 16px">
+          <input class="inp" placeholder="担当者名（例：山田）" style="flex:1;min-width:200px">
+          <button class="btn btn-primary btn-sm">＋ 追加</button>
+        </div>
+        <div class="mlist">
+          <div class="mrow"><div class="av">OG</div><div class="nm">小笠原</div><div class="sp"></div><button class="icon-btn">✕</button></div>
+          <div class="mrow"><div class="av">TA</div><div class="nm">田中</div><div class="sp"></div><button class="icon-btn">✕</button></div>
+          <div class="mrow"><div class="av">SA</div><div class="nm">佐藤</div><div class="sp"></div><button class="icon-btn">✕</button></div>
+          <div class="mrow"><div class="av">SZ</div><div class="nm">鈴木</div><div class="sp"></div><button class="icon-btn">✕</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- カラー -->
+    <div class="msec" id="ms-color">
+      <div class="card">
+        <div class="card-hd"><div class="ic">🎨</div><div><h2>カラーマスタ</h2><div class="sub">品番生成のカラー選択肢に反映されます</div></div></div>
+        <div class="chips">
+          <div class="chip">グレー <span style="opacity:.6;margin-left:4px">GR</span></div>
+          <div class="chip">アイボリー <span style="opacity:.6;margin-left:4px">IV</span></div>
+          <div class="chip">ネイビー <span style="opacity:.6;margin-left:4px">NV</span></div>
+          <div class="chip">ベージュ <span style="opacity:.6;margin-left:4px">BE</span></div>
+          <div class="chip">ブラック <span style="opacity:.6;margin-left:4px">BK</span></div>
+          <div class="chip">ホワイト <span style="opacity:.6;margin-left:4px">WH</span></div>
+        </div>
+        <div class="add-row"><input class="inp" placeholder="カラー名（例：グレージュ）"><input class="inp sm" placeholder="略称"><button class="btn btn-primary btn-sm">＋ 追加</button></div>
+      </div>
+    </div>
+
+    <!-- サイズ -->
+    <div class="msec" id="ms-size">
+      <div class="card">
+        <div class="card-hd"><div class="ic">📐</div><div><h2>サイズマスタ</h2><div class="sub">品番生成のサイズ選択肢に反映されます</div></div></div>
+        <div class="chips">
+          <div class="chip">シングル <span style="opacity:.6;margin-left:4px">S</span></div>
+          <div class="chip">セミダブル <span style="opacity:.6;margin-left:4px">M</span></div>
+          <div class="chip">ダブル <span style="opacity:.6;margin-left:4px">W</span></div>
+          <div class="chip">クイーン <span style="opacity:.6;margin-left:4px">Q</span></div>
+        </div>
+        <div class="add-row"><input class="inp" placeholder="サイズ名（例：キング）"><input class="inp sm" placeholder="略称"><button class="btn btn-primary btn-sm">＋ 追加</button></div>
+      </div>
+    </div>
+
+    <!-- 商品グループ -->
+    <div class="msec" id="ms-group">
+      <div class="card">
+        <div class="card-hd"><div class="ic">🗂</div><div><h2>商品グループマスタ</h2><div class="sub">SKUマスタ読込時に自動更新されます</div></div></div>
+        <div class="tbl-wrap dense">
+          <table>
+            <thead><tr><th>コード</th><th>商品名</th><th>カテゴリ</th><th></th></tr></thead>
+            <tbody>
+              <tr><td><span class="code">TRAF</span></td><td>ｴｱﾌﾘｰ</td><td>ﾄｩﾙｰｽﾘｰﾊﾟｰ</td><td><button class="icon-btn">✕</button></td></tr>
+              <tr><td><span class="code">MQT</span></td><td>ﾏｲｷｭｯﾄ</td><td>健康・美容</td><td><button class="icon-btn">✕</button></td></tr>
+              <tr><td><span class="code">CCH7</span></td><td>ここひえ7</td><td>ｷｯﾁﾝ家電</td><td><button class="icon-btn">✕</button></td></tr>
+              <tr><td><span class="code">RAH</span></td><td>楽ちんﾋｱﾘﾝｸﾞ</td><td>健康・美容</td><td><button class="icon-btn">✕</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 送料 -->
+    <div class="msec" id="ms-ship">
+      <div class="card">
+        <div class="card-hd"><div class="ic">🚚</div><div><h2>送料マスタ</h2><div class="sub">購入パターンの送料選択肢に反映されます</div></div></div>
+        <div class="mlist">
+          <div class="mrow"><div class="nm">無料</div><div class="meta">0円</div><div class="sp"></div><button class="icon-btn">✕</button></div>
+          <div class="mrow"><div class="nm">660円</div><div class="meta">660円</div><div class="sp"></div><button class="icon-btn">✕</button></div>
+          <div class="mrow"><div class="nm">990円</div><div class="meta">990円</div><div class="sp"></div><button class="icon-btn">✕</button></div>
+          <div class="mrow"><div class="nm">1,320円</div><div class="meta">1,320円</div><div class="sp"></div><button class="icon-btn">✕</button></div>
+          <div class="mrow"><div class="nm">1,980円</div><div class="meta">1,980円</div><div class="sp"></div><button class="icon-btn">✕</button></div>
+          <div class="mrow"><div class="nm">2,200円</div><div class="meta">2,200円</div><div class="sp"></div><button class="icon-btn">✕</button></div>
+          <div class="mrow"><div class="nm">4,400円</div><div class="meta">4,400円</div><div class="sp"></div><button class="icon-btn">✕</button></div>
+        </div>
+        <div class="add-row"><input class="inp sm" type="number" placeholder="金額（円）"><input class="inp" placeholder="ラベル（例：特別送料）"><button class="btn btn-primary btn-sm">＋ 追加</button></div>
+      </div>
+    </div>
+
+    <!-- 施策名 -->
+    <div class="msec" id="ms-camp">
+      <div class="card">
+        <div class="card-hd"><div class="ic">📣</div><div><h2>施策名マスタ</h2><div class="sub">STEP1の施策名入力候補に反映されます</div></div></div>
+        <div class="mlist">
+          <div class="mrow"><div class="nm">TRS下取りDM春号</div><div class="sp"></div><button class="icon-btn">✕</button></div>
+          <div class="mrow"><div class="nm">夏の健康フェア</div><div class="sp"></div><button class="icon-btn">✕</button></div>
+          <div class="mrow"><div class="nm">秋のキッチン特集</div><div class="sp"></div><button class="icon-btn">✕</button></div>
+        </div>
+        <div class="add-row"><input class="inp" placeholder="施策名を直接追加"><button class="btn btn-primary btn-sm">＋ 追加</button></div>
+      </div>
+    </div>
+  </div>
+
+  </div><!-- /wrap -->
+</div><!-- /main -->
+
+<div class="mock-flag">🎨 <b>モックアップ v3</b> — デザイン確認用（本番未反映）</div>
+
+<script>
+var cur=1;
+var names=['','施策設定','サイズ・カラー','購入パターン','SKU割り当て','価格入力','確認・登録'];
+function goStep(n){
+  if(n<1||n>6) return;
+  cur=n;
+  document.querySelectorAll('.panel').forEach(function(p){p.style.display=(+p.dataset.step===n)?'block':'none';});
+  document.querySelectorAll('#stepper .step').forEach(function(s,i){
+    s.classList.remove('on','done');
+    if(i+1<n) s.classList.add('done'); else if(i+1===n) s.classList.add('on');
+  });
+  document.getElementById('prog').style.width=(n/6*100)+'%';
+  document.getElementById('ab-cur').textContent=n;
+  document.getElementById('ab-back').style.visibility=(n===1)?'hidden':'visible';
+  var next=document.getElementById('ab-next');
+  if(n===6){next.textContent='✅ この内容で登録する';next.className='btn btn-green';}
+  else if(n===3){next.textContent='🪄 品番を自動生成 →';next.className='btn btn-primary';}
+  else{next.textContent='次へ →';next.className='btn btn-primary';}
+  var cc=document.getElementById('cx-count');
+  cc.textContent=(n>=3)?'2 品番':'— 品番'; cc.className='v'+(n>=3?'':' muted');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function tog(el){el.classList.toggle('on');}
+function mtab(id,el){
+  document.querySelectorAll('.msec').forEach(function(s){s.classList.remove('on');});
+  document.getElementById('ms-'+id).classList.add('on');
+  document.querySelectorAll('.mtabs .mtab').forEach(function(t){t.classList.remove('on');});
+  if(el) el.classList.add('on');
+}
+function showView(v,el){
+  document.querySelectorAll('.view').forEach(function(x){x.classList.remove('on');});
+  document.getElementById('v-'+v).classList.add('on');
+  document.querySelectorAll('.sb-item').forEach(function(t){t.classList.remove('on');});
+  if(el) el.classList.add('on');
+  window.scrollTo({top:0});
+}
+</script>
+</body>
+</html>
