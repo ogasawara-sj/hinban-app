@@ -207,8 +207,15 @@ body{padding-left:var(--sbw)}
 
 /* --- コンテンツ余白 --- */
 .page{max-width:1040px;padding:26px 30px}
-/* 新規品番取得はウィンドウ幅に追従して広がる（品番名列を確認しやすく） */
+/* 新規品番取得・品番一覧はウィンドウ幅に追従して広がる（品番名列を確認しやすく） */
 #page-wizard{max-width:1600px}
+#page-list{max-width:1600px}
+/* 品番一覧：固定レイアウトで品番名列が余白を吸収して横に長くなる */
+#page-list .tbl{table-layout:fixed;width:100%;min-width:1180px}
+#page-list th.col-listname,#list-body td.list-name{width:auto}
+/* 品番名・施策月は1行表示（折り返さない） */
+#list-body td.list-name{white-space:nowrap}
+#list-body td.list-month{white-space:nowrap}
 /* 入力中心のSTEP1〜4は広がりすぎないよう据え置き、表のSTEP5/6は全幅を使う */
 #p1,#p2,#p3,#p4{max-width:1040px;margin-left:auto;margin-right:auto}
 /* STEP5 価格表：固定レイアウトで、余白は品番名列「だけ」が吸収して伸びる */
@@ -537,8 +544,8 @@ body{padding-left:var(--sbw)}
     <table class="tbl">
       <thead><tr>
         <th style="width:34px;text-align:center"><input type="checkbox" id="list-check-all" onchange="toggleAllListChecks(this.checked)" title="全選択／全解除"></th>
-        <th style="width:104px">品番コード</th><th>品番名</th>
-        <th style="width:60px">グループ</th><th style="width:56px">施策月</th>
+        <th style="width:104px">品番コード</th><th class="col-listname">品番名</th>
+        <th style="width:60px">グループ</th><th style="width:72px">施策月</th>
         <th style="width:70px">担当者</th><th style="width:88px">販売価格(税抜)</th>
         <th style="width:80px">販売価格(税込)</th><th style="width:52px">送料</th>
         <th style="width:108px">ステータス</th><th style="width:50px">SKU数</th>
@@ -2912,9 +2919,9 @@ function renderList(){
           <span class="mono">${r.code}</span>
         </div>
       </td>
-      <td style="font-size:12px;max-width:240px">${escHtml(displayBizKana(r.name))}</td>
+      <td class="list-name" style="font-size:12px">${escHtml(displayBizKana(r.name))}</td>
       <td style="font-size:11px">${r.group}</td>
-      <td style="font-size:12px">${r.month||'—'}</td>
+      <td class="list-month" style="font-size:12px">${r.month||'—'}</td>
       <td style="font-size:12px">${r.staff||'—'}</td>
       <td style="text-align:right;font-weight:600">¥${(r.price||0).toLocaleString('ja-JP')}</td>
       <td style="text-align:right;color:var(--gray-400)">¥${Math.round((r.price||0)*1.1).toLocaleString('ja-JP')}</td>
