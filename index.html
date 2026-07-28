@@ -2805,10 +2805,9 @@ function doRegister(){
   saveMaster();
   generated=[];hideLoading();showPage('list');
   setTimeout(function(){
-    if(confirm('品番を登録しました。\n\nもう一つ品番を作成しますか？\n（OK：新規作成へ / キャンセル：品番一覧で確認）')){
-      resetWizardForm();
-      showPage('wizard');
-    }
+    var again=confirm('品番を登録しました。\n\nもう一つ品番を作成しますか？\n（OK：新規作成へ / キャンセル：品番一覧で確認）');
+    resetWizardForm();  // 登録後は必ず初期化（次に新規品番取得を開いた時は空欄からスタート）
+    if(again) showPage('wizard');
   }, 100);
   },300);
 }
