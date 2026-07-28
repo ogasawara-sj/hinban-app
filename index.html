@@ -409,15 +409,18 @@ body{padding-left:var(--sbw)}
       </div>
       <div style="font-size:11px;color:var(--gray-400);margin-top:6px">※日付選択時は 00:00 が適用されます</div>
     </div>
-    <div class="f"><label>商品コード使用チャネル <span class="req">*</span></label>
-      <div style="position:relative">
-        <input type="text" id="s-channel-search" placeholder="チャネルで検索または選択..." value=""
-          oninput="filterComboList('s-channel',this.value)" onfocus="showComboList('s-channel')"
-          style="width:100%;padding:8px 12px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px">
-        <input type="hidden" id="s-channel" value="">
-        <div id="s-channel-list" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:100;background:#fff;border:1px solid var(--bd);border-radius:0 0 var(--r) var(--r);max-height:220px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.1)"></div>
+    <div class="g2">
+      <div class="f"><label>商品コード使用チャネル <span class="req">*</span></label>
+        <div style="position:relative">
+          <input type="text" id="s-channel-search" placeholder="チャネルで検索または選択..." value=""
+            oninput="filterComboList('s-channel',this.value)" onfocus="showComboList('s-channel')"
+            style="width:100%;padding:8px 12px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px">
+          <input type="hidden" id="s-channel" value="">
+          <div id="s-channel-list" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:100;background:#fff;border:1px solid var(--bd);border-radius:0 0 var(--r) var(--r);max-height:220px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.1)"></div>
+        </div>
+        <div style="font-size:11px;color:var(--gray-400);margin-top:4px">アクセス登録Excelの「商品コード使用チャネル」に入ります。選択肢はマスタ管理で追加できます</div>
       </div>
-      <div style="font-size:11px;color:var(--gray-400);margin-top:4px">アクセス登録Excelの「商品コード使用チャネル」に入ります。選択肢はマスタ管理で追加できます</div>
+      <div></div>
     </div>
     <div id="group-info"></div>
   </div>
