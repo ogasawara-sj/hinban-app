@@ -312,15 +312,15 @@ body{padding-left:var(--sbw)}
     <div class="cta-hd"><div class="cta-ic">🔄</div><div><div class="cta-title">STEP 0｜SKUマスタの更新</div><div class="cta-sub">作業開始前に必ず実施してください</div></div></div>
     <p class="cta-desc">SharePointの管理台帳から最新のSKUマスタをダウンロードして読み込みます。読み込むと商品グループ・カラーが自動で最新化されます。</p>
     <button class="dl-cta" onclick="downloadAndLoadSkuMaster('init-sku-status')">📥 SKUマスタをSharePointからダウンロードして読み込む</button>
-    <div class="cta-sub-actions">
-      <button class="btn btn-sm2" onclick="updateSkuMasterAndProceed()">すでにダウンロード済みのファイルを選択</button>
-      <button class="btn btn-sm2" onclick="proceedWithoutUpdate()">前回のデータで続ける →</button>
-    </div>
     <div id="init-sku-status" style="font-size:13px;color:var(--gray-400);margin-top:12px"></div>
     <div class="init-steps">
       <span>1. ボタンでSharePointからダウンロード</span>
       <span>2. 保存された最新ファイルを選択</span>
       <span>3. 自動で全シート読み取り・最新化</span>
+    </div>
+    <div class="cta-sub-actions" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--line-2,var(--bd))">
+      <button class="btn btn-sm2" onclick="updateSkuMasterAndProceed()">すでにダウンロード済みのファイルを選択</button>
+      <button class="btn btn-sm2" onclick="proceedWithoutUpdate()">前回のデータで続ける →</button>
     </div>
   </div>
 
