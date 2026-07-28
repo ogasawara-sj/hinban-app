@@ -516,6 +516,7 @@ body{padding-left:var(--sbw)}
       <button class="btn btn-p" onclick="exportShitokuSheet()">📋 取得用シート用Excel出力</button>
       <button class="btn btn-p" onclick="exportAccessImport()">📋 アクセス登録用Excel出力</button>
       <button class="btn btn-p" onclick="exportOfferList()">📋 オファーリスト用Excel出力</button>
+      <button class="btn" onclick="deleteSelectedFromList()" style="background:#fff;color:var(--red);border:1px solid var(--red)">🗑️ 選択して削除</button>
       <button class="btn" onclick="deleteAllRegistered()" style="background:var(--red);color:#fff;border-color:var(--red)">🗑️ 全品番を削除</button>
     </div>
   </div>
@@ -535,6 +536,7 @@ body{padding-left:var(--sbw)}
     <div class="tbl-wrap">
     <table class="tbl">
       <thead><tr>
+        <th style="width:34px;text-align:center"><input type="checkbox" id="list-check-all" onchange="toggleAllListChecks(this.checked)" title="全選択／全解除"></th>
         <th style="width:104px">品番コード</th><th>品番名</th>
         <th style="width:60px">グループ</th><th style="width:56px">施策月</th>
         <th style="width:70px">担当者</th><th style="width:88px">販売価格(税抜)</th>
@@ -2857,22 +2859,53 @@ function deleteGeneratedHinban(genIdx){
   renderPriceMatrix(true);
 }
 
-function renderList(){
-  const fg=document.getElementById('f-group').value,fm=document.getElementById('f-month').value;
-  const fs=document.getElementById('f-staff').value,fst=document.getElementById('f-status').value;
-  const fq=document.getElementById('f-search').value.toLowerCase();
-  const data=registeredList.filter(r=>{
-    if(fg&&r.group!==fg)return false;if(fm&&r.month!==fm)return false;
-    if(fs&&r.staff!==fs)return false;if(fst&&r.status!==fst)return false;
-    if(fq&&!r.code.toLowerCase().includes(fq)&&!r.name.toLowerCase().includes(fq))return false;
+// 現在のフィルター条件に一致する登録品番（Excel出力・一覧で共通利用）
+function getFilteredRegisteredList(){
+  const g=id=>{const e=document.getElementById(id);return e?e.value:'';};
+  const fg=g('f-group'),fm=g('f-month'),fs=g('f-staff'),fst=g('f-status');
+  const fq=(g('f-search')||'').toLowerCase();
+  return registeredList.filter(r=>{
+    if(fg&&r.group!==fg)return false;
+    if(fm&&r.month!==fm)return false;
+    if(fs&&r.staff!==fs)return false;
+    if(fst&&r.status!==fst)return false;
+    if(fq&&!(r.code||'').toLowerCase().includes(fq)&&!(r.name||'').toLowerCase().includes(fq))return false;
     return true;
   });
+}
+// 一覧のチェックボックス操作
+function toggleAllListChecks(checked){
+  document.querySelectorAll('#list-body .list-check').forEach(cb=>{cb.checked=checked;});
+}
+function syncListCheckAll(){
+  const all=document.querySelectorAll('#list-body .list-check');
+  const checked=document.querySelectorAll('#list-body .list-check:checked');
+  const head=document.getElementById('list-check-all');
+  if(head) head.checked=all.length>0&&checked.length===all.length;
+}
+function deleteSelectedFromList(){
+  const idxs=Array.from(document.querySelectorAll('#list-body .list-check:checked'))
+    .map(cb=>parseInt(cb.value,10)).filter(n=>!isNaN(n));
+  if(!idxs.length){alert('削除する品番にチェックを入れてください');return;}
+  if(!confirm('選択した '+idxs.length+' 件の品番を削除します。よろしいですか？'))return;
+  idxs.sort((a,b)=>b-a).forEach(i=>registeredList.splice(i,1));
+  const badge=document.getElementById('total-badge');
+  if(badge) badge.textContent='登録済 '+registeredList.length+'件';
+  saveRegisteredList();
+  renderList();
+}
+
+function renderList(){
+  const data=getFilteredRegisteredList();
   const tb=document.getElementById('list-body');
-  if(!data.length){tb.innerHTML=`<tr><td colspan="11" style="text-align:center;padding:30px;color:var(--gray-400)">登録された品番がありません</td></tr>`;document.getElementById('list-footer').textContent='';return;}
+  const chkAll=document.getElementById('list-check-all');
+  if(chkAll) chkAll.checked=false;
+  if(!data.length){tb.innerHTML=`<tr><td colspan="12" style="text-align:center;padding:30px;color:var(--gray-400)">登録された品番がありません</td></tr>`;document.getElementById('list-footer').textContent='';return;}
   tb.innerHTML=data.map(r=>{
     const idx=registeredList.indexOf(r);
     const skuCount=(r.skuList&&r.skuList.length)||0;
     return`<tr>
+      <td style="text-align:center"><input type="checkbox" class="list-check" value="${idx}" onchange="syncListCheckAll()"></td>
       <td>
         <div class="code-cell-wrap">
           <button type="button" class="toggle-marker" onclick="toggleListSkuRow(${idx})" id="list-sku-toggle-${idx}" title="SKU構成を表示">⌄</button>
@@ -2891,7 +2924,7 @@ function renderList(){
       <td><button onclick="if(confirm('削除しますか？')){registeredList.splice(${idx},1);document.getElementById('total-badge').textContent='登録済 '+registeredList.length+'件';saveRegisteredList();renderList()}" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px">削除</button></td>
     </tr>
     <tr id="list-sku-row-${idx}" style="display:none;background:var(--gray-50)">
-      <td colspan="11" style="padding:0 10px 12px 24px">
+      <td colspan="12" style="padding:0 10px 12px 24px">
         <div style="font-size:11px;font-weight:600;color:var(--gray-600);padding:8px 0 4px">📦 ${r.code} のSKU構成（個別削除可）</div>
         ${renderSkuTable(r.skuList,{deletable:true,hinbanIdx:idx})}
       </td>
@@ -3343,8 +3376,8 @@ function addShitokuDummySheets(wb){
 
 async function exportShitokuSheet(){
   if(typeof ExcelJS==='undefined'){alert('ExcelJSが読み込まれていません。ページを再読み込みしてください。');return;}
-  var source=(generated&&generated.length)?generated:registeredList;
-  if(!source||!source.length){alert('品番が生成されていません');return;}
+  var source=getFilteredRegisteredList();
+  if(!source||!source.length){alert('出力対象の品番がありません（フィルター条件に一致する品番がありません）');return;}
 
   showLoading('Excel生成中...');
   try{
@@ -3772,7 +3805,7 @@ function writeAccessCompositionData(ws,list){
 
 async function exportAccessImport(){
   if(typeof ExcelJS==='undefined'){alert('ExcelJSが読み込まれていません。ページを再読み込みしてください。');return;}
-  var list=registeredList&&registeredList.length?registeredList:generated;
+  var list=getFilteredRegisteredList();
   if(!list||!list.length){alert('登録済み品番がありません');return;}
   showLoading('テンプレート読み込み中...');
   try{
@@ -4331,8 +4364,8 @@ function writeOfferListData(ws,list){
 
 async function exportOfferList(){
   if(typeof ExcelJS==='undefined'){alert('ExcelJSが読み込まれていません。ページを再読み込みしてください。');return;}
-  var list=registeredList&&registeredList.length?registeredList:null;
-  if(!list||!list.length){alert('登録済み品番がありません');return;}
+  var list=getFilteredRegisteredList();
+  if(!list||!list.length){alert('出力対象の品番がありません（フィルター条件に一致する品番がありません）');return;}
   showLoading('テンプレート読み込み中...');
   try{
     var buf=await loadOfferListTemplate();
