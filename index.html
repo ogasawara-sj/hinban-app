@@ -1712,8 +1712,12 @@ function setPatternUnit(pi, unit){
   const prev = p.unit || '枚';
   if(prev === unit) return;
   p.unit = unit;
-  // 枚⇔台 の切替時だけラベルの単位語を自動置換（片耳/両耳は入力を尊重して触らない）
-  if((prev==='枚'||prev==='台') && (unit==='枚'||unit==='台') && typeof p.label === 'string' && p.label){
+  if(unit==='片耳'){
+    p.label='片耳';
+  }else if(unit==='両耳'){
+    p.label='両耳';
+  }else if((prev==='枚'||prev==='台') && (unit==='枚'||unit==='台') && typeof p.label === 'string' && p.label){
+    // 枚⇔台 の切替時だけラベルの単位語を自動置換
     if(unit === '台') p.label = p.label.replace(/枚/g, '台');
     else p.label = p.label.replace(/台/g, '枚');
   }
@@ -1733,7 +1737,7 @@ function renderPts(){
             style="font-weight:700;font-size:13px;border:1px solid var(--bd);background:#fff;padding:4px 8px;width:100%;max-width:220px;border-radius:var(--r);font-family:inherit">
           <span title="パターン名は自由に編集できます" style="font-size:10px;color:var(--gray-400);white-space:nowrap;cursor:default">✏️ 編集可</span>
           <div style="display:flex;border:1px solid var(--bd);border-radius:var(--r);overflow:hidden;font-size:12px;">
-            ${['枚','台','片耳','両耳'].map(u=>`<button onclick="setPatternUnit(${pi},'${u}')"
+            ${(p.sheets===1?['枚','台','片耳']:p.sheets===2?['枚','台','両耳']:['枚','台']).map(u=>`<button onclick="setPatternUnit(${pi},'${u}')"
               style="padding:4px 9px;background:${(p.unit||'枚')===u?'var(--blue)':'#fff'};color:${(p.unit||'枚')===u?'#fff':'var(--gray-600)'};border:none;cursor:pointer;white-space:nowrap;">${u}</button>`).join('')}
           </div>
         </div>
