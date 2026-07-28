@@ -355,7 +355,7 @@ body{padding-left:var(--sbw)}
       <div class="f"><label>施策月 <span class="req">*</span></label>
         <select id="s-month"></select></div>
       <div class="f"><label>施策名</label>
-        <input type="text" id="s-name" placeholder="例：TRS下取りDM春号"></div>
+        <select id="s-name"><option value="">選択</option></select></div>
     </div>
     <div class="g2">
       <div class="f"><label>商品グループ <span class="req">*</span></label>
@@ -1202,6 +1202,7 @@ function renderAll(){
   renderMonthSelect();
   renderGroupSelect();
   renderStaffSelect();
+  renderCampaignSelect();
   resetWizardColors();resetWizardSizes();
   renderPts();
   renderSpPanel();
@@ -1293,6 +1294,14 @@ function renderStaffSelect(){
 function renderCampaignDl(){
   const dl=document.getElementById('campaign-dl');
   if(dl)dl.innerHTML=campaignHistory.map(c=>`<option value="${c}">`).join('');
+  renderCampaignSelect();
+}
+// 施策名プルダウン（施策名マスタから）— 担当者と同様
+function renderCampaignSelect(){
+  const sel=document.getElementById('s-name');
+  if(!sel||sel.tagName!=='SELECT')return;
+  const cur=sel.value;
+  sel.innerHTML='<option value="">選択</option>'+campaignHistory.map(c=>`<option${cur===c?' selected':''}>${c}</option>`).join('');
 }
 function onCampaignInput(v){
   v=v.trim();
