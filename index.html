@@ -411,10 +411,10 @@ body{padding-left:var(--sbw)}
     </div>
     <div class="f"><label>商品コード使用チャネル <span class="req">*</span></label>
       <div style="position:relative">
-        <input type="text" id="s-channel-search" placeholder="チャネルで検索または選択..." value="DM,Doukon"
+        <input type="text" id="s-channel-search" placeholder="チャネルで検索または選択..." value=""
           oninput="filterComboList('s-channel',this.value)" onfocus="showComboList('s-channel')"
           style="width:100%;padding:8px 12px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px">
-        <input type="hidden" id="s-channel" value="DM,Doukon">
+        <input type="hidden" id="s-channel" value="">
         <div id="s-channel-list" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:100;background:#fff;border:1px solid var(--bd);border-radius:0 0 var(--r) var(--r);max-height:220px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.1)"></div>
       </div>
       <div style="font-size:11px;color:var(--gray-400);margin-top:4px">アクセス登録Excelの「商品コード使用チャネル」に入ります。選択肢はマスタ管理で追加できます</div>
@@ -2324,7 +2324,7 @@ function generate(){
                 month:document.getElementById('s-month').value,
                 campaign:document.getElementById('s-name').value,
                 staff:document.getElementById('s-staff').value,
-                channel:(document.getElementById('s-channel')||{}).value||'DM,Doukon',
+                channel:(document.getElementById('s-channel')||{}).value||'',
                 status:'取得OK',
                 colorLabel:colorLabel,
                 colorAbbr:colorAbbr,
@@ -2387,7 +2387,7 @@ function generate(){
               month:document.getElementById('s-month').value,
               campaign:document.getElementById('s-name').value,
               staff:document.getElementById('s-staff').value,
-              channel:(document.getElementById('s-channel')||{}).value||'DM,Doukon',
+              channel:(document.getElementById('s-channel')||{}).value||'',
               status:'取得OK',
               colorLabel:colorLabel,
               colorAbbr:colorAbbr,
@@ -2819,8 +2819,8 @@ function resetWizardForm(){
     var se=document.getElementById(b+'-search');if(se)se.value='';
     var li=document.getElementById(b+'-list');if(li)li.style.display='none';
   });
-  var chSe=document.getElementById('s-channel-search');if(chSe)chSe.value='DM,Doukon';
-  var chHi=document.getElementById('s-channel');if(chHi)chHi.value='DM,Doukon';
+  var chSe=document.getElementById('s-channel-search');if(chSe)chSe.value='';
+  var chHi=document.getElementById('s-channel');if(chHi)chHi.value='';
   var chLi=document.getElementById('s-channel-list');if(chLi)chLi.style.display='none';
   renderBonuses();resetWizardColors();resetWizardSizes();renderPts();go(1);
 }
@@ -3837,7 +3837,7 @@ function writeAccessBtoCData(ws,list){
     var c31=row.getCell(31);
     c31.value=toAccessNum(pt.yupakeKbn,0);
     c31.numFmt='0';
-    row.getCell(32).value=h.channel||'DM,Doukon';
+    row.getCell(32).value=h.channel||'';
     var c33=row.getCell(33);
     c33.value=0;
     c33.numFmt='0';
