@@ -1232,7 +1232,7 @@ function renderMonthSelect(){
   const sel=document.getElementById('s-month');
   if(!sel) return;
   const now=new Date();
-  const start=new Date(now.getFullYear(),now.getMonth()-2,1);
+  const start=new Date(now.getFullYear(),now.getMonth()-6,1);
   const end=new Date(now.getFullYear(),now.getMonth()+7,1);
   sel.innerHTML='<option value="">選択してください</option>';
   const d=new Date(start);
@@ -1712,7 +1712,8 @@ function setPatternUnit(pi, unit){
   const prev = p.unit || '枚';
   if(prev === unit) return;
   p.unit = unit;
-  if(typeof p.label === 'string' && p.label){
+  // 枚⇔台 の切替時だけラベルの単位語を自動置換（片耳/両耳は入力を尊重して触らない）
+  if((prev==='枚'||prev==='台') && (unit==='枚'||unit==='台') && typeof p.label === 'string' && p.label){
     if(unit === '台') p.label = p.label.replace(/枚/g, '台');
     else p.label = p.label.replace(/台/g, '枚');
   }
@@ -1728,12 +1729,12 @@ function renderPts(){
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <div style="display:flex;align-items:center;gap:8px;">
           <input type="text" value="${p.label}" onchange="patterns[${pi}].label=this.value;updateCount()"
+            placeholder="自由に編集できます（例：片耳／両耳／1枚購入）" title="✏️ パターン名は自由に編集できます"
             style="font-weight:700;font-size:13px;border:1px solid var(--bd);background:#fff;padding:4px 8px;width:100%;max-width:220px;border-radius:var(--r);font-family:inherit">
+          <span title="パターン名は自由に編集できます" style="font-size:10px;color:var(--gray-400);white-space:nowrap;cursor:default">✏️ 編集可</span>
           <div style="display:flex;border:1px solid var(--bd);border-radius:var(--r);overflow:hidden;font-size:12px;">
-            <button onclick="setPatternUnit(${pi},'枚')"
-              style="padding:4px 10px;background:${(p.unit||'枚')==='枚'?'var(--blue)':'#fff'};color:${(p.unit||'枚')==='枚'?'#fff':'var(--gray-600)'};border:none;cursor:pointer;">枚</button>
-            <button onclick="setPatternUnit(${pi},'台')"
-              style="padding:4px 10px;background:${(p.unit||'枚')==='台'?'var(--blue)':'#fff'};color:${(p.unit||'枚')==='台'?'#fff':'var(--gray-600)'};border:none;cursor:pointer;">台</button>
+            ${['枚','台','片耳','両耳'].map(u=>`<button onclick="setPatternUnit(${pi},'${u}')"
+              style="padding:4px 9px;background:${(p.unit||'枚')===u?'var(--blue)':'#fff'};color:${(p.unit||'枚')===u?'#fff':'var(--gray-600)'};border:none;cursor:pointer;white-space:nowrap;">${u}</button>`).join('')}
           </div>
         </div>
         ${patterns.length>1?`<button onclick="patterns.splice(${pi},1);renderPts();renderSkuAssignTable()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px">削除</button>`:''}
@@ -2384,8 +2385,8 @@ function syncGeneratedFromStep5Dom(){
   });
 }
 
-function renderPriceMatrix(){
-  syncGeneratedFromStep5Dom();
+function renderPriceMatrix(skipSync){
+  if(!skipSync) syncGeneratedFromStep5Dom();
   const el=document.getElementById('price-matrix');
   const yen=n=>'¥'+Math.round(n).toLocaleString('ja-JP');
 
@@ -2474,6 +2475,8 @@ function renderPriceMatrix(){
                   <button type="button" class="step5-toggle-marker" onclick="toggleSkuRow4(${i})" id="cd-toggle-${i}">⌄</button>
                   <input type="text" id="cd-${i}" class="step5-editable-input step5-code-input" value="${h.code}"
                     oninput="onCodeEdit(${i}, this.value, this)">
+                  <button type="button" title="この品番を削除" onclick="deleteGeneratedHinban(${i})"
+                    style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;line-height:1;padding:2px 6px;flex-shrink:0">✕</button>
                 </div>
               </td>
               <td style="font-size:12px;font-weight:500;cursor:pointer" onclick="toggleSkuRow4(${i})" title="クリックでSKU確認">${escHtml(displayBizKana(h.sizeLabel||'—'))}</td>
@@ -2499,8 +2502,8 @@ function renderPriceMatrix(){
             </tr>
             <tr id="sku-row4-${i}" style="display:none;background:var(--gray-50)">
               <td colspan="9" style="padding:8px 16px 12px 24px">
-                <div style="font-size:11px;font-weight:600;color:var(--gray-600);margin-bottom:6px">📦 ${h.code} のSKU構成</div>
-                ${renderSkuTable(h.skuList)}
+                <div style="font-size:11px;font-weight:600;color:var(--gray-600);margin-bottom:6px">📦 ${h.code} のSKU構成（個別削除可）</div>
+                ${renderSkuTable(h.skuList,{deletable:true,hinbanIdx:i,deleteFn:'deleteSkuFromGenerated'})}
               </td>
             </tr>`;
           }).join('')}
@@ -2557,6 +2560,7 @@ function renderSkuTable(skuList,options){
   options=options||{};
   var deletable=!!options.deletable;
   var hinbanIdx=options.hinbanIdx;
+  var deleteFn=options.deleteFn||'deleteSkuFromHinban';
   if(!skuList||!skuList.length){
     return `<div style="font-size:12px;color:var(--red)">SKUが設定されていません。初期設定でSKUマスタを読み込んでから再生成してください。</div>`;
   }
@@ -2577,7 +2581,7 @@ function renderSkuTable(skuList,options){
         </td>
         <td style="padding:4px 8px;text-align:center">${s.qty||1}</td>
         ${deletable?`<td style="padding:4px 8px;text-align:center">
-          <button type="button" title="このSKUを削除" onclick="deleteSkuFromHinban(${hinbanIdx},${si})"
+          <button type="button" title="このSKUを削除" onclick="${deleteFn}(${hinbanIdx},${si})"
             style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;line-height:1;padding:2px 6px">🗑️</button>
         </td>`:''}
       </tr>`).join('')}
@@ -2819,6 +2823,27 @@ function deleteSkuFromHinban(hinbanIdx,skuIndex){
   h.skuList.splice(skuIndex,1);
   saveRegisteredList();
   renderList();
+}
+// STEP5（価格入力）：生成中の品番からSKUを個別削除
+function deleteSkuFromGenerated(genIdx,skuIndex){
+  syncGeneratedFromStep5Dom();
+  var h=generated[genIdx];
+  if(!h||!h.skuList||!h.skuList[skuIndex]) return;
+  var sku=h.skuList[skuIndex];
+  var label=sku.code||'—';
+  var namePart=sku.name?('（'+displayBizKana(sku.name)+'）'):'';
+  if(!confirm('品番 '+(h.code||'')+' からSKU '+label+namePart+' を削除しますか？')) return;
+  h.skuList.splice(skuIndex,1);
+  renderPriceMatrix(true);
+}
+// STEP5（価格入力）：生成中の品番をまるごと削除
+function deleteGeneratedHinban(genIdx){
+  syncGeneratedFromStep5Dom();
+  var h=generated[genIdx];
+  if(!h) return;
+  if(!confirm((h.code||'この品番')+' を削除します。よろしいですか？')) return;
+  generated.splice(genIdx,1);
+  renderPriceMatrix(true);
 }
 
 function renderList(){
