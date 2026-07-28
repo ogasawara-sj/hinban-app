@@ -215,6 +215,16 @@ body{padding-left:var(--sbw)}
 /* 品番名は1行・適度な幅（内側spanで制御）、施策月も1行 */
 #list-body td.list-month{white-space:nowrap}
 .list-name-inner{display:inline-block;max-width:440px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
+/* 複数選択フィルター（品番一覧） */
+.msf{position:relative;display:inline-block}
+.msf-btn{padding:8px 26px 8px 12px;border:1px solid var(--bd);border-radius:var(--r);font-size:12.5px;background:var(--surface);cursor:pointer;font-family:inherit;position:relative;white-space:nowrap;min-width:96px;text-align:left;color:var(--gray-800)}
+.msf-btn::after{content:'▾';position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--gray-400);font-size:10px}
+.msf-btn.active{border-color:var(--blue);color:var(--blue);font-weight:700;background:var(--blue-lt)}
+.msf-panel{display:none;position:absolute;top:100%;left:0;z-index:200;margin-top:4px;background:#fff;border:1px solid var(--bd);border-radius:var(--r);box-shadow:0 6px 18px rgba(16,24,40,.14);min-width:180px;max-height:280px;overflow-y:auto;padding:6px}
+.msf-panel.open{display:block}
+.msf-opt{display:flex;align-items:center;gap:8px;padding:7px 8px;font-size:12.5px;cursor:pointer;border-radius:6px;white-space:nowrap}
+.msf-opt:hover{background:var(--gray-50)}
+.msf-empty{padding:10px 8px;font-size:12px;color:var(--gray-400)}
 /* 入力中心のSTEP1〜4は広がりすぎないよう据え置き、表のSTEP5/6は全幅を使う */
 #p1,#p2,#p3,#p4{max-width:1040px;margin-left:auto;margin-right:auto}
 /* STEP5 価格表：固定レイアウトで、余白は品番名列「だけ」が吸収して伸びる */
@@ -540,14 +550,10 @@ body{padding-left:var(--sbw)}
     </div>
   </div>
   <div class="filter-bar">
-    <select id="f-group" onchange="renderList()"><option value="">全グループ</option></select>
-    <select id="f-month" onchange="renderList()"><option value="">全施策月</option></select>
-    <select id="f-staff" onchange="renderList()"><option value="">全担当者</option></select>
-    <select id="f-status" onchange="renderList()">
-      <option value="">全ステータス</option>
-      <option>取得OK</option><option>MS依頼済</option><option>Access登録済み</option>
-      <option>チェック依頼</option><option>チェック完了</option><option>済</option><option>取得不要</option>
-    </select>
+    <div class="msf"><button type="button" class="msf-btn" id="msf-btn-group" onclick="toggleMsf('group')">全グループ</button><div class="msf-panel" id="msf-panel-group"></div></div>
+    <div class="msf"><button type="button" class="msf-btn" id="msf-btn-month" onclick="toggleMsf('month')">全施策月</button><div class="msf-panel" id="msf-panel-month"></div></div>
+    <div class="msf"><button type="button" class="msf-btn" id="msf-btn-staff" onclick="toggleMsf('staff')">全担当者</button><div class="msf-panel" id="msf-panel-staff"></div></div>
+    <div class="msf"><button type="button" class="msf-btn" id="msf-btn-status" onclick="toggleMsf('status')">全ステータス</button><div class="msf-panel" id="msf-panel-status"></div></div>
     <input type="text" id="f-search" placeholder="品番・品番名で検索" onkeyup="renderList()" style="width:180px">
     <button class="btn" onclick="clearFilters()">リセット</button>
   </div>
@@ -2912,15 +2918,15 @@ function deleteGeneratedHinban(genIdx){
 }
 
 // 現在のフィルター条件に一致する登録品番（Excel出力・一覧で共通利用）
+var listFilterSel={group:new Set(),month:new Set(),staff:new Set(),status:new Set()};
 function getFilteredRegisteredList(){
-  const g=id=>{const e=document.getElementById(id);return e?e.value:'';};
-  const fg=g('f-group'),fm=g('f-month'),fs=g('f-staff'),fst=g('f-status');
-  const fq=(g('f-search')||'').toLowerCase();
+  const fq=((document.getElementById('f-search')||{}).value||'').toLowerCase();
+  const s=listFilterSel;
   return registeredList.filter(r=>{
-    if(fg&&r.group!==fg)return false;
-    if(fm&&r.month!==fm)return false;
-    if(fs&&r.staff!==fs)return false;
-    if(fst&&r.status!==fst)return false;
+    if(s.group.size&&!s.group.has(r.group))return false;
+    if(s.month.size&&!s.month.has(r.month))return false;
+    if(s.staff.size&&!s.staff.has(r.staff))return false;
+    if(s.status.size&&!s.status.has(r.status))return false;
     if(fq&&!(r.code||'').toLowerCase().includes(fq)&&!(r.name||'').toLowerCase().includes(fq))return false;
     return true;
   });
@@ -3025,21 +3031,62 @@ function renderList(){
     </tr>`;
   }).join('');
   document.getElementById('list-footer').textContent=`${data.length}件表示 / 合計 ${registeredList.length}件`;
-  [['f-group',registeredList.map(r=>r.group),'全グループ'],['f-month',registeredList.map(r=>r.month).filter(Boolean),'全施策月'],['f-staff',registeredList.map(r=>r.staff).filter(Boolean),'全担当者']].forEach(([id,vals,label])=>{
-    const sel=document.getElementById(id),cur=sel.value;
-    let uniq=[...new Set(vals)];
-    if(id==='f-month'){
-      // 施策月は降順（新しい月が上）
-      uniq.sort((a,b)=>{
-        const pa=String(a).match(/(\d+)年(\d+)月/),pb=String(b).match(/(\d+)年(\d+)月/);
-        const na=pa?(+pa[1])*100+(+pa[2]):0, nb=pb?(+pb[1])*100+(+pb[2]):0;
-        return nb-na;
-      });
-    }
-    sel.innerHTML=`<option value="">${label}</option>`+uniq.map(v=>`<option${cur===v?' selected':''}>${v}</option>`).join('');
+  renderFilterDropdowns();
+}
+function clearFilters(){
+  listFilterSel={group:new Set(),month:new Set(),staff:new Set(),status:new Set()};
+  var fsr=document.getElementById('f-search');if(fsr)fsr.value='';
+  document.querySelectorAll('.msf-panel').forEach(p=>p.classList.remove('open'));
+  renderList();
+}
+// 複数選択フィルター（施策月・グループ・担当者・ステータス）
+var MSF_LABELS={group:'グループ',month:'施策月',staff:'担当者',status:'ステータス'};
+function toggleMsf(key){
+  var panel=document.getElementById('msf-panel-'+key);
+  if(!panel)return;
+  var willOpen=!panel.classList.contains('open');
+  document.querySelectorAll('.msf-panel').forEach(p=>p.classList.remove('open'));
+  if(willOpen) panel.classList.add('open');
+}
+function onMsfToggle(key,value,checked){
+  if(checked) listFilterSel[key].add(value); else listFilterSel[key].delete(value);
+  renderList();
+}
+function monthSortDesc(a,b){
+  var pa=String(a).match(/(\d+)年(\d+)月/),pb=String(b).match(/(\d+)年(\d+)月/);
+  var na=pa?(+pa[1])*100+(+pa[2]):0, nb=pb?(+pb[1])*100+(+pb[2]):0;
+  return nb-na;
+}
+function renderFilterDropdowns(){
+  var vals={
+    group:[...new Set(registeredList.map(r=>r.group).filter(Boolean))].sort(),
+    month:[...new Set(registeredList.map(r=>r.month).filter(Boolean))].sort(monthSortDesc),
+    staff:[...new Set(registeredList.map(r=>r.staff).filter(Boolean))].sort(),
+    status:[...new Set(registeredList.map(r=>r.status).filter(Boolean))].sort()
+  };
+  Object.keys(MSF_LABELS).forEach(function(key){
+    var panel=document.getElementById('msf-panel-'+key);
+    var btn=document.getElementById('msf-btn-'+key);
+    if(!panel||!btn)return;
+    var opts=vals[key];
+    var sel=listFilterSel[key];
+    // 存在しなくなった選択値は除去
+    [...sel].forEach(function(v){ if(opts.indexOf(v)<0) sel.delete(v); });
+    panel.innerHTML=opts.length? opts.map(function(v){
+      var checked=sel.has(v)?' checked':'';
+      return '<label class="msf-opt"><input type="checkbox"'+checked+' onchange="onMsfToggle(\''+key+'\',this.dataset.v,this.checked)" data-v="'+escAttr(v)+'">'+escHtml(v)+'</label>';
+    }).join('') : '<div class="msf-empty">該当なし</div>';
+    // ボタン表示
+    if(sel.size===0){ btn.textContent='全'+MSF_LABELS[key]; btn.classList.remove('active'); }
+    else if(sel.size===1){ btn.textContent=[...sel][0]; btn.classList.add('active'); }
+    else { btn.textContent=MSF_LABELS[key]+'（'+sel.size+'）'; btn.classList.add('active'); }
   });
 }
-function clearFilters(){['f-group','f-month','f-staff','f-status'].forEach(id=>document.getElementById(id).value='');document.getElementById('f-search').value='';renderList();}
+// フィルターパネルの外側クリックで閉じる
+document.addEventListener('click',function(e){
+  if(e.target.closest('.msf')) return;
+  document.querySelectorAll('.msf-panel').forEach(p=>p.classList.remove('open'));
+});
 
 // ============================================================
 // MASTER PAGE
