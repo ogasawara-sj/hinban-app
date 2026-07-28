@@ -355,7 +355,13 @@ body{padding-left:var(--sbw)}
       <div class="f"><label>施策月 <span class="req">*</span></label>
         <select id="s-month"></select></div>
       <div class="f"><label>施策名</label>
-        <select id="s-name"><option value="">選択</option></select></div>
+        <div style="position:relative">
+          <input type="text" id="s-name-search" placeholder="施策名で検索または選択..."
+            oninput="filterComboList('s-name',this.value)" onfocus="showComboList('s-name')"
+            style="width:100%;padding:8px 12px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px">
+          <input type="hidden" id="s-name" value="">
+          <div id="s-name-list" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:100;background:#fff;border:1px solid var(--bd);border-radius:0 0 var(--r) var(--r);max-height:220px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.1)"></div>
+        </div></div>
     </div>
     <div class="g2">
       <div class="f"><label>商品グループ <span class="req">*</span></label>
@@ -371,7 +377,13 @@ body{padding-left:var(--sbw)}
           </div>
         </div></div>
       <div class="f"><label>担当者 <span class="req">*</span></label>
-        <select id="s-staff"><option value="">選択</option></select></div>
+        <div style="position:relative">
+          <input type="text" id="s-staff-search" placeholder="名前で検索または選択..."
+            oninput="filterComboList('s-staff',this.value)" onfocus="showComboList('s-staff')"
+            style="width:100%;padding:8px 12px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px">
+          <input type="hidden" id="s-staff" value="">
+          <div id="s-staff-list" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:100;background:#fff;border:1px solid var(--bd);border-radius:0 0 var(--r) var(--r);max-height:220px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.1)"></div>
+        </div></div>
     </div>
     <div style="margin-bottom:10px">
       <div class="g2" style="margin-bottom:0">
@@ -1303,6 +1315,53 @@ function renderCampaignSelect(){
   const cur=sel.value;
   sel.innerHTML='<option value="">選択</option>'+campaignHistory.map(c=>`<option${cur===c?' selected':''}>${c}</option>`).join('');
 }
+// 「検索または選択」（商品グループ方式）を担当者・施策名にも適用
+var SEARCH_COMBOS={
+  's-staff':function(){return staffList||[];},
+  's-name':function(){return campaignHistory||[];}
+};
+function showComboList(baseId){
+  var list=document.getElementById(baseId+'-list');
+  if(list) list.style.display='block';
+  var s=document.getElementById(baseId+'-search');
+  filterComboList(baseId, s?s.value:'');
+}
+function filterComboList(baseId,q){
+  var list=document.getElementById(baseId+'-list');
+  if(!list) return;
+  var src=SEARCH_COMBOS[baseId]?SEARCH_COMBOS[baseId]():[];
+  var items=src.filter(function(v){ return !q || String(v).toUpperCase().indexOf(String(q).toUpperCase())>=0; });
+  if(!items.length){
+    list.innerHTML='<div style="padding:10px 12px;font-size:13px;color:var(--gray-400)">該当なし</div>';
+    list.style.display='block';
+    return;
+  }
+  list.innerHTML='';
+  items.forEach(function(v){
+    var item=document.createElement('div');
+    item.textContent=v;
+    item.style.cssText='padding:8px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--bd)';
+    item.addEventListener('mouseenter',function(){ item.style.background='var(--blue-lt)'; });
+    item.addEventListener('mouseleave',function(){ item.style.background=''; });
+    item.addEventListener('click',function(){
+      document.getElementById(baseId).value=v;
+      document.getElementById(baseId+'-search').value=v;
+      list.style.display='none';
+    });
+    list.appendChild(item);
+  });
+  list.style.display='block';
+}
+document.addEventListener('click',function(e){
+  ['s-staff','s-name'].forEach(function(baseId){
+    var searchEl=document.getElementById(baseId+'-search');
+    var wrapper=searchEl&&searchEl.closest('div');
+    if(wrapper&&!wrapper.contains(e.target)){
+      var list=document.getElementById(baseId+'-list');
+      if(list) list.style.display='none';
+    }
+  });
+});
 function onCampaignInput(v){
   v=v.trim();
   if(!v||campaignHistory.includes(v))return;
@@ -2700,6 +2759,10 @@ function resetWizardForm(){
   const gs=document.getElementById('s-group-search');if(gs)gs.value='';
   const gl=document.getElementById('s-group-list');if(gl)gl.style.display='none';
   const gi=document.getElementById('group-info');if(gi)gi.innerHTML='';
+  ['s-staff','s-name'].forEach(function(b){
+    var se=document.getElementById(b+'-search');if(se)se.value='';
+    var li=document.getElementById(b+'-list');if(li)li.style.display='none';
+  });
   renderBonuses();resetWizardColors();resetWizardSizes();renderPts();go(1);
 }
 
