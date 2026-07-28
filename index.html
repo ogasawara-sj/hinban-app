@@ -127,11 +127,13 @@ body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sa
 .code-cell-wrap{display:flex;align-items:center;gap:2px}
 
 /* ===== STEP5 品番コード列 ===== */
-.step5-code-row{display:flex;align-items:center;gap:4px}
-.step5-toggle-marker{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:17px;color:#888;background:transparent;border:none;outline:none;padding:4px 8px;cursor:pointer;transition:color .15s ease;user-select:none;line-height:1}
+.step5-code-row{display:flex;align-items:center;gap:2px}
+.step5-toggle-marker{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;color:#888;background:transparent;border:none;outline:none;padding:2px 3px;cursor:pointer;transition:color .15s ease;user-select:none;line-height:1}
 .step5-toggle-marker:hover{color:#444}
 .step5-editable-input{font-size:12px;padding:3px 6px;border:1px solid var(--bd);border-radius:5px;font-family:inherit;box-sizing:border-box;background:#fff}
-.step5-code-input{width:84px;flex-shrink:0}
+.step5-code-input{width:78px;flex-shrink:0}
+/* STEP5 品番コード列のセル余白を詰めてはみ出し防止 */
+#price-matrix thead th:first-child,#price-matrix tbody td:first-child{padding-left:8px;padding-right:2px}
 
 /* ===== STEP5 一括設定エリア ===== */
 .bulk-settings-panel{margin-bottom:12px;padding:10px 12px;background:var(--gray-50);border-radius:var(--r);border:1px solid var(--bd)}
@@ -2517,7 +2519,7 @@ function renderPriceMatrix(skipSync){
       <div class="tbl-wrap">
       <table class="tbl">
         <thead><tr>
-          <th style="width:104px">品番コード（編集可）</th>
+          <th style="width:112px">品番コード（編集可）</th>
           <th style="width:160px">サイズ構成</th>
           <th style="width:100px">カラー</th>
           <th style="width:100px">販売価格(税抜)</th>
