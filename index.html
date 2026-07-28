@@ -3878,9 +3878,14 @@ function parseAccessExcelDate(value){
 function clearAccessBtoCSheetRows(ws,dataStartRow,keepRows){
   // テンプレートに焼き付いた既存データ行（古い品番など）を消去。
   // rowCountが巨大でも固まらないよう、実データ末尾までを走査して範囲を限定する。
-  var scanLimit=Math.min((ws.rowCount||dataStartRow)+1, dataStartRow+600);
+  var scanLimit=Math.min((ws.rowCount||dataStartRow)+1, dataStartRow+2000);
   var lastData=dataStartRow-1;
-  for(var r=dataStartRow;r<=scanLimit;r++){ if(ws.getCell(r,2).value!=null&&ws.getCell(r,2).value!=='') lastData=r; }
+  // 申請No(1)・品番コード(2)・販売組織/Z01C(3) のいずれかにデータがある最終行まで（土台の残骸を含めて消す）
+  for(var r=dataStartRow;r<=scanLimit;r++){
+    var hasData=false;
+    for(var cc=1;cc<=3;cc++){ var v=ws.getCell(r,cc).value; if(v!=null&&v!==''){ hasData=true; break; } }
+    if(hasData) lastData=r;
+  }
   var endRow=Math.max(lastData, dataStartRow+(keepRows||0)-1)+5;
   for(var r2=dataStartRow;r2<=endRow;r2++){
     var row=ws.getRow(r2);
