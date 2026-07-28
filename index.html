@@ -409,6 +409,16 @@ body{padding-left:var(--sbw)}
       </div>
       <div style="font-size:11px;color:var(--gray-400);margin-top:6px">※日付選択時は 00:00 が適用されます</div>
     </div>
+    <div class="f"><label>商品コード使用チャネル <span class="req">*</span></label>
+      <div style="position:relative">
+        <input type="text" id="s-channel-search" placeholder="チャネルで検索または選択..." value="DM,Doukon"
+          oninput="filterComboList('s-channel',this.value)" onfocus="showComboList('s-channel')"
+          style="width:100%;padding:8px 12px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px">
+        <input type="hidden" id="s-channel" value="DM,Doukon">
+        <div id="s-channel-list" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:100;background:#fff;border:1px solid var(--bd);border-radius:0 0 var(--r) var(--r);max-height:220px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.1)"></div>
+      </div>
+      <div style="font-size:11px;color:var(--gray-400);margin-top:4px">アクセス登録Excelの「商品コード使用チャネル」に入ります。選択肢はマスタ管理で追加できます</div>
+    </div>
     <div id="group-info"></div>
   </div>
   <div class="nav-btns"><div></div><button class="btn btn-p" onclick="if(validateStep1()) go(2)">次へ →</button></div>
@@ -570,6 +580,7 @@ body{padding-left:var(--sbw)}
     <div class="mtab" id="mt-size"   onclick="showMasterTab('size')">📐 サイズマスタ</div>
     <div class="mtab" id="mt-color"  onclick="showMasterTab('color')">🎨 カラーマスタ</div>
     <div class="mtab" id="mt-ship"   onclick="showMasterTab('ship')">🚚 送料</div>
+    <div class="mtab" id="mt-channel" onclick="showMasterTab('channel')">🛰 使用チャネル</div>
   </div>
 
   <!-- SKUマスタ（初期設定でSharePointから取込のため、マスタ管理タブからは非表示。機能・要素は温存） -->
@@ -680,6 +691,18 @@ body{padding-left:var(--sbw)}
     </div>
   </div>
 
+  <div class="msec" id="msec-channel">
+    <div class="card">
+      <div class="card-title">商品コード使用チャネル</div>
+      <div class="info-box">ℹ️ ここで登録したチャネルが、新規品番取得の「商品コード使用チャネル」で選べます。アクセス登録Excelの該当列（AF）に入ります。</div>
+      <div id="master-channel-list" style="margin-bottom:10px"></div>
+      <div class="irow">
+        <input type="text" id="m-channel-name" placeholder="チャネル名（例：TV Call）">
+        <button class="btn btn-p" onclick="addChannelMaster()">追加</button>
+      </div>
+    </div>
+  </div>
+
 </div><!-- /master -->
 
 <script>
@@ -778,6 +801,7 @@ let shipOptions  = [
   {label:'4,400円',fee:4400}
 ];
 let campaignHistory = [];
+let channelList = ['DM,Doukon','TV Call','Newspaper'];
 let skuMaster    = {};
 let skuCache = [];
 let skuLastUpdated = '';
@@ -823,6 +847,7 @@ const PERSIST_KEYS={
   SIZE:'hinban_size_master',
   SHIP:'hinban_shipping_master',
   CAMP:'hinban_campaign_master',
+  CHANNEL:'hinban_channel_master',
   SKU_LEGACY:'hinban_sku_master_legacy',
   LEGACY_BUNDLE:'hbs_all_masters',
   IDB_FLAG_PREFIX:'hinban_idb_'
@@ -838,6 +863,7 @@ const DEFAULT_MASTERS={
   sizeMaster:JSON.parse(JSON.stringify(sizeMaster)),
   shipOptions:JSON.parse(JSON.stringify(shipOptions)),
   campaignHistory:[],
+  channelList:JSON.parse(JSON.stringify(channelList)),
   skuMaster:{}
 };
 
@@ -974,8 +1000,9 @@ async function saveMaster(){
       persistSet(PERSIST_KEYS.SIZE,sizeMaster),
       persistSet(PERSIST_KEYS.SHIP,shipOptions),
       persistSet(PERSIST_KEYS.CAMP,campaignHistory),
+      persistSet(PERSIST_KEYS.CHANNEL,channelList),
       persistSet(PERSIST_KEYS.SKU_LEGACY,skuMaster),
-      persistSet(PERSIST_KEYS.LEGACY_BUNDLE,{staffList,groupMaster,colorMaster,sizeMaster,shipOptions,campaignHistory,skuMaster})
+      persistSet(PERSIST_KEYS.LEGACY_BUNDLE,{staffList,groupMaster,colorMaster,sizeMaster,shipOptions,campaignHistory,channelList,skuMaster})
     ]);
   }catch(e){console.warn('saveMaster',e);}
 }
@@ -987,6 +1014,7 @@ function applyMasterBundle(d){
   if(d.sizeMaster&&d.sizeMaster.length) sizeMaster=d.sizeMaster;
   if(d.shipOptions&&d.shipOptions.length) shipOptions=d.shipOptions;
   if(d.campaignHistory) campaignHistory=d.campaignHistory;
+  if(d.channelList&&d.channelList.length) channelList=d.channelList;
   if(d.skuMaster&&typeof d.skuMaster==='object') skuMaster=d.skuMaster;
   normalizeGroupMaster();
 }
@@ -1121,6 +1149,8 @@ async function loadMaster(){
     if(ship&&ship.length){shipOptions=ship;loaded=true;}
     var camp=await persistGet(PERSIST_KEYS.CAMP);
     if(camp){campaignHistory=camp;loaded=true;}
+    var chan=await persistGet(PERSIST_KEYS.CHANNEL);
+    if(chan&&chan.length){channelList=chan;loaded=true;}
     var skuLeg=await persistGet(PERSIST_KEYS.SKU_LEGACY);
     if(skuLeg&&typeof skuLeg==='object'){skuMaster=skuLeg;loaded=true;}
     if(!loaded){
@@ -1149,6 +1179,7 @@ async function resetAllMasters(){
   sizeMaster=JSON.parse(JSON.stringify(DEFAULT_MASTERS.sizeMaster));
   shipOptions=JSON.parse(JSON.stringify(DEFAULT_MASTERS.shipOptions));
   campaignHistory=[];
+  channelList=JSON.parse(JSON.stringify(DEFAULT_MASTERS.channelList));
   skuMaster={};
   skuCache=[];
   skuLastUpdated='';
@@ -1169,6 +1200,7 @@ async function wipeAllAppData(){
   sizeMaster=JSON.parse(JSON.stringify(DEFAULT_MASTERS.sizeMaster));
   shipOptions=JSON.parse(JSON.stringify(DEFAULT_MASTERS.shipOptions));
   campaignHistory=[];
+  channelList=JSON.parse(JSON.stringify(DEFAULT_MASTERS.channelList));
   skuMaster={};
   skuCache=[];
   skuLastUpdated='';
@@ -1331,7 +1363,8 @@ function renderCampaignSelect(){
 // 「検索または選択」（商品グループ方式）を担当者・施策名にも適用
 var SEARCH_COMBOS={
   's-staff':function(){return staffList||[];},
-  's-name':function(){return campaignHistory||[];}
+  's-name':function(){return campaignHistory||[];},
+  's-channel':function(){return channelList||[];}
 };
 function showComboList(baseId){
   var list=document.getElementById(baseId+'-list');
@@ -1366,7 +1399,7 @@ function filterComboList(baseId,q){
   list.style.display='block';
 }
 document.addEventListener('click',function(e){
-  ['s-staff','s-name'].forEach(function(baseId){
+  ['s-staff','s-name','s-channel'].forEach(function(baseId){
     var searchEl=document.getElementById(baseId+'-search');
     var wrapper=searchEl&&searchEl.closest('div');
     if(wrapper&&!wrapper.contains(e.target)){
@@ -2291,6 +2324,7 @@ function generate(){
                 month:document.getElementById('s-month').value,
                 campaign:document.getElementById('s-name').value,
                 staff:document.getElementById('s-staff').value,
+                channel:(document.getElementById('s-channel')||{}).value||'DM,Doukon',
                 status:'取得OK',
                 colorLabel:colorLabel,
                 colorAbbr:colorAbbr,
@@ -2353,6 +2387,7 @@ function generate(){
               month:document.getElementById('s-month').value,
               campaign:document.getElementById('s-name').value,
               staff:document.getElementById('s-staff').value,
+              channel:(document.getElementById('s-channel')||{}).value||'DM,Doukon',
               status:'取得OK',
               colorLabel:colorLabel,
               colorAbbr:colorAbbr,
@@ -2784,6 +2819,9 @@ function resetWizardForm(){
     var se=document.getElementById(b+'-search');if(se)se.value='';
     var li=document.getElementById(b+'-list');if(li)li.style.display='none';
   });
+  var chSe=document.getElementById('s-channel-search');if(chSe)chSe.value='DM,Doukon';
+  var chHi=document.getElementById('s-channel');if(chHi)chHi.value='DM,Doukon';
+  var chLi=document.getElementById('s-channel-list');if(chLi)chLi.style.display='none';
   renderBonuses();resetWizardColors();resetWizardSizes();renderPts();go(1);
 }
 
@@ -3018,7 +3056,7 @@ function renderMasterSkuTable(){ renderMasterSkuSearch(document.getElementById('
 
 function renderMasterAll(){
   renderMasterSkuSearch('');renderMasterSkuTable();renderMasterColorList();renderMasterSizeList();
-  renderMasterStaffList();renderMasterGroupList();renderMasterShipList();renderMasterCampList();
+  renderMasterStaffList();renderMasterGroupList();renderMasterShipList();renderMasterCampList();renderMasterChannelList();
   renderGroupSelect();
 }
 function listItem(label,code,onDel){
@@ -3184,6 +3222,20 @@ function addCampaignMaster(){
   campaignHistory.unshift(v);
   document.getElementById('m-camp-name').value='';
   saveMaster();renderMasterCampList();renderCampaignDl();
+}
+
+// 商品コード使用チャネルマスタ
+function renderMasterChannelList(){
+  const el=document.getElementById('master-channel-list');
+  if(!el)return;
+  el.innerHTML=channelList.map((c,i)=>listItem(c,'',`channelList.splice(${i},1);saveMaster();renderMasterChannelList()`)).join('');
+}
+function addChannelMaster(){
+  const v=document.getElementById('m-channel-name').value.trim();
+  if(!v||channelList.includes(v))return;
+  channelList.push(v);
+  document.getElementById('m-channel-name').value='';
+  saveMaster();renderMasterChannelList();
 }
 
 // ============================================================
@@ -3785,7 +3837,7 @@ function writeAccessBtoCData(ws,list){
     var c31=row.getCell(31);
     c31.value=toAccessNum(pt.yupakeKbn,0);
     c31.numFmt='0';
-    row.getCell(32).value='DM,Doukon';
+    row.getCell(32).value=h.channel||'DM,Doukon';
     var c33=row.getCell(33);
     c33.value=0;
     c33.numFmt='0';
@@ -4640,6 +4692,7 @@ function exportMasterHTML(){
     .replace(/let sizeMaster\s*=\s*\[[\s\S]*?\];/,`let sizeMaster = ${esc(sizeMaster)};`)
     .replace(/let shipOptions\s*=\s*\[[\s\S]*?\];/,`let shipOptions = ${esc(shipOptions)};`)
     .replace(/let campaignHistory\s*=\s*\[[\s\S]*?\];/,`let campaignHistory = ${esc(campaignHistory)};`)
+    .replace(/let channelList\s*=\s*\[[\s\S]*?\];/,`let channelList = ${esc(channelList)};`)
     .replace(/let skuMaster\s*=\s*\{\};/,`let skuMaster = ${esc(skuMaster)};`);
   const blob=new Blob([updated],{type:'text/html;charset=utf-8'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
