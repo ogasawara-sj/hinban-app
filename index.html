@@ -9,6 +9,7 @@
 <title>品番取得システム｜ショップジャパン</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/exceljs/dist/exceljs.min.js"></script>
+<script src="templates-embedded.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -3430,29 +3431,51 @@ function isXlsxMagic(buf){
   return m[0]===0x50&&m[1]===0x4B&&m[2]===0x03&&m[3]===0x04;
 }
 
+// base64文字列 → ArrayBuffer（内蔵テンプレートのデコード用）
+function b64ToArrayBuffer(b64){
+  var bin=atob(b64), len=bin.length, bytes=new Uint8Array(len);
+  for(var i=0;i<len;i++) bytes[i]=bin.charCodeAt(i);
+  return bytes.buffer;
+}
+// 内蔵バックアップからテンプレートを取得（正常な.xlsxのみ返す）
+function getEmbeddedTemplate(key){
+  try{
+    if(window.__EMB_TPL&&window.__EMB_TPL[key]){
+      var buf=b64ToArrayBuffer(window.__EMB_TPL[key]);
+      if(isXlsxMagic(buf)) return buf;
+    }
+  }catch(e){}
+  return null;
+}
+// ディスクのテンプレートを取得。壊れている/取得不可なら内蔵バックアップで自動復旧。
+async function loadTemplateResilient(path,embKey,label){
+  var buf=null;
+  try{
+    var res=await fetch(path,{cache:'no-store'});
+    if(res.ok){
+      var ct=res.headers.get('content-type')||'';
+      if(ct.indexOf('text/html')<0){
+        var b=await res.arrayBuffer();
+        if(isXlsxMagic(b)) buf=b;
+        else console.warn('['+label+'] ディスクのテンプレが破損 → 内蔵バックアップを使用');
+      }
+    }
+  }catch(e){
+    console.warn('['+label+'] ディスクのテンプレを取得できず → 内蔵バックアップを使用');
+  }
+  if(!buf){
+    buf=getEmbeddedTemplate(embKey);
+    if(buf) console.warn('['+label+'] 内蔵バックアップで自動復旧しました');
+  }
+  if(!buf||!isXlsxMagic(buf)){
+    throw new Error(label+'を読み込めませんでした（ディスク・内蔵とも不正）。'+TEMPLATE_RESTORE_HINT);
+  }
+  return buf;
+}
+
 async function loadAccessTemplate(forceReload){
   if(!forceReload&&window._accessTemplateBuffer) return window._accessTemplateBuffer;
-  var path='public/templates/access-register-template.xlsx';
-  var res=await fetch(path);
-  if(!res.ok){
-    throw new Error('テンプレートファイル（'+path+'）が見つかりません。リポジトリ管理者に連絡してください。');
-  }
-  var contentType=res.headers.get('content-type')||'';
-  if(contentType.indexOf('text/html')>=0){
-    throw new Error('テンプレートファイルのレスポンスが不正です（Content-Type: '+contentType+'）');
-  }
-  var buf=await res.arrayBuffer();
-  var head=new Uint8Array(buf,0,Math.min(16,buf.byteLength));
-  var hexHead=Array.from(head).map(function(b){return b.toString(16).padStart(2,'0');}).join(' ');
-  console.log('[loadAccessTemplate] ファイルサイズ: '+buf.byteLength+' bytes');
-  console.log('[loadAccessTemplate] 先頭16バイト（hex）: '+hexHead);
-  if(buf.byteLength<4){
-    throw new Error('テンプレートファイルが小さすぎます（'+buf.byteLength+' bytes）');
-  }
-  if(!isXlsxMagic(buf)){
-    console.error('[loadAccessTemplate] マジックバイトが不正: '+hexHead);
-    throw new Error('アクセス登録用テンプレートが破損しています（正しい.xlsx形式ではありません。先頭バイト: '+hexHead+'）。'+TEMPLATE_RESTORE_HINT);
-  }
+  var buf=await loadTemplateResilient('public/templates/access-register-template.xlsx','access','アクセス登録用テンプレート');
   window._accessTemplateBuffer=buf;
   return buf;
 }
@@ -3693,24 +3716,7 @@ var OFFER_TEMPLATE_UPGRADE_ROW=75;
 var OFFER_MAX_SKU_ROWS_PER_ITEM=8;
 
 async function loadOfferListTemplate(){
-  var path='public/templates/offer-list-template.xlsx';
-  var res=await fetch(path);
-  if(!res.ok){
-    throw new Error('オファーリストテンプレート（'+path+'）が見つかりません。public/templates/ に配置してください。');
-  }
-  var contentType=res.headers.get('content-type')||'';
-  if(contentType.indexOf('text/html')>=0){
-    throw new Error('オファーリストテンプレートのレスポンスが不正です（Content-Type: '+contentType+'）');
-  }
-  var buf=await res.arrayBuffer();
-  if(buf.byteLength<4){
-    throw new Error('オファーリストテンプレートが小さすぎます（'+buf.byteLength+' bytes）');
-  }
-  if(!isXlsxMagic(buf)){
-    var hexHead=Array.from(new Uint8Array(buf,0,Math.min(16,buf.byteLength))).map(function(b){return b.toString(16).padStart(2,'0');}).join(' ');
-    throw new Error('オファーリストテンプレートが破損しています（正しい.xlsx形式ではありません。先頭バイト: '+hexHead+'）。'+TEMPLATE_RESTORE_HINT);
-  }
-  return buf;
+  return await loadTemplateResilient('public/templates/offer-list-template.xlsx','offer','オファーリスト用テンプレート');
 }
 
 function offerNormalizeFormulaText(formula){
@@ -5464,8 +5470,11 @@ async function checkTemplatesIntegrity(){
   }
   if(broken.length){
     banner.style.display='block';
-    banner.innerHTML='⚠ '+broken.join('、')+'が破損しています。<br>'+
-      'C:\\hinban-app フォルダ内の「テンプレート復元.bat」をダブルクリックすると自動で修復されます（数秒で完了・何度実行しても安全です）。修復後この画面を再読み込みしてください。';
+    banner.style.background='var(--blue-lt)';
+    banner.style.color='var(--blue-dk)';
+    banner.style.borderColor='var(--blue-bd)';
+    banner.innerHTML='ℹ '+broken.join('、')+'のファイルが壊れていますが、<b>アプリ内蔵のバックアップで正常に出力できます</b>（そのままご利用いただけます）。<br>'+
+      '元ファイルもきれいにしたい場合は、C:\\hinban-app フォルダ内の「テンプレート復元.bat」をダブルクリックしてください（任意）。';
   }else{
     banner.style.display='none';
   }
