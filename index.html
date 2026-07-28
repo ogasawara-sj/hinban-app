@@ -3722,10 +3722,23 @@ function parseAccessExcelDate(value){
   return new Date(Date.UTC(y,m-1,d,0,0,0));
 }
 
+function clearAccessBtoCSheetRows(ws,dataStartRow,keepRows){
+  // テンプレートに焼き付いた既存データ行（古い品番など）を消去。
+  // rowCountが巨大でも固まらないよう、実データ末尾までを走査して範囲を限定する。
+  var scanLimit=Math.min((ws.rowCount||dataStartRow)+1, dataStartRow+600);
+  var lastData=dataStartRow-1;
+  for(var r=dataStartRow;r<=scanLimit;r++){ if(ws.getCell(r,2).value!=null&&ws.getCell(r,2).value!=='') lastData=r; }
+  var endRow=Math.max(lastData, dataStartRow+(keepRows||0)-1)+5;
+  for(var r2=dataStartRow;r2<=endRow;r2++){
+    var row=ws.getRow(r2);
+    for(var c=1;c<=46;c++) row.getCell(c).value=null;
+  }
+}
 function writeAccessBtoCData(ws,list){
   var dataStartRow=5;
   var styleRow=5;
   var dateFmt='yyyy/mm/dd hh:mm';
+  clearAccessBtoCSheetRows(ws,dataStartRow,list.length);
   list.forEach(function(h,idx){
     var rowIdx=dataStartRow+idx;
     if(rowIdx!==styleRow) copyAccessRowStyle(ws,styleRow,rowIdx);
