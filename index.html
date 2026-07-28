@@ -131,7 +131,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sa
 .step5-toggle-marker{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:17px;color:#888;background:transparent;border:none;outline:none;padding:4px 8px;cursor:pointer;transition:color .15s ease;user-select:none;line-height:1}
 .step5-toggle-marker:hover{color:#444}
 .step5-editable-input{font-size:12px;padding:3px 6px;border:1px solid var(--bd);border-radius:5px;font-family:inherit;box-sizing:border-box;background:#fff}
-.step5-code-input{width:120px;flex-shrink:0}
+.step5-code-input{width:84px;flex-shrink:0}
 
 /* ===== STEP5 一括設定エリア ===== */
 .bulk-settings-panel{margin-bottom:12px;padding:10px 12px;background:var(--gray-50);border-radius:var(--r);border:1px solid var(--bd)}
@@ -2510,7 +2510,7 @@ function renderPriceMatrix(skipSync){
       <div class="tbl-wrap">
       <table class="tbl">
         <thead><tr>
-          <th style="width:130px">品番コード（編集可）</th>
+          <th style="width:104px">品番コード（編集可）</th>
           <th style="width:160px">サイズ構成</th>
           <th style="width:100px">カラー</th>
           <th style="width:100px">販売価格(税抜)</th>
@@ -2519,6 +2519,7 @@ function renderPriceMatrix(skipSync){
           <th style="width:46px">SKU数</th>
           <th class="col-name">品番名（編集可）</th>
           <th style="width:50px">文字数</th>
+          <th style="width:44px">操作</th>
         </tr></thead>
         <tbody>
           ${ptItems.map((h)=>{
@@ -2530,8 +2531,6 @@ function renderPriceMatrix(skipSync){
                   <button type="button" class="step5-toggle-marker" onclick="toggleSkuRow4(${i})" id="cd-toggle-${i}">⌄</button>
                   <input type="text" id="cd-${i}" class="step5-editable-input step5-code-input" value="${h.code}"
                     oninput="onCodeEdit(${i}, this.value, this)">
-                  <button type="button" title="この品番を削除" onclick="deleteGeneratedHinban(${i})"
-                    style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;line-height:1;padding:2px 6px;flex-shrink:0">✕</button>
                 </div>
               </td>
               <td style="font-size:12px;font-weight:500;cursor:pointer" onclick="toggleSkuRow4(${i})" title="クリックでSKU確認">${escHtml(displayBizKana(h.sizeLabel||'—'))}</td>
@@ -2554,10 +2553,10 @@ function renderPriceMatrix(skipSync){
                 oninput="generated[${i}].name=this.value;updNL(${i})" maxlength="40"
                 class="step5-editable-input" style="width:100%"></td>
               <td id="nl-${i}" style="text-align:center;font-size:11px;color:${h.name.length>38?'var(--red)':'var(--green)'}">${h.name.length}/40</td>
+              <td style="text-align:center"><button type="button" title="この品番を削除" onclick="deleteGeneratedHinban(${i})" style="width:28px;height:28px;border:1px solid var(--bd);border-radius:8px;background:#fff;color:var(--red);cursor:pointer;font-size:13px">🗑️</button></td>
             </tr>
             <tr id="sku-row4-${i}" style="display:none;background:var(--gray-50)">
-              <td colspan="9" style="padding:8px 16px 12px 24px">
-                <div style="font-size:11px;font-weight:600;color:var(--gray-600);margin-bottom:6px">📦 ${h.code} のSKU構成（個別削除可）</div>
+              <td colspan="10" style="padding:8px 16px 12px 24px">
                 ${renderSkuTable(h.skuList,{deletable:true,hinbanIdx:i,deleteFn:'deleteSkuFromGenerated'})}
               </td>
             </tr>`;
