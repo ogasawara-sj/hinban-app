@@ -3025,7 +3025,16 @@ function renderList(){
   document.getElementById('list-footer').textContent=`${data.length}件表示 / 合計 ${registeredList.length}件`;
   [['f-group',registeredList.map(r=>r.group),'全グループ'],['f-month',registeredList.map(r=>r.month).filter(Boolean),'全施策月'],['f-staff',registeredList.map(r=>r.staff).filter(Boolean),'全担当者']].forEach(([id,vals,label])=>{
     const sel=document.getElementById(id),cur=sel.value;
-    sel.innerHTML=`<option value="">${label}</option>`+[...new Set(vals)].map(v=>`<option${cur===v?' selected':''}>${v}</option>`).join('');
+    let uniq=[...new Set(vals)];
+    if(id==='f-month'){
+      // 施策月は降順（新しい月が上）
+      uniq.sort((a,b)=>{
+        const pa=String(a).match(/(\d+)年(\d+)月/),pb=String(b).match(/(\d+)年(\d+)月/);
+        const na=pa?(+pa[1])*100+(+pa[2]):0, nb=pb?(+pb[1])*100+(+pb[2]):0;
+        return nb-na;
+      });
+    }
+    sel.innerHTML=`<option value="">${label}</option>`+uniq.map(v=>`<option${cur===v?' selected':''}>${v}</option>`).join('');
   });
 }
 function clearFilters(){['f-group','f-month','f-staff','f-status'].forEach(id=>document.getElementById(id).value='');document.getElementById('f-search').value='';renderList();}
