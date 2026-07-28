@@ -306,7 +306,7 @@ body{padding-left:var(--sbw)}
   <div class="loading-text" id="loading-text">処理中...</div>
 </div>
 <div class="navbar">
-  <div class="n-brand"><span class="dot"></span>品番取得システム<span id="update-time" style="position:fixed;top:14px;right:20px;font-size:11px;color:var(--gray-400);font-weight:400;z-index:50"></span></div>
+  <div class="n-brand"><span class="dot"></span>品番取得システム<span id="update-time" style="position:fixed;top:2px;right:20px;font-size:11px;color:var(--gray-400);font-weight:400;z-index:50"></span></div>
   <div class="n-tabs">
     <div class="n-tab on" id="nav-init" onclick="showPage('init')"><span class="ico">⚙</span>初期設定</div>
     <div class="n-tab" id="nav-wizard" onclick="showPage('wizard')"><span class="ico">✦</span>新規品番取得</div>
@@ -520,9 +520,9 @@ body{padding-left:var(--sbw)}
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
     <h2 style="font-size:16px;font-weight:700">品番一覧 / 価格表</h2>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-      <button class="btn btn-p" onclick="exportShitokuSheet()">📋 取得用シート用Excel出力</button>
-      <button class="btn btn-p" onclick="exportAccessImport()">📋 アクセス登録用Excel出力</button>
-      <button class="btn btn-p" onclick="exportOfferList()">📋 オファーリスト用Excel出力</button>
+      <button class="btn btn-p" onclick="exportShitokuSheet()" title="チェックした品番があればそれだけ、なければ絞り込み後の全件を出力">📋 取得用シート用Excel出力</button>
+      <button class="btn btn-p" onclick="exportAccessImport()" title="チェックした品番があればそれだけ、なければ絞り込み後の全件を出力">📋 アクセス登録用Excel出力</button>
+      <button class="btn btn-p" onclick="exportOfferList()" title="チェックした品番があればそれだけ、なければ絞り込み後の全件を出力">📋 オファーリスト用Excel出力</button>
       <button class="btn" onclick="deleteSelectedFromList()" style="background:#fff;color:var(--red);border:1px solid var(--red)">🗑️ 選択して削除</button>
       <button class="btn" onclick="deleteAllRegistered()" style="background:var(--red);color:#fff;border-color:var(--red)">🗑️ 全品番を削除</button>
     </div>
@@ -2880,6 +2880,13 @@ function getFilteredRegisteredList(){
     return true;
   });
 }
+// Excel出力の対象：チェックした品番があればそれだけ、なければ絞り込み後の全件
+function getExportTargetList(){
+  const checked=Array.from(document.querySelectorAll('#list-body .list-check:checked'))
+    .map(cb=>parseInt(cb.value,10)).filter(n=>!isNaN(n));
+  if(checked.length) return checked.map(i=>registeredList[i]).filter(Boolean);
+  return getFilteredRegisteredList();
+}
 // 一覧のチェックボックス操作
 function toggleAllListChecks(checked){
   document.querySelectorAll('#list-body .list-check').forEach(cb=>{cb.checked=checked;});
@@ -3383,8 +3390,8 @@ function addShitokuDummySheets(wb){
 
 async function exportShitokuSheet(){
   if(typeof ExcelJS==='undefined'){alert('ExcelJSが読み込まれていません。ページを再読み込みしてください。');return;}
-  var source=getFilteredRegisteredList();
-  if(!source||!source.length){alert('出力対象の品番がありません（フィルター条件に一致する品番がありません）');return;}
+  var source=getExportTargetList();
+  if(!source||!source.length){alert('出力対象の品番がありません（チェックするか、フィルター条件を確認してください）');return;}
 
   showLoading('Excel生成中...');
   try{
@@ -3812,8 +3819,8 @@ function writeAccessCompositionData(ws,list){
 
 async function exportAccessImport(){
   if(typeof ExcelJS==='undefined'){alert('ExcelJSが読み込まれていません。ページを再読み込みしてください。');return;}
-  var list=getFilteredRegisteredList();
-  if(!list||!list.length){alert('登録済み品番がありません');return;}
+  var list=getExportTargetList();
+  if(!list||!list.length){alert('出力対象の品番がありません（チェックするか、フィルター条件を確認してください）');return;}
   showLoading('テンプレート読み込み中...');
   try{
     var buf=await loadAccessTemplate(true);
@@ -4371,8 +4378,8 @@ function writeOfferListData(ws,list){
 
 async function exportOfferList(){
   if(typeof ExcelJS==='undefined'){alert('ExcelJSが読み込まれていません。ページを再読み込みしてください。');return;}
-  var list=getFilteredRegisteredList();
-  if(!list||!list.length){alert('出力対象の品番がありません（フィルター条件に一致する品番がありません）');return;}
+  var list=getExportTargetList();
+  if(!list||!list.length){alert('出力対象の品番がありません（チェックするか、フィルター条件を確認してください）');return;}
   showLoading('テンプレート読み込み中...');
   try{
     var buf=await loadOfferListTemplate();
