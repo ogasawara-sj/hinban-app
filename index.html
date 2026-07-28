@@ -549,6 +549,13 @@ body{padding-left:var(--sbw)}
     <input type="text" id="f-search" placeholder="品番・品番名で検索" onkeyup="renderList()" style="width:180px">
     <button class="btn" onclick="clearFilters()">リセット</button>
   </div>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px;background:var(--gray-50);border:1px solid var(--bd);border-radius:var(--r);padding:10px 12px">
+    <span style="font-size:12px;font-weight:700;color:var(--gray-600);white-space:nowrap">✅ チェックした品番にSKU一括追加：</span>
+    <input type="text" id="bulk-sku-code" placeholder="SKUコード" oninput="onBulkSkuCode(this.value)" style="width:130px;padding:6px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">
+    <input type="text" id="bulk-sku-name" placeholder="SKU名称（自動入力）" style="flex:1;min-width:160px;padding:6px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px;background:var(--gray-50)">
+    <input type="number" id="bulk-sku-qty" value="1" min="1" style="width:60px;padding:6px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px;text-align:right">
+    <button class="btn btn-p" onclick="addSkuToSelected()">＋ 選択品番に追加</button>
+  </div>
   <div class="card" style="padding:0">
     <div class="tbl-wrap">
     <table class="tbl">
@@ -2924,6 +2931,41 @@ function getExportTargetList(){
   if(checked.length) return checked.map(i=>registeredList[i]).filter(Boolean);
   return getFilteredRegisteredList();
 }
+// 選択品番へのSKU一括追加
+function onBulkSkuCode(code){
+  code=(code||'').trim();
+  var nameEl=document.getElementById('bulk-sku-name');
+  if(!nameEl) return;
+  if(!code){ nameEl.value=''; return; }
+  var found=skuCache.find(function(s){return s.c&&s.c.toUpperCase()===code.toUpperCase();});
+  nameEl.value=found?found.n:'';
+}
+function addSkuToSelected(){
+  var idxs=Array.from(document.querySelectorAll('#list-body .list-check:checked'))
+    .map(function(cb){return parseInt(cb.value,10);}).filter(function(n){return !isNaN(n);});
+  if(!idxs.length){ alert('SKUを追加する品番にチェックを入れてください'); return; }
+  var code=document.getElementById('bulk-sku-code').value.trim();
+  var name=document.getElementById('bulk-sku-name').value.trim();
+  var qty=parseInt(document.getElementById('bulk-sku-qty').value)||1;
+  if(!code){ alert('追加するSKUコードを入力してください'); return; }
+  var role='セット構成';
+  if(code.startsWith('YR')) role='延長保証';
+  else if(code.startsWith('IN')) role='取説';
+  else if(code.startsWith('LT')) role='特典';
+  if(!confirm('選択した '+idxs.length+' 品番に SKU「'+code+(name?'（'+name+'）':'')+'」× '+qty+' を追加します。よろしいですか？')) return;
+  idxs.forEach(function(i){
+    var h=registeredList[i];
+    if(!h) return;
+    if(!Array.isArray(h.skuList)) h.skuList=[];
+    h.skuList.push({code:code,name:name,qty:qty,role:role});
+  });
+  document.getElementById('bulk-sku-code').value='';
+  document.getElementById('bulk-sku-name').value='';
+  document.getElementById('bulk-sku-qty').value='1';
+  saveRegisteredList();
+  renderList();
+  alert(idxs.length+' 品番にSKUを追加しました。');
+}
 // 一覧のチェックボックス操作
 function toggleAllListChecks(checked){
   document.querySelectorAll('#list-body .list-check').forEach(cb=>{cb.checked=checked;});
@@ -2960,14 +3002,14 @@ function renderList(){
       <td>
         <div class="code-cell-wrap">
           <button type="button" class="toggle-marker" onclick="toggleListSkuRow(${idx})" id="list-sku-toggle-${idx}" title="SKU構成を表示">⌄</button>
-          <span class="mono">${r.code}</span>
+          <input class="mono" value="${escAttr(r.code)}" onchange="registeredList[${idx}].code=this.value.trim();saveRegisteredList()" title="品番コード（編集可）" style="width:82px;padding:3px 6px;border:1px solid var(--bd);border-radius:5px;font-size:12px">
         </div>
       </td>
-      <td class="list-name" style="font-size:12px"><span class="list-name-inner" title="${escAttr(displayBizKana(r.name))}">${escHtml(displayBizKana(r.name))}</span></td>
+      <td class="list-name" style="font-size:12px"><input value="${escAttr(displayBizKana(r.name))}" onchange="registeredList[${idx}].name=this.value;saveRegisteredList()" title="品番名（編集可）" style="width:100%;max-width:440px;padding:3px 6px;border:1px solid var(--bd);border-radius:5px;font-size:12px"></td>
       <td style="font-size:11px">${r.group}</td>
       <td class="list-month" style="font-size:12px">${r.month||'—'}</td>
       <td style="font-size:12px">${r.staff||'—'}</td>
-      <td style="text-align:right;font-weight:600">¥${(r.price||0).toLocaleString('ja-JP')}</td>
+      <td style="text-align:right"><input type="number" value="${r.price||''}" min="0" onchange="registeredList[${idx}].price=(+this.value)||0;saveRegisteredList();renderList()" title="販売価格・税抜（編集可）" style="width:88px;padding:3px 6px;border:1px solid var(--bd);border-radius:5px;font-size:12px;text-align:right"></td>
       <td style="text-align:right;color:var(--gray-400)">¥${Math.round((r.price||0)*1.1).toLocaleString('ja-JP')}</td>
       <td style="text-align:center;font-size:11px">${r.ship>0?r.ship+'円':'無料'}</td>
       <td><select class="status-sel" onchange="registeredList[${idx}].status=this.value;saveRegisteredList();renderList()">${STATUS_LIST.map(s=>`<option${r.status===s?' selected':''}>${s}</option>`).join('')}</select></td>
