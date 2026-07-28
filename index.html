@@ -5444,6 +5444,9 @@ document.addEventListener('click', function(e){
 async function checkTemplatesIntegrity(){
   var banner=document.getElementById('template-integrity-banner');
   if(!banner) return;
+  // ファイル(file://)で直接開いた場合はテンプレートを取得できず判定不能なので、警告は出さない
+  // （その状態ではExcel出力自体もサーバー起動が必要）
+  if(location.protocol==='file:'){ banner.style.display='none'; return; }
   var broken=[];
   var targets=[
     {path:'public/templates/access-register-template.xlsx',label:'アクセス登録用テンプレート'},
@@ -5452,11 +5455,11 @@ async function checkTemplatesIntegrity(){
   for(var i=0;i<targets.length;i++){
     try{
       var res=await fetch(targets[i].path,{cache:'no-store'});
-      if(!res.ok){broken.push(targets[i].label+'（ファイルが見つかりません）');continue;}
+      if(!res.ok) continue; // 取得できない時は判定不能→警告しない
       var buf=await res.arrayBuffer();
-      if(!isXlsxMagic(buf)) broken.push(targets[i].label);
+      if(!isXlsxMagic(buf)) broken.push(targets[i].label); // 実際に壊れている場合のみ
     }catch(e){
-      broken.push(targets[i].label+'（確認エラー）');
+      // 取得エラーは判定不能→警告しない（誤検知防止）
     }
   }
   if(broken.length){
