@@ -259,6 +259,7 @@ body{padding-left:var(--sbw)}
 .cta-desc{color:var(--gray-600);font-size:13px;margin-bottom:16px;line-height:1.7}
 .dl-cta{display:inline-flex;align-items:center;gap:10px;padding:14px 24px;font-size:15px;font-weight:700;font-family:inherit;border:none;border-radius:var(--r);background:var(--blue);color:#fff;cursor:pointer;box-shadow:0 6px 18px rgba(59,91,255,.3);transition:.16s}
 .dl-cta:hover{background:var(--blue-dk);transform:translateY(-1px)}
+.dl-steps{display:flex;flex-wrap:wrap;gap:12px}
 .cta-sub-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
 .btn-sm2{font-size:12px;padding:8px 14px;color:var(--gray-600)}
 .init-steps{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
@@ -311,11 +312,13 @@ body{padding-left:var(--sbw)}
 
   <div class="card init-cta">
     <div class="cta-hd"><div class="cta-ic">🔄</div><div><div class="cta-title">STEP 0｜SKUマスタの更新</div><div class="cta-sub">作業開始前に必ず実施してください</div></div></div>
-    <p class="cta-desc">SharePointの管理台帳から最新のSKUマスタをダウンロードして読み込みます。読み込むと商品グループ・カラーが自動で最新化されます。</p>
-    <button class="dl-cta" onclick="downloadAndLoadSkuMaster('init-sku-status')">🔄 SKUマスターを最新化する</button>
+    <p class="cta-desc">SharePointの管理台帳から最新のSKUマスタを取り込みます。<b>①でダウンロード → ②で選択</b>の順に押してください（読み込むと商品グループ・カラーが自動で最新化されます）。</p>
+    <div class="dl-steps">
+      <button class="dl-cta" onclick="downloadSkuMasterStep1()">① SKUマスターをSharePointからダウンロード</button>
+      <button class="dl-cta" onclick="pickSkuMasterStep2()">② ダウンロードしたファイルを選んで読み込む</button>
+    </div>
     <div id="init-sku-status" style="font-size:13px;color:var(--gray-400);margin-top:12px"></div>
     <div class="cta-sub-actions" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--line-2,var(--bd))">
-      <button class="btn btn-sm2" onclick="updateSkuMasterAndProceed()">すでにダウンロード済みのファイルを選択</button>
       <button class="btn btn-sm2" onclick="proceedWithoutUpdate()">前回のデータで続ける →</button>
     </div>
   </div>
@@ -4666,43 +4669,64 @@ function renderInitStatus(){
   if(regEl) regEl.textContent = registeredList.length+'件';
 }
 
+// ①：SharePointからダウンロードのみ
+function downloadSkuMasterStep1(){
+  window.open(SKU_MASTER_SHAREPOINT_URL,'_blank','noopener');
+  const s=document.getElementById('init-sku-status');
+  if(s) s.innerHTML='<span style="color:var(--blue)">⏳ ダウンロードを開始しました。完了したら【②】でファイルを選んでください。</span>';
+}
+// ②：ダウンロードフォルダからファイルを選んで読み込み（Edge/Chromeはダウンロードフォルダを最初に開く）
+async function pickSkuMasterStep2(){
+  if(window.showOpenFilePicker){
+    try{
+      const handles=await window.showOpenFilePicker({
+        startIn:'downloads',
+        types:[{description:'Excelファイル',accept:{'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':['.xlsx'],'application/vnd.ms-excel':['.xls']}}]
+      });
+      const file=await handles[0].getFile();
+      processSkuMasterFileAndProceed(file);
+      return;
+    }catch(e){ if(e&&e.name==='AbortError') return; /* 未対応・失敗時は下のフォールバックへ */ }
+  }
+  updateSkuMasterAndProceed();
+}
+// 選択されたSKUマスタExcelを読み込み→反映→ウィザードへ
+function processSkuMasterFileAndProceed(file){
+  if(!file) return;
+  const statusEl=document.getElementById('init-sku-status');
+  if(statusEl) statusEl.innerHTML='<span style="color:var(--blue)">⏳ 読み込み中...</span>';
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      const wb=XLSX.read(ev.target.result,{type:'array',cellDates:false});
+      skuCache=processSkuWorkbook(wb);
+      skuLastUpdated=new Date().toLocaleString('ja-JP');
+      extractGroupsFromSkuCache();
+      const skuColors=[...new Set(skuCache.filter(s=>s.col).map(s=>s.col))];
+      skuColors.forEach(cn=>{
+        if(!colorMaster.find(c=>c.n===cn)){
+          colorMaster.push({n:cn,c:cn.replace(/[^!-~]/g,'').substring(0,3)||'—'});
+        }
+      });
+      saveMaster();
+      saveSkuCache();
+      renderInitStatus();
+      renderSkuStatus();
+      setTimeout(()=>{
+        showPage('wizard');
+        alert(`✅ SKUマスタを更新しました\n読込：${skuCache.length.toLocaleString('ja-JP')}件\n商品グループ：${groupMaster.length}件\nカラー：${colorMaster.length}種類`);
+      }, 300);
+    }catch(err){
+      if(statusEl) statusEl.innerHTML='<span style="color:var(--red)">エラー: '+err.message+'</span>';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+// 従来のファイル選択（showOpenFilePicker未対応ブラウザ用フォールバック）
 function updateSkuMasterAndProceed(){
   const input=document.createElement('input');
   input.type='file';input.accept='.xlsx,.xls';
-  input.onchange=e=>{
-    const file=e.target.files[0];if(!file)return;
-    const statusEl=document.getElementById('init-sku-status');
-    if(statusEl) statusEl.innerHTML='<span style="color:var(--blue)">⏳ 読み込み中...</span>';
-    const reader=new FileReader();
-    reader.onload=ev=>{
-      try{
-        const wb=XLSX.read(ev.target.result,{type:'array',cellDates:false});
-        skuCache=processSkuWorkbook(wb);
-        skuLastUpdated=new Date().toLocaleString('ja-JP');
-        // 商品グループを自動抽出・更新
-        extractGroupsFromSkuCache();
-        // カラーマスタも更新
-        const skuColors=[...new Set(skuCache.filter(s=>s.col).map(s=>s.col))];
-        skuColors.forEach(cn=>{
-          if(!colorMaster.find(c=>c.n===cn)){
-            colorMaster.push({n:cn,c:cn.replace(/[^!-~]/g,'').substring(0,3)||'—'});
-          }
-        });
-        saveMaster();
-        saveSkuCache();
-        renderInitStatus();
-        renderSkuStatus();
-        // 完了後にウィザードへ自動遷移
-        setTimeout(()=>{
-          showPage('wizard');
-          alert(`✅ SKUマスタを更新しました\n読込：${skuCache.length.toLocaleString('ja-JP')}件\n商品グループ：${groupMaster.length}件\nカラー：${colorMaster.length}種類`);
-        }, 300);
-      }catch(err){
-        if(statusEl) statusEl.innerHTML='<span style="color:var(--red)">エラー: '+err.message+'</span>';
-      }
-    };
-    reader.readAsArrayBuffer(file);
-  };
+  input.onchange=e=>processSkuMasterFileAndProceed(e.target.files[0]);
   input.click();
 }
 
