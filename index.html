@@ -207,6 +207,13 @@ body{padding-left:var(--sbw)}
 
 /* --- コンテンツ余白 --- */
 .page{max-width:1040px;padding:26px 30px}
+/* 新規品番取得はウィンドウ幅に追従して広がる（品番名列を確認しやすく） */
+#page-wizard{max-width:1600px}
+/* 入力中心のSTEP1〜4は広がりすぎないよう据え置き、表のSTEP5/6は全幅を使う */
+#p1,#p2,#p3,#p4{max-width:1040px;margin-left:auto;margin-right:auto}
+/* STEP5 価格表：固定レイアウトで、余白は品番名列「だけ」が吸収して伸びる */
+#price-matrix table{table-layout:fixed;width:100%;min-width:1120px}
+#price-matrix th.col-name,#price-matrix td.cell-name{width:auto}
 
 /* --- カード --- */
 .card{border-radius:var(--r-lg);box-shadow:var(--shadow-sm);padding:24px 26px}
@@ -2466,7 +2473,7 @@ function renderPriceMatrix(skipSync){
           <th style="width:85px">税込</th>
           <th style="width:96px">消費税区分</th>
           <th style="width:46px">SKU数</th>
-          <th>品番名（編集可）</th>
+          <th class="col-name">品番名（編集可）</th>
           <th style="width:50px">文字数</th>
         </tr></thead>
         <tbody>
@@ -2499,7 +2506,7 @@ function renderPriceMatrix(skipSync){
               <td style="text-align:center">
                 <span style="font-weight:600;color:${skuOk?'var(--green)':'var(--red)'}">${h.skuList.length}</span>
               </td>
-              <td><input type="text" value="${escAttr(displayBizKana(h.name))}" id="nm-${i}"
+              <td class="cell-name"><input type="text" value="${escAttr(displayBizKana(h.name))}" id="nm-${i}"
                 oninput="generated[${i}].name=this.value;updNL(${i})" maxlength="40"
                 class="step5-editable-input" style="width:100%"></td>
               <td id="nl-${i}" style="text-align:center;font-size:11px;color:${h.name.length>38?'var(--red)':'var(--green)'}">${h.name.length}/40</td>
