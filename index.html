@@ -209,13 +209,10 @@ body{padding-left:var(--sbw)}
 .page{max-width:1040px;padding:26px 30px}
 /* 新規品番取得・品番一覧はウィンドウ幅に追従して広がる（品番名列を確認しやすく） */
 #page-wizard{max-width:1600px}
-#page-list{max-width:1600px}
-/* 品番一覧：固定レイアウトで品番名列が余白を吸収して横に長くなる */
-#page-list .tbl{table-layout:fixed;width:100%;min-width:1180px}
-#page-list th.col-listname,#list-body td.list-name{width:auto}
-/* 品番名・施策月は1行表示（折り返さない） */
-#list-body td.list-name{white-space:nowrap}
+#page-list{max-width:1200px}
+/* 品番名は1行・適度な幅（内側spanで制御）、施策月も1行 */
 #list-body td.list-month{white-space:nowrap}
+.list-name-inner{display:inline-block;max-width:440px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
 /* 入力中心のSTEP1〜4は広がりすぎないよう据え置き、表のSTEP5/6は全幅を使う */
 #p1,#p2,#p3,#p4{max-width:1040px;margin-left:auto;margin-right:auto}
 /* STEP5 価格表：固定レイアウトで、余白は品番名列「だけ」が吸収して伸びる */
@@ -2926,7 +2923,7 @@ function renderList(){
           <span class="mono">${r.code}</span>
         </div>
       </td>
-      <td class="list-name" style="font-size:12px">${escHtml(displayBizKana(r.name))}</td>
+      <td class="list-name" style="font-size:12px"><span class="list-name-inner" title="${escAttr(displayBizKana(r.name))}">${escHtml(displayBizKana(r.name))}</span></td>
       <td style="font-size:11px">${r.group}</td>
       <td class="list-month" style="font-size:12px">${r.month||'—'}</td>
       <td style="font-size:12px">${r.staff||'—'}</td>
