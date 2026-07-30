@@ -3995,9 +3995,7 @@ async function exportAccessImport(){
     updateLoading('Excel生成中...');
     var workbook=new ExcelJS.Workbook();
     await workbook.xlsx.load(buf);
-    workbook.worksheets.slice().forEach(function(ws){
-      if(ACCESS_KEEP_SHEETS.indexOf(ws.name)<0) workbook.removeWorksheet(ws.id);
-    });
+    // シートは一切追加・削除しない（インポート側が全シート構成を要求するため）。BtoC/構成のみ書き込む。
     var wsBtoC=workbook.getWorksheet('注文品番 (BtoC)');
     var wsComposition=workbook.getWorksheet('構成_注文品番');
     if(!wsBtoC||!wsComposition) throw new Error('必要なシートがテンプレートに含まれていません');
