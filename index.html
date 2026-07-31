@@ -565,6 +565,14 @@ body{padding-left:var(--sbw)}
     <input type="number" id="bulk-sku-qty" value="1" min="1" style="width:60px;padding:6px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px;text-align:right">
     <button class="btn btn-p" onclick="addSkuToSelected()">＋ 選択品番に追加</button>
   </div>
+  <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px;background:#eef6ff;border:1px solid #bcd9ff;border-radius:var(--r);padding:10px 12px">
+    <span style="font-size:12px;font-weight:700;color:var(--blue);white-space:nowrap;align-self:center">🗓 チェックした品番にまとめて設定：</span>
+    <label style="display:flex;flex-direction:column;gap:2px;font-size:10px;color:var(--gray-600);font-weight:600">有効開始日時<input type="date" id="bulk-startdt" style="padding:5px 8px;border:1px solid var(--bd);border-radius:5px;font-size:12px"></label>
+    <label style="display:flex;flex-direction:column;gap:2px;font-size:10px;color:var(--gray-600);font-weight:600">有効終了日時<input type="date" id="bulk-enddt" style="padding:5px 8px;border:1px solid var(--bd);border-radius:5px;font-size:12px"></label>
+    <label style="display:flex;flex-direction:column;gap:2px;font-size:10px;color:var(--gray-600);font-weight:600">使用チャネル<select id="bulk-channel" style="padding:5px 8px;border:1px solid var(--bd);border-radius:5px;font-size:12px"><option value="">（チャネル変更なし）</option></select></label>
+    <label style="display:flex;flex-direction:column;gap:2px;font-size:10px;color:var(--gray-600);font-weight:600">施策月<input type="text" id="bulk-month" placeholder="例：10月" style="width:80px;padding:5px 8px;border:1px solid var(--bd);border-radius:5px;font-size:12px"></label>
+    <button class="btn btn-p" onclick="applyBulkListFields()">選択品番に適用</button>
+  </div>
   <div class="card" style="padding:0">
     <div class="tbl-wrap">
     <table class="tbl">
@@ -2914,6 +2922,7 @@ function resetAll(){
 // ============================================================
 // LIST PAGE
 // ============================================================
+var openDetailRows=new Set();
 function toggleListSkuRow(idx){
   var el=document.getElementById('list-sku-row-'+idx);
   var toggle=document.getElementById('list-sku-toggle-'+idx);
@@ -2921,6 +2930,62 @@ function toggleListSkuRow(idx){
   var open=el.style.display==='none';
   el.style.display=open?'table-row':'none';
   if(toggle) toggle.textContent=open?'⌃':'⌄';
+  if(open) openDetailRows.add(idx); else openDetailRows.delete(idx);
+}
+
+// 品番一覧の詳細編集（空欄だった項目もここで直せる：日付・チャネル・施策月・担当・送料・定期）
+var LIST_INP='padding:4px 7px;border:1px solid var(--bd);border-radius:5px;font-size:12px';
+function fldWrap(label,inner){
+  return '<label style="display:flex;flex-direction:column;gap:2px;font-size:10px;color:var(--gray-600);font-weight:600">'+label+inner+'</label>';
+}
+function renderListDetailFields(idx,r){
+  var chOpts='<option value=""></option>'+(channelList||[]).map(function(c){return '<option'+(r.channel===c?' selected':'')+'>'+escHtml(c)+'</option>';}).join('');
+  var teiki=[['非定期','非定期'],['1','1：初回（配送あり）'],['3','3：継続'],['4','4：復活']];
+  var teikiOpts=teiki.map(function(o){return '<option value="'+o[0]+'"'+(((r.teikiKbn||'非定期')===o[0])?' selected':'')+'>'+o[1]+'</option>';}).join('');
+  var isTeiki=r.teikiKbn&&r.teikiKbn!=='非定期';
+  var sd=(r.startDateTime||'').slice(0,10), ed=(r.endDateTime||'').slice(0,10);
+  return '<div style="display:flex;flex-wrap:wrap;gap:8px 14px;padding:6px 0 10px;align-items:flex-end;border-bottom:1px dashed var(--bd);margin-bottom:8px">'+
+    fldWrap('施策月','<input value="'+escAttr(r.month)+'" onchange="registeredList['+idx+'].month=this.value;saveRegisteredList();renderList()" style="width:80px;'+LIST_INP+'">')+
+    fldWrap('担当者','<input value="'+escAttr(r.staff)+'" onchange="registeredList['+idx+'].staff=this.value;saveRegisteredList();renderList()" style="width:90px;'+LIST_INP+'">')+
+    fldWrap('送料(税込)','<input type="number" value="'+(r.ship||0)+'" onchange="registeredList['+idx+'].ship=(+this.value)||0;saveRegisteredList();renderList()" style="width:80px;'+LIST_INP+'">')+
+    fldWrap('有効開始日時 <span style=\'color:var(--red)\'>必須</span>','<input type="date" value="'+escAttr(sd)+'" onchange="registeredList['+idx+'].startDateTime=this.value;saveRegisteredList()" style="'+LIST_INP+'">')+
+    fldWrap('有効終了日時','<input type="date" value="'+escAttr(ed)+'" onchange="registeredList['+idx+'].endDateTime=this.value;saveRegisteredList()" style="'+LIST_INP+'">')+
+    fldWrap('使用チャネル','<select onchange="registeredList['+idx+'].channel=this.value;saveRegisteredList()" style="'+LIST_INP+'">'+chOpts+'</select>')+
+    fldWrap('定期商品種別','<select onchange="setListTeiki('+idx+',this.value)" style="'+LIST_INP+'">'+teikiOpts+'</select>')+
+    (isTeiki?fldWrap('定期T2注文品番','<input value="'+escAttr(r.teikiT2)+'" onchange="registeredList['+idx+'].teikiT2=this.value;saveRegisteredList()" style="width:150px;'+LIST_INP+'">'):'')+
+  '</div>';
+}
+function setListTeiki(idx,val){
+  if(!registeredList[idx])return;
+  registeredList[idx].teikiKbn=val;
+  if(val==='非定期') registeredList[idx].teikiT2='';
+  saveRegisteredList();
+  renderList();
+}
+function applyBulkListFields(){
+  var idxs=Array.from(document.querySelectorAll('#list-body .list-check:checked')).map(function(cb){return parseInt(cb.value,10);}).filter(function(n){return !isNaN(n);});
+  if(!idxs.length){alert('設定する品番にチェックを入れてください');return;}
+  var sd=(document.getElementById('bulk-startdt')||{}).value||'';
+  var ed=(document.getElementById('bulk-enddt')||{}).value||'';
+  var ch=(document.getElementById('bulk-channel')||{}).value||'';
+  var mo=((document.getElementById('bulk-month')||{}).value||'').trim();
+  if(!sd&&!ed&&!ch&&!mo){alert('設定する値（有効開始/終了日時・チャネル・施策月のいずれか）を入力してください');return;}
+  idxs.forEach(function(i){
+    var r=registeredList[i]; if(!r)return;
+    if(sd) r.startDateTime=sd;
+    if(ed) r.endDateTime=ed;
+    if(ch) r.channel=ch;
+    if(mo) r.month=mo;
+  });
+  saveRegisteredList();
+  renderList();
+  alert(idxs.length+' 品番にまとめて設定しました。');
+}
+function populateBulkChannel(){
+  var sel=document.getElementById('bulk-channel'); if(!sel)return;
+  var cur=sel.value;
+  sel.innerHTML='<option value="">（チャネル変更なし）</option>'+(channelList||[]).map(function(c){return '<option>'+escHtml(c)+'</option>';}).join('');
+  sel.value=cur;
 }
 
 function deleteSkuFromHinban(hinbanIdx,skuIndex){
@@ -3047,7 +3112,7 @@ function renderList(){
       <td style="text-align:center"><input type="checkbox" class="list-check" value="${idx}" onchange="syncListCheckAll()"></td>
       <td>
         <div class="code-cell-wrap">
-          <button type="button" class="toggle-marker" onclick="toggleListSkuRow(${idx})" id="list-sku-toggle-${idx}" title="SKU構成を表示">⌄</button>
+          <button type="button" class="toggle-marker" onclick="toggleListSkuRow(${idx})" id="list-sku-toggle-${idx}" title="詳細編集・SKU構成を開く">${openDetailRows.has(idx)?'⌃':'⌄'}</button>
           <input class="mono" value="${escAttr(r.code)}" onchange="registeredList[${idx}].code=this.value.trim();saveRegisteredList()" title="品番コード（編集可）" style="width:82px;padding:3px 6px;border:1px solid var(--bd);border-radius:5px;font-size:12px">
         </div>
       </td>
@@ -3062,15 +3127,18 @@ function renderList(){
       <td style="text-align:center"><span style="font-weight:600;color:${skuCount===0?'var(--red)':'var(--green)'}">${skuCount}</span></td>
       <td><button onclick="if(confirm('削除しますか？')){registeredList.splice(${idx},1);document.getElementById('total-badge').textContent='登録済 '+registeredList.length+'件';saveRegisteredList();renderList()}" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px">削除</button></td>
     </tr>
-    <tr id="list-sku-row-${idx}" style="display:none;background:var(--gray-50)">
+    <tr id="list-sku-row-${idx}" style="display:${openDetailRows.has(idx)?'table-row':'none'};background:var(--gray-50)">
       <td colspan="12" style="padding:0 10px 12px 24px">
-        <div style="font-size:11px;font-weight:600;color:var(--gray-600);padding:8px 0 4px">📦 ${r.code} のSKU構成（個別削除可）</div>
+        <div style="font-size:11px;font-weight:600;color:var(--blue);padding:8px 0 2px">✎ ${r.code} の詳細編集（空欄だった項目もここで直せます）</div>
+        ${renderListDetailFields(idx,r)}
+        <div style="font-size:11px;font-weight:600;color:var(--gray-600);padding:2px 0 4px">📦 ${r.code} のSKU構成（個別削除可）</div>
         ${renderSkuTable(r.skuList,{deletable:true,hinbanIdx:idx})}
       </td>
     </tr>`;
   }).join('');
   document.getElementById('list-footer').textContent=`${data.length}件表示 / 合計 ${registeredList.length}件`;
   renderFilterDropdowns();
+  populateBulkChannel();
 }
 function clearFilters(){
   listFilterSel={group:new Set(),month:new Set(),staff:new Set(),status:new Set()};
