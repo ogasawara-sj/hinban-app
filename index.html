@@ -3128,10 +3128,8 @@ function renderList(){
       <td><button onclick="if(confirm('削除しますか？')){registeredList.splice(${idx},1);document.getElementById('total-badge').textContent='登録済 '+registeredList.length+'件';saveRegisteredList();renderList()}" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px">削除</button></td>
     </tr>
     <tr id="list-sku-row-${idx}" style="display:${openDetailRows.has(idx)?'table-row':'none'};background:var(--gray-50)">
-      <td colspan="12" style="padding:0 10px 12px 24px">
-        <div style="font-size:11px;font-weight:600;color:var(--blue);padding:8px 0 2px">✎ ${r.code} の詳細編集（空欄だった項目もここで直せます）</div>
+      <td colspan="12" style="padding:8px 10px 12px 24px">
         ${renderListDetailFields(idx,r)}
-        <div style="font-size:11px;font-weight:600;color:var(--gray-600);padding:2px 0 4px">📦 ${r.code} のSKU構成（個別削除可）</div>
         ${renderSkuTable(r.skuList,{deletable:true,hinbanIdx:idx})}
       </td>
     </tr>`;
