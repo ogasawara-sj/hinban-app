@@ -559,19 +559,17 @@ body{padding-left:var(--sbw)}
     <button class="btn" onclick="clearFilters()">リセット</button>
   </div>
   <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px;background:var(--gray-50);border:1px solid var(--bd);border-radius:var(--r);padding:10px 12px">
-    <span style="font-size:12px;font-weight:700;color:var(--gray-600);white-space:nowrap">✅ チェックした品番にSKU一括追加：</span>
-    <input type="text" id="bulk-sku-code" placeholder="SKUコード" oninput="onBulkSkuCode(this.value)" style="width:130px;padding:6px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">
-    <input type="text" id="bulk-sku-name" placeholder="SKU名称（自動入力）" style="flex:1;min-width:160px;padding:6px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px;background:var(--gray-50)">
-    <input type="number" id="bulk-sku-qty" value="1" min="1" style="width:60px;padding:6px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px;text-align:right">
-    <button class="btn btn-p" onclick="addSkuToSelected()">＋ 選択品番に追加</button>
-  </div>
-  <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px;background:#eef6ff;border:1px solid #bcd9ff;border-radius:var(--r);padding:10px 12px">
-    <span style="font-size:12px;font-weight:700;color:var(--blue);white-space:nowrap;align-self:center">🗓 チェックした品番にまとめて設定：</span>
-    <label style="display:flex;flex-direction:column;gap:2px;font-size:10px;color:var(--gray-600);font-weight:600">有効開始日時<input type="date" id="bulk-startdt" style="padding:5px 8px;border:1px solid var(--bd);border-radius:5px;font-size:12px"></label>
-    <label style="display:flex;flex-direction:column;gap:2px;font-size:10px;color:var(--gray-600);font-weight:600">有効終了日時<input type="date" id="bulk-enddt" style="padding:5px 8px;border:1px solid var(--bd);border-radius:5px;font-size:12px"></label>
-    <label style="display:flex;flex-direction:column;gap:2px;font-size:10px;color:var(--gray-600);font-weight:600">使用チャネル<select id="bulk-channel" style="padding:5px 8px;border:1px solid var(--bd);border-radius:5px;font-size:12px"><option value="">（チャネル変更なし）</option></select></label>
-    <label style="display:flex;flex-direction:column;gap:2px;font-size:10px;color:var(--gray-600);font-weight:600">施策月<input type="text" id="bulk-month" placeholder="例：10月" style="width:80px;padding:5px 8px;border:1px solid var(--bd);border-radius:5px;font-size:12px"></label>
-    <button class="btn btn-p" onclick="applyBulkListFields()">選択品番に適用</button>
+    <span style="font-size:12px;font-weight:700;color:var(--gray-600);white-space:nowrap">✅ チェックした品番に一括：</span>
+    <input type="text" id="bulk-sku-code" placeholder="SKUコード" oninput="onBulkSkuCode(this.value)" style="width:120px;padding:6px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">
+    <input type="text" id="bulk-sku-name" placeholder="SKU名称（自動入力）" style="width:150px;padding:6px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px;background:var(--gray-50)">
+    <input type="number" id="bulk-sku-qty" value="1" min="1" title="数量" style="width:52px;padding:6px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px;text-align:right">
+    <button class="btn btn-p" onclick="addSkuToSelected()">＋ SKU追加</button>
+    <span style="width:1px;height:24px;background:var(--bd);margin:0 4px"></span>
+    <span style="font-size:11px;color:var(--gray-600);white-space:nowrap">有効開始</span><input type="date" id="bulk-startdt" style="padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">
+    <span style="font-size:11px;color:var(--gray-600);white-space:nowrap">終了</span><input type="date" id="bulk-enddt" style="padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">
+    <span style="font-size:11px;color:var(--gray-600);white-space:nowrap">チャネル</span><select id="bulk-channel" style="padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px"><option value="">（変更なし）</option></select>
+    <span style="font-size:11px;color:var(--gray-600);white-space:nowrap">施策月</span><input type="text" id="bulk-month" placeholder="例：10月" style="width:70px;padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">
+    <button class="btn btn-p" onclick="applyBulkListFields()">設定を適用</button>
   </div>
   <div class="card" style="padding:0">
     <div class="tbl-wrap">
