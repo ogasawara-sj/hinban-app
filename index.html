@@ -2676,23 +2676,23 @@ function renderSkuTable(skuList,options){
   if(!skuList||!skuList.length){
     return `<div style="font-size:12px;color:var(--red)">SKUが設定されていません。初期設定でSKUマスタを読み込んでから再生成してください。</div>`;
   }
-  return `<table style="width:100%;border-collapse:collapse;font-size:12px">
+  return `<table style="width:100%;border-collapse:collapse;font-size:12px;background:transparent">
     <thead><tr style="border-bottom:1px solid var(--bd)">
-      <th style="padding:4px 8px;text-align:left;font-size:11px;color:var(--gray-400);width:120px">SKUコード</th>
-      <th style="padding:4px 8px;text-align:left;font-size:11px;color:var(--gray-400)">SKU名称</th>
-      <th style="padding:4px 8px;text-align:left;font-size:11px;color:var(--gray-400);width:90px">役割</th>
-      <th style="padding:4px 8px;text-align:center;font-size:11px;color:var(--gray-400);width:50px">数量</th>
-      ${deletable?'<th style="padding:4px 8px;text-align:center;font-size:11px;color:var(--gray-400);width:44px">削除</th>':''}
+      <th style="padding:4px 8px;text-align:left;font-size:11px;color:var(--gray-400);width:120px;background:transparent">SKUコード</th>
+      <th style="padding:4px 8px;text-align:left;font-size:11px;color:var(--gray-400);background:transparent">SKU名称</th>
+      <th style="padding:4px 8px;text-align:left;font-size:11px;color:var(--gray-400);width:90px;background:transparent">役割</th>
+      <th style="padding:4px 8px;text-align:center;font-size:11px;color:var(--gray-400);width:50px;background:transparent">数量</th>
+      ${deletable?'<th style="padding:4px 8px;text-align:center;font-size:11px;color:var(--gray-400);width:44px;background:transparent">削除</th>':''}
     </tr></thead>
     <tbody>
       ${skuList.map((s,si)=>`<tr style="border-bottom:1px solid var(--bd)">
-        <td style="padding:4px 8px"><span class="mono">${s.code||'—'}</span></td>
-        <td style="padding:4px 8px">${escHtml(displayBizKana(s.name||'—'))}</td>
-        <td style="padding:4px 8px">
+        <td style="padding:4px 8px;background:transparent"><span class="mono">${s.code||'—'}</span></td>
+        <td style="padding:4px 8px;background:transparent">${escHtml(displayBizKana(s.name||'—'))}</td>
+        <td style="padding:4px 8px;background:transparent">
           <span style="font-size:10px;padding:1px 6px;border-radius:8px;background:var(--blue-lt);color:var(--blue)">${s.role||'—'}</span>
         </td>
-        <td style="padding:4px 8px;text-align:center">${s.qty||1}</td>
-        ${deletable?`<td style="padding:4px 8px;text-align:center">
+        <td style="padding:4px 8px;text-align:center;background:transparent">${s.qty||1}</td>
+        ${deletable?`<td style="padding:4px 8px;text-align:center;background:transparent">
           <button type="button" title="このSKUを削除" onclick="${deleteFn}(${hinbanIdx},${si})"
             style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;line-height:1;padding:2px 6px">🗑️</button>
         </td>`:''}
@@ -3104,9 +3104,9 @@ function renderList(){
   tb.innerHTML=data.map(r=>{
     const idx=registeredList.indexOf(r);
     const skuCount=(r.skuList&&r.skuList.length)||0;
-    return`<tr style="${openDetailRows.has(idx)?'background:#eaf1fb':''}">
-      <td style="text-align:center;${openDetailRows.has(idx)?'box-shadow:inset 4px 0 0 var(--blue)':''}"><input type="checkbox" class="list-check" value="${idx}" onchange="syncListCheckAll()"></td>
-      <td style="${openDetailRows.has(idx)?'background:#eaf1fb':''}">
+    return`<tr>
+      <td style="text-align:center"><input type="checkbox" class="list-check" value="${idx}" onchange="syncListCheckAll()"></td>
+      <td>
         <div class="code-cell-wrap">
           <button type="button" class="toggle-marker" onclick="toggleListSkuRow(${idx})" id="list-sku-toggle-${idx}" title="詳細編集・SKU構成を開く" style="${openDetailRows.has(idx)?'color:var(--blue);font-weight:700':''}">${openDetailRows.has(idx)?'⌃':'⌄'}</button>
           <input class="mono" value="${escAttr(r.code)}" onchange="registeredList[${idx}].code=this.value.trim();saveRegisteredList()" title="品番コード（編集可）" style="width:82px;padding:3px 6px;border:1px solid var(--bd);border-radius:5px;font-size:12px">
