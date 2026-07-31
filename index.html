@@ -110,6 +110,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sa
 .tbl th{background:var(--gray-50);padding:8px 10px;text-align:left;font-weight:600;font-size:11px;color:var(--gray-600);border-bottom:2px solid var(--bd);white-space:nowrap}
 .tbl td{padding:7px 10px;border-bottom:1px solid var(--bd);vertical-align:middle}
 .tbl tbody tr:hover td{background:var(--gray-50)}
+.tbl tbody tr.hb-open td{box-shadow:0 2px 8px -1px rgba(24,95,165,.30);position:relative;z-index:2}
 .tbl-wrap{overflow-x:auto}
 
 /* ===== PRICE MATRIX ===== */
@@ -3104,7 +3105,7 @@ function renderList(){
   tb.innerHTML=data.map(r=>{
     const idx=registeredList.indexOf(r);
     const skuCount=(r.skuList&&r.skuList.length)||0;
-    return`<tr>
+    return`<tr class="${openDetailRows.has(idx)?'hb-open':''}">
       <td style="text-align:center"><input type="checkbox" class="list-check" value="${idx}" onchange="syncListCheckAll()"></td>
       <td>
         <div class="code-cell-wrap">
