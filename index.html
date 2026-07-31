@@ -565,9 +565,9 @@ body{padding-left:var(--sbw)}
     <input type="number" id="bulk-sku-qty" value="1" min="1" title="数量" style="width:52px;padding:6px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px;text-align:right">
     <button class="btn btn-p" onclick="addSkuToSelected()">＋ SKU追加</button>
     <div style="flex-basis:100%;height:0"></div>
-    <span style="font-size:12px;color:var(--gray-400);white-space:nowrap">有効開始</span><input type="date" id="bulk-startdt" style="padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px;color:var(--gray-400)">
-    <span style="font-size:12px;color:var(--gray-400);white-space:nowrap">終了</span><input type="date" id="bulk-enddt" style="padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px;color:var(--gray-400)">
-    <span style="font-size:12px;color:var(--gray-400);white-space:nowrap">チャネル</span><select id="bulk-channel" style="padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px;color:var(--gray-400)"><option value="">（変更なし）</option></select>
+    <span style="font-size:12px;color:var(--gray-400);white-space:nowrap">有効開始</span><input type="date" id="bulk-startdt" style="padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px;color:#757575">
+    <span style="font-size:12px;color:var(--gray-400);white-space:nowrap">終了</span><input type="date" id="bulk-enddt" style="padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px;color:#757575">
+    <span style="font-size:12px;color:var(--gray-400);white-space:nowrap">チャネル</span><select id="bulk-channel" style="padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px;color:#757575"><option value="">（変更なし）</option></select>
     <span style="font-size:12px;color:var(--gray-400);white-space:nowrap">施策月</span><input type="text" id="bulk-month" placeholder="例：10月" style="width:70px;padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">
     <button class="btn btn-p" onclick="applyBulkListFields()">設定を適用</button>
   </div>
@@ -2928,7 +2928,7 @@ function toggleListSkuRow(idx){
 }
 
 // 品番一覧の詳細編集（空欄だった項目もここで直せる：日付・チャネル・施策月・担当・送料・定期）
-var LIST_INP='padding:4px 7px;border:1px solid var(--bd);border-radius:5px;font-size:12px;color:var(--gray-400)';
+var LIST_INP='padding:4px 7px;border:1px solid var(--bd);border-radius:5px;font-size:12px;color:#757575';
 function fldWrap(label,inner){
   return '<label style="display:flex;flex-direction:column;gap:2px;font-size:10px;color:var(--gray-600);font-weight:600"><span style="white-space:nowrap">'+label+'</span>'+inner+'</label>';
 }
