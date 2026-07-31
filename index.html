@@ -321,6 +321,7 @@ body{padding-left:var(--sbw)}
     <div class="n-tab" id="nav-wizard" onclick="showPage('wizard')"><span class="ico">✦</span>新規品番取得</div>
     <div class="n-tab" id="nav-list"   onclick="showPage('list')"><span class="ico">☰</span>品番一覧 / 価格表</div>
     <div class="n-tab" id="nav-master" onclick="showPage('master')"><span class="ico">⚙</span>マスタ管理</div>
+    <div class="n-tab" id="nav-backup" onclick="showPage('backup')"><span class="ico">🛡️</span>バックアップ</div>
   </div>
   <div class="n-right">
     <span class="n-badge" id="total-badge">登録済 0件</span>
@@ -722,6 +723,38 @@ body{padding-left:var(--sbw)}
   </div>
 
 </div><!-- /master -->
+
+<!-- ==================== BACKUP PAGE ==================== -->
+<div class="page" id="page-backup">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:wrap;gap:8px">
+    <h2 style="font-size:16px;font-weight:700">🛡️ バックアップ</h2>
+  </div>
+  <div class="info-box" style="margin-bottom:14px">ℹ️ 最初に<b>1回だけ保存先ファイルを指定</b>すれば、以降は品番を登録するたびに<b>その同じ1ファイルへ自動で上書き保存</b>します。万一ブラウザのデータ（品番一覧・マスタ）が消えても、<b>「バックアップから復元」</b>で元に戻せます。</div>
+
+  <div class="card" style="border:1px solid #bcd9ff;background:#f5faff">
+    <div class="card-title">自動バックアップ</div>
+    <div id="backup-status" style="font-size:13px;font-weight:600;margin-bottom:12px;padding:10px 14px;border-radius:var(--r);background:#fff;border:1px solid var(--bd)">自動バックアップ：未設定</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button class="btn btn-g" onclick="setupAutoBackup()" title="自動バックアップの保存先ファイルを選びます（最初に1回だけ）。以降は品番登録のたびに同じファイルへ自動で上書き保存します。">📁 自動バックアップの保存先を設定</button>
+      <button class="btn" onclick="importBackupJSON()" style="background:#fff;color:var(--blue);border:1px solid var(--blue)" title="バックアップファイルから品番一覧・全マスタを復元します。">♻️ バックアップから復元（読み込み）</button>
+      <button class="btn" onclick="exportBackupJSON()" style="font-size:12px;color:var(--gray-600)" title="今すぐ手動でバックアップファイルを書き出します。">💾 今すぐ手動で書き出し</button>
+    </div>
+    <div style="font-size:12px;color:var(--gray-400);margin-top:12px;line-height:1.8">
+      ※ 保存先には <b>OneDrive内のフォルダ</b>を選ぶと、全員で同じファイルを共有でき、PCが変わっても安心です。<br>
+      ※ ブラウザを開き直した日の最初の登録時に、保存の許可を1回だけ確認されることがあります（「編集を許可」を押してください）。
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <div class="card-title">バックアップの仕組み</div>
+    <div style="font-size:13px;color:var(--gray-600);line-height:1.9">
+      1. <b>「保存先を設定」</b>で、バックアップを保存するファイルを1回だけ選びます（OneDrive内推奨）。<br>
+      2. 以降は<b>品番を登録するたびに</b>、そのファイルへ自動で上書き保存されます（操作不要）。<br>
+      3. 万一データが消えたら、<b>「バックアップから復元」</b>でそのファイルを選ぶと元に戻ります。<br>
+      <span style="color:var(--gray-400)">※ バックアップには「品番一覧」と「全マスタ（担当者・グループ・カラー・サイズ・送料・施策名・チャネル・SKU）」が含まれます。</span>
+    </div>
+  </div>
+</div><!-- /backup -->
 
 <script>
 // ============================================================
@@ -1180,6 +1213,7 @@ async function loadMaster(){
   }catch(e){console.warn('loadMaster',e);}
   normalizeGroupMaster();
   renderAll();
+  if(typeof restoreBackupHandle==='function') restoreBackupHandle();
 }
 function deleteAllRegistered(){
   if(!confirm('全品番データを削除します。元に戻せません。よろしいですか？')) return;
@@ -1238,7 +1272,7 @@ async function wipeAllAppData(){
 function showPage(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
   document.getElementById('page-'+id).classList.add('on');
-  ['init','wizard','list','master'].forEach(t=>{
+  ['init','wizard','list','master','backup'].forEach(t=>{
     const el=document.getElementById('nav-'+t);
     if(el) el.classList.toggle('on',t===id);
   });
@@ -1246,6 +1280,7 @@ function showPage(id){
   if(id==='master'){renderMasterAll();}
   if(id==='init'){renderInitStatus();}
   if(id==='wizard'){renderSpPanel();}
+  if(id==='backup'){ if(typeof restoreBackupHandle==='function') restoreBackupHandle(); }
 }
 function go(n){
   var onP5=document.getElementById('p5')&&document.getElementById('p5').classList.contains('on');
@@ -2805,12 +2840,16 @@ function doRegister(){
   var startDt=getStartDateInputValue();
   var endDt=getEndDateInputValue();
   generated.forEach(function(h){ h.startDateTime=startDt; h.endDateTime=endDt; });
+  // 自動バックアップの保存許可を、このクリック操作の中で確保しておく（許可済みならダイアログは出ない）。
+  // これにより、以降の自動上書き保存がダイアログなしで静かに走る。
+  if(backupFileHandle) backupVerifyPermission(backupFileHandle,true);
   showLoading('登録中...');
   setTimeout(()=>{
   generated.forEach(h=>registeredList.push({...h,registeredAt:new Date().toLocaleDateString('ja-JP')}));
   document.getElementById('total-badge').textContent=`登録済 ${registeredList.length}件`;
   saveRegisteredList();
   saveMaster();
+  autoBackupSilent();  // 設定済みの保存先へ静かに上書き自動バックアップ
   generated=[];hideLoading();showPage('list');
   setTimeout(function(){
     var again=confirm('品番を登録しました。\n\nもう一つ品番を作成しますか？\n（OK：新規作成へ / キャンセル：品番一覧で確認）');
@@ -4801,6 +4840,205 @@ function exportMasterHTML(){
   const blob=new Blob([updated],{type:'text/html;charset=utf-8'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
   a.download=`hinban_app_${new Date().toISOString().slice(0,10).replace(/-/g,'')}.html`;a.click();
+}
+
+// ============================================================
+// バックアップ（品番一覧＋全マスタをJSONファイルに保存／復元）
+// ブラウザのサイトデータが消えても、このJSONから完全復元できる。
+// 品番登録のたびに、設定した1ファイルへ自動で上書き保存する（File System Access API）。
+// ============================================================
+var backupFileHandle=null;              // 自動バックアップの保存先（FileSystemFileHandle）
+var backupLastSaved='';                 // 最終保存の表示用
+const BACKUP_HANDLE_KEY='hinban_backup_handle';  // IndexedDBに保存するハンドルのキー
+
+function buildBackupObject(){
+  return {
+    __hinban_backup:true,
+    version:1,
+    exportedAt:new Date().toISOString(),
+    registeredList:registeredList,
+    masters:{
+      staffList:staffList, groupMaster:groupMaster, colorMaster:colorMaster,
+      sizeMaster:sizeMaster, shipOptions:shipOptions, campaignHistory:campaignHistory,
+      channelList:channelList, skuMaster:skuMaster
+    },
+    skuCache:{cache:skuCache, updated:skuLastUpdated}
+  };
+}
+
+// 手動書き出し（ダウンロード）。保存先未設定でも使える保険。
+function exportBackupJSON(){
+  const json=JSON.stringify(buildBackupObject());
+  const blob=new Blob([json],{type:'application/json;charset=utf-8'});
+  const now=new Date();
+  const pad=n=>String(n).padStart(2,'0');
+  const stamp=`${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`hinban_backup_${stamp}.json`;a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  const skuCnt=(skuCache&&skuCache.length)||0;
+  alert(`✅ バックアップを書き出しました\n\n品番：${registeredList.length}件\nSKUキャッシュ：${skuCnt.toLocaleString('ja-JP')}件\n担当者：${staffList.length} / グループ：${groupMaster.length}\n\nこのファイルを安全な場所（OneDrive等）に保管してください。\n「バックアップから復元」でいつでも元に戻せます。`);
+}
+
+// ---- 自動バックアップ（File System Access API）----
+function backupStatusEl(){return document.getElementById('backup-status');}
+function updateBackupStatus(state,msg){
+  const el=backupStatusEl();
+  if(!el) return;
+  const colors={ok:'#0a7d33',warn:'var(--amber)',off:'var(--gray-400)'};
+  el.style.color=colors[state]||'var(--gray-600)';
+  el.textContent=msg;
+}
+async function backupVerifyPermission(handle,request){
+  if(!handle) return false;
+  const opts={mode:'readwrite'};
+  try{
+    if((await handle.queryPermission(opts))==='granted') return true;
+    if(request && (await handle.requestPermission(opts))==='granted') return true;
+  }catch(e){}
+  return false;
+}
+// 保存先を設定（ユーザー操作の中で呼ぶ）。
+// 既に保存先があり許可が切れているだけなら、ファイルを選び直さず再有効化する。
+async function setupAutoBackup(){
+  if(!window.showSaveFilePicker){
+    alert('このブラウザは自動バックアップ（保存先の固定）に対応していません。\nEdge または Chrome でお使いください。\n\n代わりに「今すぐ手動で書き出し」をご利用ください。');
+    return;
+  }
+  // 既存の保存先があり、許可が切れているだけの場合 → 選び直さず再有効化
+  if(backupFileHandle){
+    const already=await backupVerifyPermission(backupFileHandle,false);
+    if(!already){
+      const regranted=await backupVerifyPermission(backupFileHandle,true);
+      if(regranted){
+        const ok=await backupWriteNow(true);
+        if(ok) alert(`✅ 自動バックアップを再有効化しました。\n保存先：${backupFileHandle.name}\n\n（保存先を変える場合は、このボタンをもう一度押してください）`);
+        return;
+      }
+    }
+    // 許可済み（＝正常稼働中）にもう一度押した場合は「保存先の変更」として続行し、下でファイル選択を開く
+    if(already && !confirm('保存先を別のファイルに変更しますか？\n\nOK：新しい保存先を選ぶ / キャンセル：今のまま')) return;
+  }
+  try{
+    const now=new Date();
+    const pad=n=>String(n).padStart(2,'0');
+    const suggested=`hinban_backup_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}.json`;
+    const handle=await window.showSaveFilePicker({
+      suggestedName:suggested,
+      types:[{description:'品番バックアップ',accept:{'application/json':['.json']}}]
+    });
+    backupFileHandle=handle;
+    try{await persistIdbSet(BACKUP_HANDLE_KEY,handle);}catch(e){console.warn('save handle',e);}
+    const ok=await backupWriteNow();
+    if(ok){
+      alert(`✅ 自動バックアップの保存先を設定しました。\n\n保存先：${handle.name}\n\n今後は品番を登録するたびに、このファイルへ自動で上書き保存されます。`);
+    }
+  }catch(e){
+    if(e && e.name==='AbortError') return; // ユーザーがキャンセル
+    console.warn('setupAutoBackup',e);
+    alert('保存先の設定に失敗しました：'+(e&&e.message||e));
+  }
+}
+// いま設定中のハンドルへ書き込む（成功でtrue）
+async function backupWriteNow(request){
+  if(!backupFileHandle) return false;
+  if(!(await backupVerifyPermission(backupFileHandle,request))){
+    updateBackupStatus('warn','⚠ 自動バックアップ：保存の許可が必要です（「保存先を設定」を押し直してください）');
+    return false;
+  }
+  try{
+    const w=await backupFileHandle.createWritable();
+    await w.write(JSON.stringify(buildBackupObject()));
+    await w.close();
+    backupLastSaved=new Date().toLocaleString('ja-JP');
+    updateBackupStatus('ok',`✅ 自動バックアップ：${backupFileHandle.name}（最終保存 ${backupLastSaved} / 品番${registeredList.length}件）`);
+    return true;
+  }catch(e){
+    console.warn('backupWriteNow',e);
+    updateBackupStatus('warn','⚠ 自動バックアップの保存に失敗しました：'+(e&&e.message||e));
+    return false;
+  }
+}
+// 品番登録などの後に呼ぶ静かな自動保存（許可要求はしない＝ダイアログを出さない）
+async function autoBackupSilent(){
+  if(!backupFileHandle) return;
+  await backupWriteNow(false);
+}
+// 起動時：保存先ハンドルを復元し、状態表示を更新
+async function restoreBackupHandle(){
+  if(!window.indexedDB) return;
+  try{
+    const handle=await persistIdbGet(BACKUP_HANDLE_KEY);
+    if(handle && handle.name){
+      backupFileHandle=handle;
+      const granted=await backupVerifyPermission(handle,false); // 起動時は要求しない
+      if(granted){
+        updateBackupStatus('ok',`✅ 自動バックアップ：${handle.name}（品番${registeredList.length}件）`);
+      }else{
+        updateBackupStatus('warn',`⏸ 自動バックアップ：${handle.name}（保存の許可待ち。次の登録時か「保存先を設定」で有効化）`);
+      }
+    }else{
+      updateBackupStatus('off','自動バックアップ：未設定（右下の「保存先を設定」で有効化してください）');
+    }
+  }catch(e){
+    updateBackupStatus('off','自動バックアップ：未設定');
+  }
+}
+
+function importBackupJSON(){
+  const input=document.createElement('input');
+  input.type='file';input.accept='.json,application/json';
+  input.onchange=async e=>{
+    const file=e.target.files&&e.target.files[0];
+    if(!file) return;
+    let data;
+    try{
+      const text=await file.text();
+      data=JSON.parse(text);
+    }catch(err){
+      alert('❌ このファイルを読み込めませんでした（JSONとして不正です）。\n\n'+(err&&err.message||err));
+      return;
+    }
+    if(!data||!data.__hinban_backup||!Array.isArray(data.registeredList)){
+      alert('❌ このファイルは品番取得システムのバックアップではないようです。\n\n「バックアップ書き出し」で作成した hinban_backup_*.json を選んでください。');
+      return;
+    }
+    const m=data.masters||{};
+    const hasMasters=!!(m.staffList||m.groupMaster||m.colorMaster||m.skuMaster);
+    const when=data.exportedAt?new Date(data.exportedAt).toLocaleString('ja-JP'):'不明';
+    const skuCnt=(data.skuCache&&data.skuCache.cache&&data.skuCache.cache.length)||0;
+    const msg=`このバックアップで現在のデータを上書き復元します。\n\n`+
+      `作成日時：${when}\n`+
+      `品番：${data.registeredList.length}件\n`+
+      (hasMasters?`SKUキャッシュ：${skuCnt.toLocaleString('ja-JP')}件\n全マスタ：含む\n`:`全マスタ：含まない（品番一覧のみ復元）\n`)+
+      `\n現在の品番一覧（${registeredList.length}件）は置き換えられます。よろしいですか？`;
+    if(!confirm(msg)) return;
+
+    // 品番一覧を復元
+    registeredList=data.registeredList;
+    normalizeRegisteredList();
+    // マスタを復元（含まれている場合のみ）
+    if(hasMasters){
+      applyMasterBundle(m);
+      if(data.skuCache&&Array.isArray(data.skuCache.cache)){
+        skuCache=data.skuCache.cache;
+        skuLastUpdated=data.skuCache.updated||'';
+      }
+    }
+    // 永続化
+    try{
+      await saveRegisteredList();
+      if(hasMasters){ await saveMaster(); await saveSkuCache(); }
+    }catch(err){console.warn('importBackupJSON persist',err);}
+
+    var badge=document.getElementById('total-badge');
+    if(badge) badge.textContent='登録済 '+registeredList.length+'件';
+    renderAll();
+    if(typeof renderSkuStatus==='function') renderSkuStatus();
+    if(typeof renderInitStatus==='function') renderInitStatus();
+    alert(`✅ バックアップから復元しました\n\n品番：${registeredList.length}件`+(hasMasters?`\n全マスタ・SKUキャッシュも復元しました。`:``));
+  };
+  input.click();
 }
 
 
