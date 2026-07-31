@@ -3124,7 +3124,7 @@ function renderList(){
       <td><button onclick="if(confirm('削除しますか？')){registeredList.splice(${idx},1);document.getElementById('total-badge').textContent='登録済 '+registeredList.length+'件';saveRegisteredList();renderList()}" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px">削除</button></td>
     </tr>
     <tr id="list-sku-row-${idx}" style="display:${openDetailRows.has(idx)?'table-row':'none'};background:#eaf1fb">
-      <td colspan="12" style="padding:6px 10px 14px 140px;box-shadow:inset 4px 0 0 var(--blue)">
+      <td colspan="12" style="padding:6px 10px 14px 140px;box-shadow:inset 4px 0 0 var(--blue);background:#eaf1fb">
         <div style="font-size:11px;color:var(--blue);font-weight:700;margin-bottom:6px">選択中：${escHtml(r.code)}${r.name?'（'+escHtml(displayBizKana(r.name))+'）':''}</div>
         ${renderListDetailFields(idx,r)}
         ${renderSkuTable(r.skuList,{deletable:true,hinbanIdx:idx})}
