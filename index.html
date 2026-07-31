@@ -2924,19 +2924,15 @@ function resetAll(){
 // ============================================================
 var openDetailRows=new Set();
 function toggleListSkuRow(idx){
-  var el=document.getElementById('list-sku-row-'+idx);
-  var toggle=document.getElementById('list-sku-toggle-'+idx);
-  if(!el) return;
-  var open=el.style.display==='none';
-  el.style.display=open?'table-row':'none';
-  if(toggle) toggle.textContent=open?'⌃':'⌄';
-  if(open) openDetailRows.add(idx); else openDetailRows.delete(idx);
+  if(openDetailRows.has(idx)) openDetailRows.delete(idx);
+  else openDetailRows.add(idx);
+  renderList();
 }
 
 // 品番一覧の詳細編集（空欄だった項目もここで直せる：日付・チャネル・施策月・担当・送料・定期）
 var LIST_INP='padding:4px 7px;border:1px solid var(--bd);border-radius:5px;font-size:12px';
 function fldWrap(label,inner){
-  return '<label style="display:flex;flex-direction:column;gap:2px;font-size:10px;color:var(--gray-600);font-weight:600">'+label+inner+'</label>';
+  return '<label style="display:flex;flex-direction:column;gap:2px;font-size:10px;color:var(--gray-600);font-weight:600"><span style="white-space:nowrap">'+label+'</span>'+inner+'</label>';
 }
 function renderListDetailFields(idx,r){
   var chOpts='<option value=""></option>'+(channelList||[]).map(function(c){return '<option'+(r.channel===c?' selected':'')+'>'+escHtml(c)+'</option>';}).join('');
@@ -3108,11 +3104,11 @@ function renderList(){
   tb.innerHTML=data.map(r=>{
     const idx=registeredList.indexOf(r);
     const skuCount=(r.skuList&&r.skuList.length)||0;
-    return`<tr>
-      <td style="text-align:center"><input type="checkbox" class="list-check" value="${idx}" onchange="syncListCheckAll()"></td>
-      <td>
+    return`<tr style="${openDetailRows.has(idx)?'background:#eaf1fb':''}">
+      <td style="text-align:center;${openDetailRows.has(idx)?'box-shadow:inset 4px 0 0 var(--blue)':''}"><input type="checkbox" class="list-check" value="${idx}" onchange="syncListCheckAll()"></td>
+      <td style="${openDetailRows.has(idx)?'background:#eaf1fb':''}">
         <div class="code-cell-wrap">
-          <button type="button" class="toggle-marker" onclick="toggleListSkuRow(${idx})" id="list-sku-toggle-${idx}" title="詳細編集・SKU構成を開く">${openDetailRows.has(idx)?'⌃':'⌄'}</button>
+          <button type="button" class="toggle-marker" onclick="toggleListSkuRow(${idx})" id="list-sku-toggle-${idx}" title="詳細編集・SKU構成を開く" style="${openDetailRows.has(idx)?'color:var(--blue);font-weight:700':''}">${openDetailRows.has(idx)?'⌃':'⌄'}</button>
           <input class="mono" value="${escAttr(r.code)}" onchange="registeredList[${idx}].code=this.value.trim();saveRegisteredList()" title="品番コード（編集可）" style="width:82px;padding:3px 6px;border:1px solid var(--bd);border-radius:5px;font-size:12px">
         </div>
       </td>
@@ -3127,8 +3123,9 @@ function renderList(){
       <td style="text-align:center"><span style="font-weight:600;color:${skuCount===0?'var(--red)':'var(--green)'}">${skuCount}</span></td>
       <td><button onclick="if(confirm('削除しますか？')){registeredList.splice(${idx},1);document.getElementById('total-badge').textContent='登録済 '+registeredList.length+'件';saveRegisteredList();renderList()}" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px">削除</button></td>
     </tr>
-    <tr id="list-sku-row-${idx}" style="display:${openDetailRows.has(idx)?'table-row':'none'};background:var(--gray-50)">
-      <td colspan="12" style="padding:8px 10px 12px 24px">
+    <tr id="list-sku-row-${idx}" style="display:${openDetailRows.has(idx)?'table-row':'none'};background:#eaf1fb">
+      <td colspan="12" style="padding:6px 10px 14px 140px;box-shadow:inset 4px 0 0 var(--blue)">
+        <div style="font-size:11px;color:var(--blue);font-weight:700;margin-bottom:6px">選択中：${escHtml(r.code)}${r.name?'（'+escHtml(displayBizKana(r.name))+'）':''}</div>
         ${renderListDetailFields(idx,r)}
         ${renderSkuTable(r.skuList,{deletable:true,hinbanIdx:idx})}
       </td>
