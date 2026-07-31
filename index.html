@@ -886,8 +886,8 @@ const STATUS_LIST=['取得OK','MS依頼済','Access登録済み','修正依頼',
 
 // Wizard state
 let colors=[], sizes=[], patterns=[
-  {id:1,label:'1枚購入',sheets:1,shipFee:990,bonus:false,colorMode:'single',patternSkuIds:[],unit:'枚',returnDays:'39日',yupakeKbn:'0',meisaiHidden:'表示',returnAfterOpenDays:'8',pairModes:['none'],pairGroup:'',sizePairs:[]},
-  {id:2,label:'2枚セット',sheets:2,shipFee:0,bonus:true,colorMode:'set',patternSkuIds:[],unit:'枚',returnDays:'39日',yupakeKbn:'0',meisaiHidden:'表示',returnAfterOpenDays:'8',pairModes:['none'],pairGroup:'',sizePairs:[]},
+  {id:1,label:'1枚',sheets:1,shipFee:990,bonus:false,colorMode:'single',patternSkuIds:[],unit:'枚',returnDays:'39日',yupakeKbn:'0',meisaiHidden:'表示',returnAfterOpenDays:'8',pairModes:['none'],pairGroup:'',sizePairs:[]},
+  {id:2,label:'2枚ｾｯﾄ',sheets:2,shipFee:0,bonus:true,colorMode:'set',patternSkuIds:[],unit:'枚',returnDays:'39日',yupakeKbn:'0',meisaiHidden:'表示',returnAfterOpenDays:'8',pairModes:['none'],pairGroup:'',sizePairs:[]},
 ];
 let generated=[], registeredList=[], seqCounters={};
 let skuAssignMap={}, commonSkus=[], pairAssignMap={};
@@ -1811,20 +1811,28 @@ function shipSelectHTML(fee,pi){
     ${shipOptions.map(s=>`<option value="${s.fee}"${s.fee===fee?' selected':''}>${s.label}</option>`).join('')}
   </select>`;
 }
+// パターン名の正規ラベルを生成（1枚 / 1台 / 片耳 / 2枚ｾｯﾄ / 2台ｾｯﾄ / 両耳）
+function patternLabel(sheets, unit){
+  var u = unit || '枚';
+  if(u==='片耳') return '片耳';
+  if(u==='両耳') return '両耳';
+  return sheets===1 ? (sheets + u) : (sheets + u + 'ｾｯﾄ');
+}
 function setPatternUnit(pi, unit){
   const p = patterns[pi];
   if(!p) return;
   const prev = p.unit || '枚';
   if(prev === unit) return;
   p.unit = unit;
-  if(unit==='片耳'){
-    p.label='片耳';
-  }else if(unit==='両耳'){
-    p.label='両耳';
-  }else if((prev==='枚'||prev==='台') && (unit==='枚'||unit==='台') && typeof p.label === 'string' && p.label){
-    // 枚⇔台 の切替時だけラベルの単位語を自動置換
+  if(unit==='片耳' || unit==='両耳' || prev==='片耳' || prev==='両耳'){
+    // 片耳/両耳が絡む切替は正規ラベルを再生成（自由に行き来できる）
+    p.label = patternLabel(p.sheets, unit);
+  }else if(typeof p.label === 'string' && p.label){
+    // 枚⇔台 は編集内容を保つため単位語だけ置換
     if(unit === '台') p.label = p.label.replace(/枚/g, '台');
     else p.label = p.label.replace(/台/g, '枚');
+  }else{
+    p.label = patternLabel(p.sheets, unit);
   }
   renderPts();
 }
@@ -1946,7 +1954,7 @@ function addPt(){
     if(existingSheets.indexOf(i) < 0){ newSheets = i; break; }
   }
   var unit = patterns.length && patterns[0].unit ? patterns[0].unit : '枚';
-  var label = newSheets === 1 ? ('1' + unit + '購入') : (newSheets + unit + 'セット');
+  var label = patternLabel(newSheets, unit);
   patterns.push({
     id: newId,
     label: label,
@@ -2867,8 +2875,8 @@ function doRegister(){
 function resetWizardForm(){
   bonuses=[];patternSkus=[];sku3List=[];spSkuList=[];skuAssignMap={};commonSkus=[];pairAssignMap={};
   patterns=[
-    {id:1,label:'1枚購入',sheets:1,shipFee:990,bonus:false,colorMode:'single',patternSkuIds:[],unit:'枚',returnDays:'39日',yupakeKbn:'0',meisaiHidden:'表示',returnAfterOpenDays:'8',pairModes:['none'],pairGroup:'',sizePairs:[]},
-    {id:2,label:'2枚セット',sheets:2,shipFee:0,bonus:true,colorMode:'set',patternSkuIds:[],unit:'枚',returnDays:'39日',yupakeKbn:'0',meisaiHidden:'表示',returnAfterOpenDays:'8',pairModes:['none'],pairGroup:'',sizePairs:[]},
+    {id:1,label:'1枚',sheets:1,shipFee:990,bonus:false,colorMode:'single',patternSkuIds:[],unit:'枚',returnDays:'39日',yupakeKbn:'0',meisaiHidden:'表示',returnAfterOpenDays:'8',pairModes:['none'],pairGroup:'',sizePairs:[]},
+    {id:2,label:'2枚ｾｯﾄ',sheets:2,shipFee:0,bonus:true,colorMode:'set',patternSkuIds:[],unit:'枚',returnDays:'39日',yupakeKbn:'0',meisaiHidden:'表示',returnAfterOpenDays:'8',pairModes:['none'],pairGroup:'',sizePairs:[]},
   ];
   ['s-month','s-name','s-staff','s-group'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   var sd=document.getElementById('s-startdt');if(sd)sd.value='';
