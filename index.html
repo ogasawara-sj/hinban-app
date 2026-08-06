@@ -1042,11 +1042,20 @@ async function persistClearAll(){
   }
 }
 
+// 変更のたびに自動バックアップ（保存先が設定済みのときだけ・デバウンス）
+var __autoBackupTimer=null;
+function scheduleAutoBackup(){
+  if(typeof backupFileHandle==='undefined' || !backupFileHandle) return;
+  clearTimeout(__autoBackupTimer);
+  __autoBackupTimer=setTimeout(function(){ if(typeof autoBackupSilent==='function') autoBackupSilent(); }, 1500);
+}
 async function saveRegisteredList(){
   try{await persistSet(PERSIST_KEYS.REGISTERED,registeredList);}catch(e){console.warn('saveRegisteredList',e);}
+  scheduleAutoBackup();
 }
 async function saveSkuCache(){
   try{await persistSet(PERSIST_KEYS.SKU_CACHE,{cache:skuCache,updated:skuLastUpdated});}catch(e){console.warn('saveSkuCache',e);}
+  scheduleAutoBackup();
 }
 async function saveMaster(){
   try{
@@ -1062,6 +1071,7 @@ async function saveMaster(){
       persistSet(PERSIST_KEYS.LEGACY_BUNDLE,{staffList,groupMaster,colorMaster,sizeMaster,shipOptions,campaignHistory,channelList,skuMaster})
     ]);
   }catch(e){console.warn('saveMaster',e);}
+  scheduleAutoBackup();
 }
 function applyMasterBundle(d){
   if(!d) return;
