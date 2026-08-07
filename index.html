@@ -401,7 +401,7 @@ body{padding-left:var(--sbw)}
             max-height:220px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.1)">
           </div>
         </div></div>
-      <div class="f"><label>担当者 <span class="req">*</span></label>
+      <div class="f"><label>担当者</label>
         <div style="position:relative">
           <input type="text" id="s-staff-search" placeholder="名前で検索または選択..."
             oninput="filterComboList('s-staff',this.value)" onfocus="showComboList('s-staff')"
@@ -1508,10 +1508,7 @@ function validateStep1(){
     alert('商品グループを選択してください');
     return false;
   }
-  if(!staff||!staff.trim()){
-    alert('担当者を入力してください');
-    return false;
-  }
+  // 担当者は任意（未入力でも可）
   if(!getStartDateInputValue()){
     alert('KUROSHIO有効開始日時を入力してください');
     return false;
@@ -2600,7 +2597,8 @@ function renderPriceMatrix(skipSync){
           <th style="width:160px">サイズ構成</th>
           <th style="width:100px">カラー</th>
           <th style="width:100px">販売価格(税抜)</th>
-          <th style="width:85px">税込</th>
+          <th style="width:90px">税込</th>
+          <th style="width:120px">バリューアップ価格(税込)</th>
           <th style="width:96px">消費税区分</th>
           <th style="width:46px">SKU数</th>
           <th class="col-name">品番名（編集可）</th>
@@ -2623,7 +2621,10 @@ function renderPriceMatrix(skipSync){
               <td style="font-size:12px">${escHtml(displayBizKana(h.colorLabel||'—'))}</td>
               <td><input type="number" id="pr-${i}" value="${h.price||''}" min="0" placeholder="0"
                 onchange="generated[${i}].price=+this.value;updTax(${i})" style="width:90px"></td>
-              <td id="tx-${i}" style="text-align:right;font-size:12px;color:var(--gray-400)">${h.price?yen(Math.round(h.price*1.1)):'—'}</td>
+              <td><input type="number" id="ti-${i}" value="${h.price?Math.round(h.price*1.1):''}" min="0" placeholder="0"
+                onchange="onTaxIncl(${i},this.value)" style="width:82px" title="税込を入れると税抜が自動計算されます"></td>
+              <td><input type="number" id="vu-${i}" value="${h.valueUpPrice||''}" min="0" placeholder="—"
+                onchange="generated[${i}].valueUpPrice=(this.value===''?undefined:+this.value)" style="width:100px" title="バリューアップ価格(税込)。使わない場合は空欄。アクセス登録ExcelのM列に入ります"></td>
               <td>
                 <select onchange="generated[${i}].taxKbn=this.value" style="width:90px;padding:3px 6px;border:1px solid var(--bd);border-radius:4px;font-size:12px">
                   <option value="1" ${(!h.taxKbn||h.taxKbn==='1')?'selected':''}>1：標準税</option>
@@ -2642,7 +2643,7 @@ function renderPriceMatrix(skipSync){
               <td style="text-align:center"><button type="button" title="この品番を削除" onclick="deleteGeneratedHinban(${i})" style="width:28px;height:28px;border:1px solid var(--bd);border-radius:8px;background:#fff;color:var(--red);cursor:pointer;font-size:13px">🗑️</button></td>
             </tr>
             <tr id="sku-row4-${i}" style="display:none;background:var(--gray-50)">
-              <td colspan="10" style="padding:8px 16px 12px 24px">
+              <td colspan="11" style="padding:8px 16px 12px 24px">
                 ${renderSkuTable(h.skuList,{deletable:true,hinbanIdx:i,deleteFn:'deleteSkuFromGenerated'})}
               </td>
             </tr>`;
@@ -2742,7 +2743,14 @@ function setPtPrice(ptId){
   });
 }
 
-function updTax(i){const el=document.getElementById('tx-'+i);if(el)el.textContent=generated[i].price?'¥'+Math.round(generated[i].price*1.1).toLocaleString('ja-JP'):'—';}
+function updTax(i){const el=document.getElementById('ti-'+i);if(el)el.value=generated[i].price?Math.round(generated[i].price*1.1):'';}
+// 税込を入力→税抜を自動計算（両方向対応）
+function onTaxIncl(i,val){
+  var v=parseFloat(val)||0;
+  generated[i].price=v?Math.round(v/1.1):0;
+  var e=document.getElementById('pr-'+i);
+  if(e) e.value=generated[i].price||'';
+}
 function updNL(i){const l=generated[i].name.length;const el=document.getElementById('nl-'+i);if(el){el.textContent=l+'/40';el.style.color=l>38?'var(--red)':'var(--green)';}}
 function bulkReplaceName(){
   var from = document.getElementById('replace-from').value;
@@ -2972,6 +2980,7 @@ function renderListDetailFields(idx,r){
     fldWrap('施策月','<input value="'+escAttr(r.month)+'" onchange="registeredList['+idx+'].month=this.value;saveRegisteredList();renderList()" style="width:80px;'+LIST_INP+'">')+
     fldWrap('担当者','<input value="'+escAttr(r.staff)+'" onchange="registeredList['+idx+'].staff=this.value;saveRegisteredList();renderList()" style="width:90px;'+LIST_INP+'">')+
     fldWrap('送料(税込)','<input type="number" value="'+(r.ship||0)+'" onchange="registeredList['+idx+'].ship=(+this.value)||0;saveRegisteredList();renderList()" style="width:80px;'+LIST_INP+'">')+
+    fldWrap('ﾊﾞﾘｭｰｱｯﾌﾟ価格(税込)','<input type="number" value="'+(r.valueUpPrice!=null?r.valueUpPrice:'')+'" placeholder="—" title="使わない場合は空欄。アクセス登録ExcelのM列に入ります" onchange="registeredList['+idx+'].valueUpPrice=(this.value===\'\'?undefined:(+this.value));saveRegisteredList()" style="width:100px;'+LIST_INP+'">')+
     fldWrap('有効開始日時 <span style=\'color:var(--red)\'>必須</span>','<input type="date" value="'+escAttr(sd)+'" onchange="registeredList['+idx+'].startDateTime=this.value;saveRegisteredList()" style="'+LIST_INP+'">')+
     fldWrap('有効終了日時','<input type="date" value="'+escAttr(ed)+'" onchange="registeredList['+idx+'].endDateTime=this.value;saveRegisteredList()" style="'+LIST_INP+'">')+
     fldWrap('使用チャネル','<select onchange="registeredList['+idx+'].channel=this.value;saveRegisteredList()" style="'+LIST_INP+'">'+chOpts+'</select>')+
@@ -4147,6 +4156,7 @@ function _accInjectBtoCRow(rowxml,i,h){
   rowxml=_accSetCell(rowxml,10,row,'t',pt.meisaiHidden||'表示');
   rowxml=_accSetCell(rowxml,11,row,'n',toAccessNum(h.taxKbn,1));
   rowxml=_accSetCell(rowxml,12,row,'n',priceIn);
+  if(h.valueUpPrice!==undefined&&h.valueUpPrice!==null&&h.valueUpPrice!=='') rowxml=_accSetCell(rowxml,13,row,'n',Number(h.valueUpPrice)); // M列: バリューアップ価格(税込)
   rowxml=_accSetCell(rowxml,14,row,'n',Number(h.ship)||0);
   if(sd) rowxml=_accSetCell(rowxml,15,row,'n',_accDateSerial(sd));
   if(ed) rowxml=_accSetCell(rowxml,16,row,'n',_accDateSerial(ed));
