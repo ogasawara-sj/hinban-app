@@ -5146,6 +5146,17 @@ function importBackupJSON(){
   input.click();
 }
 
+// 統合表示用：重複を除いて配列を結合（文字列マスタ／オブジェクトマスタ）
+function unionStrings(base, add){
+  var set={}, out=[];
+  (base||[]).concat(add||[]).forEach(function(x){ var k=String(x); if(!set[k]){set[k]=1; out.push(x);} });
+  return out;
+}
+function unionObjs(base, add){
+  var set={}, out=[];
+  (base||[]).concat(add||[]).forEach(function(x){ var k=JSON.stringify(x); if(!set[k]){set[k]=1; out.push(x);} });
+  return out;
+}
 // 複数ファイル選択（showDirectoryPicker非対応ブラウザ用フォールバック）
 function pickMultipleFiles(){
   return new Promise(function(resolve){
@@ -5191,6 +5202,16 @@ async function importAllBackups(){
       var copy=Object.assign({}, h); copy._srcUser=u;
       merged.push(copy);
     });
+    // マスタ（担当者・施策名・グループ等）も全員分を統合（一時表示・保存されない）
+    var m=data.masters||{};
+    if(Array.isArray(m.staffList)) staffList=unionStrings(staffList,m.staffList);
+    if(Array.isArray(m.campaignHistory)) campaignHistory=unionStrings(campaignHistory,m.campaignHistory);
+    if(Array.isArray(m.channelList)) channelList=unionStrings(channelList,m.channelList);
+    if(Array.isArray(m.groupMaster)) groupMaster=unionObjs(groupMaster,m.groupMaster);
+    if(Array.isArray(m.colorMaster)) colorMaster=unionObjs(colorMaster,m.colorMaster);
+    if(Array.isArray(m.sizeMaster)) sizeMaster=unionObjs(sizeMaster,m.sizeMaster);
+    if(Array.isArray(m.shipOptions)) shipOptions=unionObjs(shipOptions,m.shipOptions);
+    if(m.skuMaster && typeof m.skuMaster==='object') skuMaster=Object.assign({}, skuMaster, m.skuMaster);
   }
   if(!loaded){ alert('有効なバックアップファイルが見つかりませんでした（'+skipped+'件スキップ）。'); return; }
 
@@ -5198,14 +5219,14 @@ async function importAllBackups(){
   aggregateViewMode=true;
   registeredList=merged;
   normalizeRegisteredList();
+  if(typeof normalizeGroupMaster==='function') normalizeGroupMaster();
   var badge=document.getElementById('total-badge');
   if(badge) badge.textContent='統合表示 '+registeredList.length+'件';
+  renderAll();          // マスタ（担当者・施策名等）の統合も画面・選択肢に反映
   showPage('list');
   renderList();
-  var banner=document.getElementById('aggregate-banner');
-  if(banner){ banner.style.display='block'; }
   var breakdown=Object.keys(perUser).map(function(u){return '・'+u+'：'+perUser[u]+'件';}).join('\n');
-  alert('✅ 全員分を読み込みました（統合表示・一時的）\n\n読込ファイル：'+loaded+'件'+(skipped?'（対象外 '+skipped+'件はスキップ）':'')+'\n'+breakdown+'\n合計：'+registeredList.length+'件\n\n※これは閲覧用の一時表示です。ページを再読み込みすると自分のデータに戻ります。\n※この画面では編集・保存しても保存されません（自分のバックアップは変わりません）。');
+  alert('✅ 全員分を読み込みました（統合表示・一時的）\n\n読込ファイル：'+loaded+'件'+(skipped?'（対象外 '+skipped+'件はスキップ）':'')+'\n'+breakdown+'\n合計：'+registeredList.length+'件\n\nマスタ（担当者・施策名・グループ等）も全員分を統合して選択肢に表示しています。\n※これは閲覧用の一時表示です。ページを再読み込みすると自分のデータに戻ります。\n※この画面では編集・保存しても保存されません（自分のバックアップは変わりません）。');
 }
 
 
