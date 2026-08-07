@@ -540,6 +540,9 @@ body{padding-left:var(--sbw)}
 
 <!-- ==================== LIST PAGE ==================== -->
 <div class="page" id="page-list">
+  <div id="aggregate-banner" style="display:none;margin-bottom:12px;background:#fff7e6;border:1px solid #f0c26b;border-radius:var(--r);padding:10px 14px;font-size:12px;color:#7a5200;line-height:1.7">
+    👥 <b>統合表示中（全員分・一時的な閲覧）</b>：この一覧は読み込んだ全員分のバックアップを合算表示しています。<b>編集・出力はできますが保存はされません</b>（自分のデータ・バックアップは変わりません）。自分のデータに戻すには<b>ページを再読み込み</b>してください。
+  </div>
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
     <h2 style="font-size:16px;font-weight:700">品番一覧 / 価格表</h2>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
@@ -748,6 +751,7 @@ body{padding-left:var(--sbw)}
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
       <button class="btn btn-g" onclick="setupAutoBackup()" title="自動バックアップの保存先ファイルを選びます（最初に1回だけ）。以降は品番登録のたびに同じファイルへ自動で上書き保存します。">📁 自動バックアップの保存先を設定</button>
       <button class="btn" onclick="importBackupJSON()" style="background:#fff;color:var(--blue);border:1px solid var(--blue)" title="バックアップファイルから品番一覧・全マスタを復元します。">♻️ バックアップから復元（読み込み）</button>
+      <button class="btn" onclick="importAllBackups()" style="background:#fff;color:var(--blue);border:1px solid var(--blue)" title="共有フォルダ内の全員分のバックアップを読み込み、まとめて一覧表示します（一時的な閲覧・保存されません）。">👥 全員分を読み込んで表示</button>
       <button class="btn" onclick="exportBackupJSON()" style="font-size:12px;color:var(--gray-600)" title="今すぐ手動でバックアップファイルを書き出します。">💾 今すぐ手動で書き出し</button>
     </div>
     <div style="font-size:12px;color:var(--gray-400);margin-top:12px;line-height:1.8">
@@ -1049,20 +1053,25 @@ async function persistClearAll(){
 
 // 変更のたびに自動バックアップ（保存先が設定済みのときだけ・デバウンス）
 var __autoBackupTimer=null;
+var aggregateViewMode=false;   // 全員分の統合表示中は保存/自動バックアップを止める（自分のデータ・バックアップを汚さない）
 function scheduleAutoBackup(){
+  if(aggregateViewMode) return;
   if(typeof backupFileHandle==='undefined' || !backupFileHandle) return;
   clearTimeout(__autoBackupTimer);
   __autoBackupTimer=setTimeout(function(){ if(typeof autoBackupSilent==='function') autoBackupSilent(); }, 1500);
 }
 async function saveRegisteredList(){
+  if(aggregateViewMode) return;
   try{await persistSet(PERSIST_KEYS.REGISTERED,registeredList);}catch(e){console.warn('saveRegisteredList',e);}
   scheduleAutoBackup();
 }
 async function saveSkuCache(){
+  if(aggregateViewMode) return;
   try{await persistSet(PERSIST_KEYS.SKU_CACHE,{cache:skuCache,updated:skuLastUpdated});}catch(e){console.warn('saveSkuCache',e);}
   scheduleAutoBackup();
 }
 async function saveMaster(){
+  if(aggregateViewMode) return;
   try{
     await Promise.all([
       persistSet(PERSIST_KEYS.STAFF,staffList),
@@ -5138,6 +5147,68 @@ function importBackupJSON(){
     alert(`✅ バックアップから復元しました\n\n品番：${registeredList.length}件`+(hasMasters?`\n全マスタ・SKUキャッシュも復元しました。`:``));
   };
   input.click();
+}
+
+// 複数ファイル選択（showDirectoryPicker非対応ブラウザ用フォールバック）
+function pickMultipleFiles(){
+  return new Promise(function(resolve){
+    var inp=document.createElement('input');
+    inp.type='file'; inp.accept='.json,application/json'; inp.multiple=true;
+    inp.onchange=function(e){ resolve(Array.from((e.target&&e.target.files)||[])); };
+    inp.click();
+  });
+}
+
+// 全員分のバックアップを読み込んで統合表示（一時的な閲覧モード。保存・自動バックアップはしない）
+async function importAllBackups(){
+  var files=[];
+  try{
+    if(window.showDirectoryPicker){
+      var dir=await window.showDirectoryPicker();
+      for await (const entry of dir.values()){
+        if(entry.kind==='file' && /\.json$/i.test(entry.name)){
+          try{ files.push(await entry.getFile()); }catch(e){}
+        }
+      }
+    }else{
+      files=await pickMultipleFiles();
+    }
+  }catch(e){
+    if(e && e.name==='AbortError') return;
+    alert('フォルダ／ファイルを開けませんでした：'+(e&&e.message||e));
+    return;
+  }
+  if(!files.length){ alert('バックアップファイル（.json）が見つかりませんでした。'); return; }
+
+  var merged=[], seen={}, perUser={}, loaded=0, skipped=0;
+  for(const f of files){
+    var data;
+    try{ data=JSON.parse(await f.text()); }catch(e){ skipped++; continue; }
+    if(!data || !data.__hinban_backup || !Array.isArray(data.registeredList)){ skipped++; continue; }
+    loaded++;
+    var u=(data.user||'').trim() || f.name.replace(/\.json$/i,'').replace(/^hinban_backup_?/,'') || '(不明)';
+    perUser[u]=(perUser[u]||0)+data.registeredList.length;
+    data.registeredList.forEach(function(h){
+      var key=u+'|'+(h.code||'');
+      if(seen[key]) return; seen[key]=1;
+      var copy=Object.assign({}, h); copy._srcUser=u;
+      merged.push(copy);
+    });
+  }
+  if(!loaded){ alert('有効なバックアップファイルが見つかりませんでした（'+skipped+'件スキップ）。'); return; }
+
+  // 一時的な統合表示（保存しない＝自分のデータもバックアップも汚さない）
+  aggregateViewMode=true;
+  registeredList=merged;
+  normalizeRegisteredList();
+  var badge=document.getElementById('total-badge');
+  if(badge) badge.textContent='統合表示 '+registeredList.length+'件';
+  showPage('list');
+  renderList();
+  var banner=document.getElementById('aggregate-banner');
+  if(banner){ banner.style.display='block'; }
+  var breakdown=Object.keys(perUser).map(function(u){return '・'+u+'：'+perUser[u]+'件';}).join('\n');
+  alert('✅ 全員分を読み込みました（統合表示・一時的）\n\n読込ファイル：'+loaded+'件'+(skipped?'（対象外 '+skipped+'件はスキップ）':'')+'\n'+breakdown+'\n合計：'+registeredList.length+'件\n\n※これは閲覧用の一時表示です。ページを再読み込みすると自分のデータに戻ります。\n※この画面では編集・保存しても保存されません（自分のバックアップは変わりません）。');
 }
 
 
