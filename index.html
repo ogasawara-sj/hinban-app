@@ -9,6 +9,7 @@
 <title>品番取得システム｜ショップジャパン</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/exceljs/dist/exceljs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
 <script src="templates-embedded.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -4114,36 +4115,129 @@ function writeAccessCompositionData(ws,list){
   });
 }
 
+// ===== 構造保持方式のアクセス登録Excel出力 =====
+// ExcelJSでファイル全体を作り直すと、正規テンプレの入力規則(x14)・印刷設定等が
+// 欠落してMRS(Access)の取込チェックで弾かれる(WARN1201)。
+// そこで zip を直接編集し、データを入れる2シート(注文品番BtoC/構成_注文品番)だけ
+// 値を差し込み、他のパーツ(骨格)は一切変えない方式にする。
+function _accColLetter(c){var s='';while(c>0){var m=(c-1)%26;s=String.fromCharCode(65+m)+s;c=Math.floor((c-1)/26);}return s;}
+function _accXesc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function _accDateSerial(dt){ if(!dt) return null; return Math.round((dt.getTime()-Date.UTC(1899,11,30))/86400000); }
+// 行XML内の1セルへ値を差し込む（既存のスタイルsは温存）
+function _accSetCell(rowxml,col,row,kind,val){
+  if(val===null||val===undefined||val==='') return rowxml;
+  var ref=_accColLetter(col)+row;
+  var re=new RegExp('<c r="'+ref+'"((?: s="\\d+")?)\\s*(?:/>|>[\\s\\S]*?<\\/c>)');
+  return rowxml.replace(re,function(m,s){
+    if(kind==='n') return '<c r="'+ref+'"'+s+'><v>'+val+'</v></c>';
+    return '<c r="'+ref+'"'+s+' t="inlineStr"><is><t xml:space="preserve">'+_accXesc(val)+'</t></is></c>';
+  });
+}
+function _accInjectBtoCRow(rowxml,i,h){
+  var row=5+i;
+  var rk=getAccessReturnKbnAndDays(h.pt||{});
+  var priceIn=Math.round((h.price||0)*1.1);
+  var pt=h.pt||{};
+  var sd=parseAccessExcelDate(h.startDateTime), ed=parseAccessExcelDate(h.endDateTime);
+  // A(申請No)・C(Z01C)は土台に既に入っているので温存。生成行のときは別途セット。
+  rowxml=_accSetCell(rowxml,2,row,'t',h.code||'');
+  rowxml=_accSetCell(rowxml,4,row,'t',displayBizKana(h.name||''));
+  rowxml=_accSetCell(rowxml,5,row,'t',rk.kbn);
+  rowxml=_accSetCell(rowxml,6,row,'t',h.group||'');
+  rowxml=_accSetCell(rowxml,10,row,'t',pt.meisaiHidden||'表示');
+  rowxml=_accSetCell(rowxml,11,row,'n',toAccessNum(h.taxKbn,1));
+  rowxml=_accSetCell(rowxml,12,row,'n',priceIn);
+  rowxml=_accSetCell(rowxml,14,row,'n',Number(h.ship)||0);
+  if(sd) rowxml=_accSetCell(rowxml,15,row,'n',_accDateSerial(sd));
+  if(ed) rowxml=_accSetCell(rowxml,16,row,'n',_accDateSerial(ed));
+  rowxml=_accSetCell(rowxml,18,row,'n',toAccessNum(rk.days,0));
+  rowxml=_accSetCell(rowxml,20,row,'n',0);
+  rowxml=_accSetCell(rowxml,23,row,'t',h.teikiKbn||'非定期');
+  rowxml=_accSetCell(rowxml,24,row,'t',h.teikiT2||'');
+  rowxml=_accSetCell(rowxml,26,row,'n',0);
+  rowxml=_accSetCell(rowxml,27,row,'n',1);
+  rowxml=_accSetCell(rowxml,31,row,'n',toAccessNum(pt.yupakeKbn,0));
+  rowxml=_accSetCell(rowxml,32,row,'t',h.channel||'');
+  rowxml=_accSetCell(rowxml,33,row,'n',0);
+  rowxml=_accSetCell(rowxml,38,row,'n',0);
+  rowxml=_accSetCell(rowxml,43,row,'n',priceIn);
+  return rowxml;
+}
+function _accGenBtoCRow(row5tpl,i,h){
+  var row=5+i;
+  var rx=row5tpl.replace(/<row r="5"/,'<row r="'+row+'"').replace(/r="([A-Z]+)5"/g,'r="$1'+row+'"');
+  // セルの値をクリア（スタイルsは温存し自己終了に）
+  rx=rx.replace(/<c (r="[A-Z]+\d+")( s="\d+")?(?: t="[^"]*")?\s*(?:\/>|>[\s\S]*?<\/c>)/g,'<c $1$2/>');
+  rx=_accSetCell(rx,1,row,'n',i+1);
+  rx=_accSetCell(rx,3,row,'t','Z01C');
+  rx=_accInjectBtoCRow(rx,i,h);
+  return rx;
+}
+function _accFillBtoC(btoc,list){
+  var m5=btoc.match(/<row [^>]*r="5"[^>]*>[\s\S]*?<\/row>/);
+  var row5tpl=m5?m5[0]:null;
+  for(var i=0;i<list.length;i++){
+    var row=5+i;
+    if(row<=104){
+      var re=new RegExp('<row [^>]*r="'+row+'"[^>]*>[\\s\\S]*?<\\/row>');
+      (function(idx){ btoc=btoc.replace(re,function(rx){return _accInjectBtoCRow(rx,idx,list[idx]);}); })(i);
+    }
+  }
+  if(list.length>100 && row5tpl){
+    var extra='';
+    for(var j=100;j<list.length;j++) extra+=_accGenBtoCRow(row5tpl,j,list[j]);
+    btoc=btoc.replace('</sheetData>',extra+'</sheetData>');
+  }
+  return btoc;
+}
+function _accFillComp(comp,list){
+  var rows=[], no=1;
+  for(var i=0;i<list.length;i++){
+    var agg=aggregateAccessSkuQty(list[i].skuList);
+    agg.forEach(function(qty,code){ rows.push([no++, list[i].code||'', code, qty]); });
+  }
+  var M=rows.length, out='';
+  for(var k=0;k<M;k++){
+    var r=4+k, rec=rows[k];
+    out+='<row r="'+r+'" spans="1:7" s="11" customFormat="1" ht="11.4">'
+      +'<c r="A'+r+'" s="13"><v>'+rec[0]+'</v></c>'
+      +'<c r="B'+r+'" s="20" t="inlineStr"><is><t xml:space="preserve">'+_accXesc(rec[1])+'</t></is></c>'
+      +'<c r="C'+r+'" s="13" t="inlineStr"><is><t xml:space="preserve">'+_accXesc(rec[2])+'</t></is></c>'
+      +'<c r="D'+r+'" s="13"><v>'+rec[3]+'</v></c></row>';
+  }
+  var sd=comp.match(/<sheetData>([\s\S]*?)<\/sheetData>/);
+  var head='';
+  [1,2,3].forEach(function(rr){ var mm=sd[1].match(new RegExp('<row [^>]*r="'+rr+'"[^>]*>[\\s\\S]*?<\\/row>')); if(mm) head+=mm[0]; });
+  comp=comp.replace(/<sheetData>[\s\S]*?<\/sheetData>/,'<sheetData>'+head+out+'</sheetData>');
+  comp=comp.replace(/<dimension ref="[^"]*"\/>/,'<dimension ref="A1:G'+(3+M)+'"/>');
+  return comp;
+}
 async function exportAccessImport(){
-  if(typeof ExcelJS==='undefined'){alert('ExcelJSが読み込まれていません。ページを再読み込みしてください。');return;}
   var list=getExportTargetList();
   if(!list||!list.length){alert('出力対象の品番がありません（チェックするか、フィルター条件を確認してください）');return;}
+  if(typeof fflate==='undefined'){alert('出力用ライブラリ(fflate)が読み込まれていません。ページを再読み込みしてください。');return;}
   showLoading('テンプレート読み込み中...');
   try{
     var buf=await loadAccessTemplate(true);
     updateLoading('Excel生成中...');
-    var workbook=new ExcelJS.Workbook();
-    await workbook.xlsx.load(buf);
-    // シートは一切追加・削除しない（インポート側が全シート構成を要求するため）。BtoC/構成のみ書き込む。
-    var wsBtoC=workbook.getWorksheet('注文品番 (BtoC)');
-    var wsComposition=workbook.getWorksheet('構成_注文品番');
-    if(!wsBtoC||!wsComposition) throw new Error('必要なシートがテンプレートに含まれていません');
-    writeAccessBtoCData(wsBtoC,list);
-    writeAccessCompositionData(wsComposition,list);
+    var files=fflate.unzipSync(new Uint8Array(buf));
+    var dec=new TextDecoder('utf-8'), encd=new TextEncoder();
+    var wbx=dec.decode(files['xl/workbook.xml']);
+    var relsx=dec.decode(files['xl/_rels/workbook.xml.rels']);
+    var rid={}; relsx.replace(/Id="([^"]+)"[^>]*Target="([^"]+)"/g,function(_,a,b){rid[a]=b;return '';});
+    var n2f={}; wbx.replace(/<sheet[^>]*name="([^"]+)"[^>]*r:id="([^"]+)"/g,function(_,nm,r){n2f[nm]='xl/'+rid[r];return '';});
+    var BF=n2f['注文品番 (BtoC)'], CF=n2f['構成_注文品番'];
+    if(!BF||!CF||!files[BF]||!files[CF]) throw new Error('必要なシートがテンプレートに含まれていません');
+    files[BF]=encd.encode(_accFillBtoC(dec.decode(files[BF]),list));
+    files[CF]=encd.encode(_accFillComp(dec.decode(files[CF]),list));
+    var outU8=fflate.zipSync(files,{level:6});
     var d=new Date();
     var pad=function(n){return String(n).padStart(2,'0');};
     var fname='品番登録システム_一括取込用_'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'.xlsx';
-    updateLoading('ファイル出力中...');
-    var outputBuf=await workbook.xlsx.writeBuffer();
     await dismissLoadingOverlay();
-    var blob=new Blob([outputBuf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    var blob=new Blob([outU8],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
     var url=URL.createObjectURL(blob);
-    var a=document.createElement('a');
-    a.href=url;
-    a.download=fname;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    var a=document.createElement('a');a.href=url;a.download=fname;document.body.appendChild(a);a.click();document.body.removeChild(a);
     URL.revokeObjectURL(url);
     alert(list.length+'件の品番をアクセス登録用Excelとして出力しました。');
   }catch(err){
