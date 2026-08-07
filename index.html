@@ -739,6 +739,11 @@ body{padding-left:var(--sbw)}
 
   <div class="card" style="border:1px solid #bcd9ff;background:#f5faff">
     <div class="card-title">自動バックアップ</div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <span style="font-size:12px;font-weight:700;color:var(--gray-600);white-space:nowrap">利用者名：</span>
+      <input type="text" id="backup-user" placeholder="例：小笠原" onchange="setBackupUserName(this.value);renderBackupUser()" style="width:160px;padding:6px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">
+      <span id="backup-user-hint" style="font-size:11px;color:var(--gray-400)"></span>
+    </div>
     <div id="backup-status" style="font-size:13px;font-weight:600;margin-bottom:12px;padding:10px 14px;border-radius:var(--r);background:#fff;border:1px solid var(--bd)">自動バックアップ：未設定</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
       <button class="btn btn-g" onclick="setupAutoBackup()" title="自動バックアップの保存先ファイルを選びます（最初に1回だけ）。以降は品番登録のたびに同じファイルへ自動で上書き保存します。">📁 自動バックアップの保存先を設定</button>
@@ -1296,7 +1301,7 @@ function showPage(id){
   if(id==='master'){renderMasterAll();}
   if(id==='init'){renderInitStatus();}
   if(id==='wizard'){renderSpPanel();}
-  if(id==='backup'){ if(typeof restoreBackupHandle==='function') restoreBackupHandle(); }
+  if(id==='backup'){ if(typeof restoreBackupHandle==='function') restoreBackupHandle(); if(typeof renderBackupUser==='function') renderBackupUser(); }
 }
 function go(n){
   var onP5=document.getElementById('p5')&&document.getElementById('p5').classList.contains('on');
@@ -4929,12 +4934,22 @@ function exportMasterHTML(){
 var backupFileHandle=null;              // 自動バックアップの保存先（FileSystemFileHandle）
 var backupLastSaved='';                 // 最終保存の表示用
 const BACKUP_HANDLE_KEY='hinban_backup_handle';  // IndexedDBに保存するハンドルのキー
+const BACKUP_USER_KEY='hinban_backup_user';      // 利用者名（このブラウザの使用者）
+var backupUserName='';
+try{ backupUserName=localStorage.getItem(BACKUP_USER_KEY)||''; }catch(e){}
+function sanitizeFileNamePart(s){ return String(s||'').replace(/[\\\/:*?"<>|]/g,'').trim(); }
+function backupBaseName(){ var u=sanitizeFileNamePart(backupUserName); return u? ('hinban_backup_'+u) : 'hinban_backup'; }
+function setBackupUserName(v){
+  backupUserName=sanitizeFileNamePart(v);
+  try{localStorage.setItem(BACKUP_USER_KEY,backupUserName);}catch(e){}
+}
 
 function buildBackupObject(){
   return {
     __hinban_backup:true,
     version:1,
     exportedAt:new Date().toISOString(),
+    user:backupUserName,
     registeredList:registeredList,
     masters:{
       staffList:staffList, groupMaster:groupMaster, colorMaster:colorMaster,
@@ -4953,7 +4968,7 @@ function exportBackupJSON(){
   const pad=n=>String(n).padStart(2,'0');
   const stamp=`${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download=`hinban_backup_${stamp}.json`;a.click();
+  a.download=`${backupBaseName()}_${stamp}.json`;a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
   const skuCnt=(skuCache&&skuCache.length)||0;
   alert(`✅ バックアップを書き出しました\n\n品番：${registeredList.length}件\nSKUキャッシュ：${skuCnt.toLocaleString('ja-JP')}件\n担当者：${staffList.length} / グループ：${groupMaster.length}\n\nこのファイルを安全な場所（OneDrive等）に保管してください。\n「バックアップから復元」でいつでも元に戻せます。`);
@@ -4999,9 +5014,7 @@ async function setupAutoBackup(){
     if(already && !confirm('保存先を別のファイルに変更しますか？\n\nOK：新しい保存先を選ぶ / キャンセル：今のまま')) return;
   }
   try{
-    const now=new Date();
-    const pad=n=>String(n).padStart(2,'0');
-    const suggested=`hinban_backup_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}.json`;
+    const suggested=`${backupBaseName()}.json`;
     const handle=await window.showSaveFilePicker({
       suggestedName:suggested,
       types:[{description:'品番バックアップ',accept:{'application/json':['.json']}}]
@@ -5042,6 +5055,13 @@ async function backupWriteNow(request){
 async function autoBackupSilent(){
   if(!backupFileHandle) return;
   await backupWriteNow(false);
+}
+// 利用者名の欄と、保存されるファイル名の表示を更新
+function renderBackupUser(){
+  var inp=document.getElementById('backup-user');
+  if(inp && document.activeElement!==inp) inp.value=backupUserName;
+  var hint=document.getElementById('backup-user-hint');
+  if(hint) hint.textContent='→ 保存ファイル名：'+backupBaseName()+'.json';
 }
 // 起動時：保存先ハンドルを復元し、状態表示を更新
 async function restoreBackupHandle(){
