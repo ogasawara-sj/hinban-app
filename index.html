@@ -392,7 +392,7 @@ body{padding-left:var(--sbw)}
       <div class="f"><label>商品グループ <span class="req">*</span></label>
         <div style="position:relative">
           <input type="text" id="s-group-search" placeholder="コードで検索または選択..."
-            oninput="filterGroupList(this.value)"
+            oninput="onGroupSearchInput(this.value)"
             onfocus="showGroupList()"
             style="width:100%;padding:8px 12px;border:1px solid var(--bd);border-radius:var(--r);font-size:13px">
           <input type="hidden" id="s-group" value="">
@@ -1395,6 +1395,17 @@ function showGroupList(){
   filterGroupList(search?search.value:'');
 }
 
+// 入力＝選択も確定（入力コードがグループに完全一致したら、クリック不要で確定）
+function onGroupSearchInput(v){
+  filterGroupList(v);
+  var code=String(v||'').trim().toUpperCase();
+  var g=groupMaster.find(function(x){ return String(x.code).toUpperCase()===code; });
+  var hidden=document.getElementById('s-group');
+  if(hidden) hidden.value=g?g.code:'';
+  if(g){ onGroup(); }
+  else{ var el=document.getElementById('group-info'); if(el) el.innerHTML=''; }
+}
+
 function filterGroupList(q){
   var list=document.getElementById('s-group-list');
   if(!list) return;
@@ -1481,7 +1492,7 @@ function filterComboList(baseId,q){
   list.style.display='block';
 }
 document.addEventListener('click',function(e){
-  ['s-staff','s-name','s-channel'].forEach(function(baseId){
+  ['s-group','s-staff','s-name','s-channel'].forEach(function(baseId){
     var searchEl=document.getElementById(baseId+'-search');
     var wrapper=searchEl&&searchEl.closest('div');
     if(wrapper&&!wrapper.contains(e.target)){
