@@ -2540,10 +2540,14 @@ function renderPriceMatrix(skipSync){
           <div class="bulk-settings-note">※グループコード+連番で合計8桁になります</div>
         </div>
         <div class="bulk-settings-col">
-          <div class="bulk-settings-label">税抜価格</div>
+          <div class="bulk-settings-label">販売価格（全品番に適用）</div>
           <div class="bulk-settings-row">
-            <input type="number" id="all-price" placeholder="例：9,980円（税抜）" style="width:160px;padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">
-            <button class="btn btn-primary" onclick="setAllPrice()">全品番に適用</button>
+            <input type="number" id="all-price" placeholder="税抜" style="width:110px;padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">
+            <button class="btn btn-primary" onclick="setAllPrice()">税抜で適用</button>
+          </div>
+          <div class="bulk-settings-row" style="margin-top:6px">
+            <input type="number" id="all-price-incl" placeholder="税込" style="width:110px;padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">
+            <button class="btn btn-primary" onclick="setAllPriceIncl()">税込で適用</button>
           </div>
         </div>
         <div class="bulk-settings-col">
@@ -2578,8 +2582,10 @@ function renderPriceMatrix(skipSync){
       </div>
       <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;flex-wrap:wrap;justify-content:space-between">
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <input type="number" id="pt-price-${pt.id}" class="pt-price-input" placeholder="${ptPh}" style="width:200px;padding:6px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">
-          <button class="btn btn-primary" onclick="setPtPrice(${pt.id})">このパターンに適用</button>
+          <input type="number" id="pt-price-${pt.id}" class="pt-price-input" placeholder="税抜" style="width:110px;padding:6px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">
+          <button class="btn btn-primary" onclick="setPtPrice(${pt.id})">税抜で適用</button>
+          <input type="number" id="pt-price-incl-${pt.id}" placeholder="税込" style="width:110px;padding:6px 10px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">
+          <button class="btn btn-primary" onclick="setPtPriceIncl(${pt.id})">税込で適用</button>
         </div>
         ${showReplaceUi?`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <input type="text" id="replace-from" placeholder="置換前（例：MQT）" 
@@ -2591,17 +2597,17 @@ function renderPriceMatrix(skipSync){
         </div>`:''}
       </div>
       <div class="tbl-wrap">
-      <table class="tbl">
+      <table class="tbl" style="min-width:1140px">
         <thead><tr>
           <th style="width:112px">品番コード（編集可）</th>
-          <th style="width:160px">サイズ構成</th>
-          <th style="width:100px">カラー</th>
-          <th style="width:100px">販売価格(税抜)</th>
-          <th style="width:90px">税込</th>
-          <th style="width:120px">バリューアップ価格(税込)</th>
+          <th style="width:150px">サイズ構成</th>
+          <th style="width:90px">カラー</th>
+          <th style="width:88px">販売価格(税抜)</th>
+          <th style="width:88px">販売価格(税込)</th>
+          <th style="width:132px">バリューアップ価格(税込)</th>
           <th style="width:96px">消費税区分</th>
           <th style="width:46px">SKU数</th>
-          <th class="col-name">品番名（編集可）</th>
+          <th class="col-name" style="min-width:180px">品番名（編集可）</th>
           <th style="width:50px">文字数</th>
           <th style="width:44px">操作</th>
         </tr></thead>
@@ -2620,11 +2626,11 @@ function renderPriceMatrix(skipSync){
               <td style="font-size:12px;font-weight:500;cursor:pointer" onclick="toggleSkuRow4(${i})" title="クリックでSKU確認">${escHtml(displayBizKana(h.sizeLabel||'—'))}</td>
               <td style="font-size:12px">${escHtml(displayBizKana(h.colorLabel||'—'))}</td>
               <td><input type="number" id="pr-${i}" value="${h.price||''}" min="0" placeholder="0"
-                onchange="generated[${i}].price=+this.value;updTax(${i})" style="width:90px"></td>
+                onchange="generated[${i}].price=+this.value;updTax(${i})" style="width:70px"></td>
               <td><input type="number" id="ti-${i}" value="${h.price?Math.round(h.price*1.1):''}" min="0" placeholder="0"
-                onchange="onTaxIncl(${i},this.value)" style="width:82px" title="税込を入れると税抜が自動計算されます"></td>
+                onchange="onTaxIncl(${i},this.value)" style="width:70px" title="税込を入れると税抜が自動計算されます"></td>
               <td><input type="number" id="vu-${i}" value="${h.valueUpPrice||''}" min="0" placeholder="—"
-                onchange="generated[${i}].valueUpPrice=(this.value===''?undefined:+this.value)" style="width:100px" title="バリューアップ価格(税込)。使わない場合は空欄。アクセス登録ExcelのM列に入ります"></td>
+                onchange="generated[${i}].valueUpPrice=(this.value===''?undefined:+this.value)" style="width:96px" title="バリューアップ価格(税込)。使わない場合は空欄。アクセス登録ExcelのM列に入ります"></td>
               <td>
                 <select onchange="generated[${i}].taxKbn=this.value" style="width:90px;padding:3px 6px;border:1px solid var(--bd);border-radius:4px;font-size:12px">
                   <option value="1" ${(!h.taxKbn||h.taxKbn==='1')?'selected':''}>1：標準税</option>
@@ -2774,6 +2780,10 @@ function bulkReplaceName(){
   alert(count + '件の品番名を置換しました');
 }
 function setAllPrice(){const v=parseFloat(document.getElementById('all-price').value)||0;generated.forEach((_,i)=>{generated[i].price=v;const e=document.getElementById('pr-'+i);if(e)e.value=v;updTax(i);});}
+// 税込を入れて全品番へ（税抜に換算して適用）
+function setAllPriceIncl(){const v=parseFloat(document.getElementById('all-price-incl').value)||0;const ex=v?Math.round(v/1.1):0;generated.forEach((_,i)=>{generated[i].price=ex;const e=document.getElementById('pr-'+i);if(e)e.value=ex||'';updTax(i);});}
+// 税込を入れてこのパターンへ（税抜に換算して適用）
+function setPtPriceIncl(ptId){const v=parseFloat(document.getElementById('pt-price-incl-'+ptId).value)||0;const ex=v?Math.round(v/1.1):0;generated.forEach((h,i)=>{if(h.pt.id===ptId){h.price=ex;const el=document.getElementById('pr-'+i);if(el)el.value=ex||'';updTax(i);}});}
 function setRowPrice(sc,idx){const v=parseFloat(document.getElementById('row-p-'+sc).value)||0;idx.forEach(i=>{generated[i].price=v;const e=document.getElementById('pr-'+i);if(e)e.value=v;updTax(i);});}
 
 function applyCodeSequence(){
