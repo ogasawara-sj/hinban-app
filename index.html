@@ -143,8 +143,8 @@ body{font-family:'Hiragino Kaku Gothic ProN','メイリオ',Meiryo,'Segoe UI',sa
 .bulk-settings-label{font-size:12px;color:var(--gray-600);font-weight:500;margin-bottom:6px}
 .bulk-settings-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .bulk-settings-note{font-size:12px;color:#888;margin-top:6px;line-height:1.4}
-#code-start::placeholder,#all-price::placeholder,.pt-price-input::placeholder{color:#aaa}
-#s-startdt::placeholder,#s-enddt::placeholder{color:#bbb}
+#code-start::placeholder,#all-price::placeholder,.pt-price-input::placeholder{color:#757575}
+#s-startdt::placeholder,#s-enddt::placeholder{color:#757575}
 .btn-primary{background:var(--blue);color:#fff;border-color:var(--blue);font-size:12px;padding:5px 12px}
 .btn-primary:hover{background:var(--blue-dk);border-color:var(--blue-dk)}
 @media (max-width:768px){.bulk-settings-grid{grid-template-columns:1fr}}
@@ -2534,7 +2534,7 @@ function renderPriceMatrix(skipSync){
         <div class="bulk-settings-col">
           <div class="bulk-settings-label">品番コード連番開始</div>
           <div class="bulk-settings-row">
-            <input type="text" id="code-start" placeholder="例：00010" style="width:100px;padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">
+            <input type="text" id="code-start" inputmode="numeric" placeholder="例：00010" oninput="this.value=this.value.replace(/[０-９]/g,function(c){return String.fromCharCode(c.charCodeAt(0)-0xFEE0);}).replace(/[^0-9]/g,'')" style="width:100px;padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">
             <button onclick="applyCodeSequence()" class="btn btn-primary">全品番に連番適用</button>
           </div>
           <div class="bulk-settings-note">※グループコード+連番で合計8桁になります</div>
@@ -2588,11 +2588,11 @@ function renderPriceMatrix(skipSync){
           <button class="btn btn-primary" onclick="setPtPriceIncl(${pt.id})">税込で適用</button>
         </div>
         ${showReplaceUi?`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <input type="text" id="replace-from" placeholder="置換前（例：MQT）" 
-            style="width:130px;padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">
+          <input type="text" id="replace-from" placeholder="置換前（例：MQT）"
+            style="width:170px;padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">
           <span style="font-size:12px;color:var(--gray-400)">→</span>
-          <input type="text" id="replace-to" placeholder="置換後（例：ﾏｲｷｭｯﾄPLUS）" 
-            style="width:160px;padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">
+          <input type="text" id="replace-to" placeholder="置換後（例：ﾏｲｷｭｯﾄPLUS）"
+            style="width:200px;padding:5px 8px;border:1px solid var(--bd);border-radius:var(--r);font-size:12px">
           <button onclick="bulkReplaceName()" class="btn btn-primary">品番名を一括置換</button>
         </div>`:''}
       </div>
