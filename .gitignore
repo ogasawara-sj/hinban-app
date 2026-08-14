@@ -1,0 +1,9 @@
+# 作業用xlsx（内部データ・InfoCage暗号化対象）はコミットしない
+*.xlsx
+*.xls
+*.xlsm
+# ローカル設定・作業ファイル
+.claude/
+.cursor/
+*.bat
+*.ps1
