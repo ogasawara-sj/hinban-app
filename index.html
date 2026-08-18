@@ -3491,12 +3491,45 @@ function renderMasterAll(){
   renderGroupSelect();
   if(typeof renderMasterViewToggle==='function') renderMasterViewToggle();
 }
-function listItem(label,code,onDel){
-  return`<div style="display:flex;align-items:center;gap:8px;padding:5px 10px;background:var(--gray-50);border:1px solid var(--bd);border-radius:5px;margin-bottom:4px;font-size:12px">
+function listItem(label,code,onDel,dragKind,idx){
+  var canDrag = (dragKind!=null && idx!=null);
+  var dragAttr = canDrag
+    ? ` draggable="true" data-ri="${idx}" ondragstart="masterDragStart(event,'${dragKind}',${idx})" ondragover="masterDragOver(event)" ondragleave="masterDragLeave(event)" ondrop="masterDrop(event,'${dragKind}',${idx})" ondragend="masterDragEnd(event)"`
+    : '';
+  var handle = canDrag ? `<span style="cursor:grab;color:var(--gray-400);font-size:13px;user-select:none;line-height:1" title="ドラッグで並び替え">⠿</span>` : '';
+  return`<div class="mlist-row"${dragAttr} style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--gray-50);border:1px solid var(--bd);border-radius:5px;margin-bottom:4px;font-size:12px">
+    ${handle}
     ${code?`<span class="mono">${code}</span>`:''}
     <span style="flex:1">${label}</span>
     <button onclick="${onDel}" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px">×</button>
   </div>`;
+}
+// ===== マスタ一覧のドラッグ&ドロップ並び替え =====
+var __mDrag=null;
+function masterDragStart(e,kind,idx){ __mDrag={kind:kind,idx:idx}; e.dataTransfer.effectAllowed='move'; try{e.dataTransfer.setData('text/plain',String(idx));}catch(_){} }
+function masterDragOver(e){ if(!__mDrag) return; e.preventDefault(); e.dataTransfer.dropEffect='move'; var r=e.currentTarget; if(r&&r.classList&&r.classList.contains('mlist-row')) r.style.borderTop='2px solid var(--blue)'; }
+function masterDragLeave(e){ var r=e.currentTarget; if(r&&r.style) r.style.borderTop=''; }
+function masterDragEnd(e){ document.querySelectorAll('.mlist-row').forEach(function(r){ r.style.borderTop=''; }); __mDrag=null; }
+function masterDrop(e,kind,idx){ e.preventDefault(); var r=e.currentTarget; if(r&&r.style) r.style.borderTop=''; if(!__mDrag || __mDrag.kind!==kind){ __mDrag=null; return; } reorderMasterList(kind, __mDrag.idx, idx); __mDrag=null; }
+function reorderMasterList(kind,from,to){
+  var arrs={ camp:campaignHistory, staff:staffList, channel:channelList, ship:shipOptions, color:colorMaster, size:sizeMaster, group:groupMaster };
+  var arr=arrs[kind]; if(!arr) return;
+  from=+from; to=+to;
+  if(isNaN(from)||isNaN(to)||from===to||from<0||to<0||from>=arr.length||to>=arr.length) return;
+  var insertAt=(from<to)?to-1:to;          // 「その行の上に挿入」する挙動
+  var it=arr.splice(from,1)[0];
+  arr.splice(insertAt,0,it);
+  if(typeof saveMaster==='function') saveMaster();
+  var rends={
+    camp:function(){ renderMasterCampList(); if(typeof renderCampaignDl==='function') renderCampaignDl(); },
+    staff:function(){ renderMasterStaffList(); if(typeof renderStaffSelect==='function') renderStaffSelect(); },
+    channel:function(){ renderMasterChannelList(); },
+    ship:function(){ renderMasterShipList(); if(typeof renderPts==='function') renderPts(); },
+    color:function(){ renderMasterColorList(); },
+    size:function(){ renderMasterSizeList(); },
+    group:function(){ renderMasterGroupList(); if(typeof renderGroupSelect==='function') renderGroupSelect(); }
+  };
+  (rends[kind]||function(){})();
 }
 
 // SKUマスタ（マスタ管理ページ）
@@ -3551,7 +3584,7 @@ function importSkuFromExcel(input){
 function renderMasterColorList(){
   const el=document.getElementById('master-color-list');
   if(!el)return;
-  el.innerHTML=colorMaster.map((c,i)=>listItem(`${c.n}`,c.c,`colorMaster.splice(${i},1);saveMaster();renderMasterColorList();renderAll()`)).join('');
+  el.innerHTML=colorMaster.map((c,i)=>listItem(`${c.n}`,c.c,`colorMaster.splice(${i},1);saveMaster();renderMasterColorList();renderAll()`,'color',i)).join('');
 }
 function addColorMaster(){
   const n=document.getElementById('m-color-name').value.trim();
@@ -3567,7 +3600,7 @@ function addColorMaster(){
 function renderMasterSizeList(){
   const el=document.getElementById('master-size-list');
   if(!el)return;
-  el.innerHTML=sizeMaster.map((s,i)=>listItem(`${s.n}`,s.c,`sizeMaster.splice(${i},1);saveMaster();renderMasterSizeList();renderAll()`)).join('');
+  el.innerHTML=sizeMaster.map((s,i)=>listItem(`${s.n}`,s.c,`sizeMaster.splice(${i},1);saveMaster();renderMasterSizeList();renderAll()`,'size',i)).join('');
 }
 function addSizeMaster(){
   const n=document.getElementById('m-size-name').value.trim();
@@ -3583,7 +3616,7 @@ function addSizeMaster(){
 function renderMasterStaffList(){
   const el=document.getElementById('master-staff-list');
   if(!el)return;
-  el.innerHTML=staffList.map((s,i)=>listItem(s,'',`staffList.splice(${i},1);saveMaster();renderMasterStaffList();renderStaffSelect()`)).join('');
+  el.innerHTML=staffList.map((s,i)=>listItem(s,'',`staffList.splice(${i},1);saveMaster();renderMasterStaffList();renderStaffSelect()`,'staff',i)).join('');
 }
 function addStaffMaster(){
   const v=document.getElementById('m-staff-name').value.trim();
@@ -3597,17 +3630,9 @@ function addStaffMaster(){
 function renderMasterGroupList(){
   const el=document.getElementById('master-group-list');
   if(!el)return;
-  const cats=[...new Set(groupMaster.map(g=>g.cat))];
-  el.innerHTML=cats.map(cat=>`
-    <div style="font-size:11px;font-weight:700;color:var(--gray-400);padding:6px 0 3px;text-transform:uppercase">${cat}</div>
-    ${groupMaster.filter(g=>g.cat===cat).map((g,_)=>{
-      const gi=groupMaster.indexOf(g);
-      return`<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--gray-50);border:1px solid var(--bd);border-radius:5px;margin-bottom:4px;font-size:12px">
-        <span class="mono">${g.code}</span>
-        <span style="flex:1"></span>
-        <button onclick="groupMaster.splice(${gi},1);saveMaster();renderMasterGroupList();renderGroupSelect()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px">×</button>
-      </div>`;
-    }).join('')}`).join('');
+  // 並び替えできるよう、配列順のフラット表示（コードのみ）
+  el.innerHTML=groupMaster.map((g,i)=>listItem('',g.code,
+    `groupMaster.splice(${i},1);saveMaster();renderMasterGroupList();renderGroupSelect()`,'group',i)).join('');
 }
 function addGroupMaster(){
   const code=document.getElementById('m-grp-code').value.trim().toUpperCase();
@@ -3623,7 +3648,7 @@ function renderMasterShipList(){
   const el=document.getElementById('master-ship-list');
   if(!el)return;
   el.innerHTML=shipOptions.map((s,i)=>listItem(`${s.label}（${s.fee===0?'無料':s.fee.toLocaleString()+'円'}）`,'',
-    `shipOptions.splice(${i},1);saveMaster();renderMasterShipList();renderPts()`)).join('');
+    `shipOptions.splice(${i},1);saveMaster();renderMasterShipList();renderPts()`,'ship',i)).join('');
 }
 function addShipMaster(){
   const fee=parseInt(document.getElementById('m-ship-fee').value)||0;
@@ -3638,7 +3663,7 @@ function addShipMaster(){
 function renderMasterCampList(){
   const el=document.getElementById('master-camp-list');
   if(!el)return;
-  el.innerHTML=campaignHistory.map((c,i)=>listItem(c,'',`campaignHistory.splice(${i},1);saveMaster();renderMasterCampList();renderCampaignDl()`)).join('');
+  el.innerHTML=campaignHistory.map((c,i)=>listItem(c,'',`campaignHistory.splice(${i},1);saveMaster();renderMasterCampList();renderCampaignDl()`,'camp',i)).join('');
 }
 function addCampaignMaster(){
   const v=document.getElementById('m-camp-name').value.trim();
@@ -3652,7 +3677,7 @@ function addCampaignMaster(){
 function renderMasterChannelList(){
   const el=document.getElementById('master-channel-list');
   if(!el)return;
-  el.innerHTML=channelList.map((c,i)=>listItem(c,'',`channelList.splice(${i},1);saveMaster();renderMasterChannelList()`)).join('');
+  el.innerHTML=channelList.map((c,i)=>listItem(c,'',`channelList.splice(${i},1);saveMaster();renderMasterChannelList()`,'channel',i)).join('');
 }
 function addChannelMaster(){
   const v=document.getElementById('m-channel-name').value.trim();
