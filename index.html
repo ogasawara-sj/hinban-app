@@ -2876,14 +2876,19 @@ function onCodeEdit(idx, newCode, inputEl){
 
 // SKU一覧テーブルHTML生成（共通）
 // options.deletable / options.hinbanIdx: 登録済み品番一覧で個別SKU削除ボタンを表示
+// options.editable: コード/名称/役割/数量を直接編集可能にする（options.updateFn / options.addFn で対象を切替、既定は登録済み品番一覧用）
 function renderSkuTable(skuList,options){
   options=options||{};
   var deletable=!!options.deletable;
+  var editable=!!options.editable;
   var hinbanIdx=options.hinbanIdx;
   var deleteFn=options.deleteFn||'deleteSkuFromHinban';
-  if(!skuList||!skuList.length){
+  var updateFn=options.updateFn||'updateHinbanSkuField';
+  var addFn=options.addFn||'addSkuRowToHinban';
+  if((!skuList||!skuList.length)&&!editable){
     return `<div style="font-size:12px;color:var(--red)">SKUが設定されていません。初期設定でSKUマスタを読み込んでから再生成してください。</div>`;
   }
+  var inputCss='padding:3px 6px;border:1px solid var(--bd);border-radius:4px;font-size:12px';
   return `<table style="width:100%;border-collapse:collapse;font-size:12px;background:transparent">
     <thead><tr style="border-bottom:1px solid var(--bd)">
       <th style="padding:4px 8px;text-align:left;font-size:11px;color:var(--gray-400);width:120px;background:transparent">SKUコード</th>
@@ -2893,7 +2898,16 @@ function renderSkuTable(skuList,options){
       ${deletable?'<th style="padding:4px 8px;text-align:center;font-size:11px;color:var(--gray-400);width:44px;background:transparent">削除</th>':''}
     </tr></thead>
     <tbody>
-      ${skuList.map((s,si)=>`<tr style="border-bottom:1px solid var(--bd)">
+      ${(skuList||[]).map((s,si)=>editable?`<tr style="border-bottom:1px solid var(--bd)">
+        <td style="padding:4px 8px;background:transparent"><input class="mono" value="${escAttr(s.code||'')}" onchange="${updateFn}(${hinbanIdx},${si},'code',this.value)" style="width:100px;${inputCss}"></td>
+        <td style="padding:4px 8px;background:transparent"><input value="${escAttr(displayBizKana(s.name||''))}" onchange="${updateFn}(${hinbanIdx},${si},'name',this.value)" style="width:100%;min-width:160px;${inputCss}"></td>
+        <td style="padding:4px 8px;background:transparent"><input value="${escAttr(s.role||'')}" onchange="${updateFn}(${hinbanIdx},${si},'role',this.value)" style="width:82px;${inputCss}"></td>
+        <td style="padding:4px 8px;text-align:center;background:transparent"><input type="number" min="1" value="${s.qty||1}" onchange="${updateFn}(${hinbanIdx},${si},'qty',this.value)" style="width:50px;text-align:center;${inputCss}"></td>
+        ${deletable?`<td style="padding:4px 8px;text-align:center;background:transparent">
+          <button type="button" title="このSKUを削除" onclick="${deleteFn}(${hinbanIdx},${si})"
+            style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;line-height:1;padding:2px 6px">🗑️</button>
+        </td>`:''}
+      </tr>`:`<tr style="border-bottom:1px solid var(--bd)">
         <td style="padding:4px 8px;background:transparent"><span class="mono">${s.code||'—'}</span></td>
         <td style="padding:4px 8px;background:transparent">${escHtml(displayBizKana(s.name||'—'))}</td>
         <td style="padding:4px 8px;background:transparent">
@@ -2906,7 +2920,24 @@ function renderSkuTable(skuList,options){
         </td>`:''}
       </tr>`).join('')}
     </tbody>
-  </table>`;
+  </table>
+  ${editable?`<button type="button" onclick="${addFn}(${hinbanIdx})" class="btn btn-ghost" style="margin-top:6px;font-size:12px">＋ SKU追加</button>`:''}`;
+}
+// 登録済み品番一覧：SKUの各項目（コード・名称・役割・数量）を直接編集
+function updateHinbanSkuField(hinbanIdx,skuIndex,field,value){
+  var h=registeredList[hinbanIdx];
+  if(!h||!h.skuList||!h.skuList[skuIndex]) return;
+  h.skuList[skuIndex][field]=field==='qty'?(parseInt(value,10)||1):value.trim();
+  saveRegisteredList();
+}
+// 登録済み品番一覧：SKU行を1件追加（空欄で追加し、その場で入力してもらう）
+function addSkuRowToHinban(hinbanIdx){
+  var h=registeredList[hinbanIdx];
+  if(!h) return;
+  if(!Array.isArray(h.skuList)) h.skuList=[];
+  h.skuList.push({code:'',name:'',role:'セット構成',qty:1});
+  saveRegisteredList();
+  renderList();
 }
 
 
@@ -3384,7 +3415,7 @@ function renderList(){
       <td colspan="12" style="padding:6px 10px 14px 140px;box-shadow:inset 4px 0 0 var(--blue);background:#eaf1fb">
         <div style="font-size:11px;color:var(--blue);font-weight:700;margin-bottom:6px">選択中：${escHtml(r.code)}${r.name?'（'+escHtml(displayBizKana(r.name))+'）':''}</div>
         ${renderListDetailFields(idx,r)}
-        ${renderSkuTable(r.skuList,{deletable:true,hinbanIdx:idx})}
+        ${renderSkuTable(r.skuList,{deletable:true,editable:true,hinbanIdx:idx})}
       </td>
     </tr>`;
   }).join('');
