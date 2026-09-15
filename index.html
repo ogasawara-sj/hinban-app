@@ -567,6 +567,7 @@ body{padding-left:var(--sbw)}
       <button class="btn btn-p" onclick="exportAccessImport()" title="チェックした品番があればそれだけ、なければ絞り込み後の全件を、社内品番作成アクセス(MRS)に一括取込できる形で出力します">📋 アクセス登録用Excel出力</button>
       <button class="btn btn-p" onclick="exportShitokuSheet()" title="チェックした品番があればそれだけ、なければ絞り込み後の全件を出力">📋 取得用シート用Excel出力</button>
       <button class="btn" onclick="exportOfferList()" style="background:none;color:var(--gray-400);border:1px solid var(--bd);font-size:12px" title="オファーリスト用Excelを出力します">オファーリスト用Excel出力</button>
+      <button class="btn" onclick="duplicateSelectedFromList()" style="background:#fff;color:var(--blue);border:1px solid var(--blue)" title="チェックした品番をまとめてコピーします（品番コードは新規採番）">📋 選択してコピー</button>
       <button class="btn" onclick="deleteSelectedFromList()" style="background:#fff;color:var(--red);border:1px solid var(--red)">🗑️ 選択して削除</button>
       <button class="btn" onclick="deleteAllRegistered()" style="background:var(--red);color:#fff;border-color:var(--red)">🗑️ 全品番を削除</button>
     </div>
@@ -3315,6 +3316,38 @@ function deleteSelectedFromList(){
   renderList();
 }
 
+// 登録済み品番をコピーして新しい品番として追加（品番コードのみ新規採番、他の内容はそのまま複製）
+function duplicateRegisteredHinban(idx){
+  var src=registeredList[idx];
+  if(!src) return;
+  var copy=JSON.parse(JSON.stringify(src));
+  copy.code=getNextCode(src.group||'');
+  copy.registeredAt=new Date().toLocaleDateString('ja-JP');
+  registeredList.push(copy);
+  document.getElementById('total-badge').textContent='登録済 '+registeredList.length+'件';
+  saveRegisteredList();
+  openDetailRows.add(registeredList.length-1);
+  renderList();
+}
+// チェックした品番をまとめてコピー
+function duplicateSelectedFromList(){
+  const idxs=Array.from(document.querySelectorAll('#list-body .list-check:checked'))
+    .map(cb=>parseInt(cb.value,10)).filter(n=>!isNaN(n));
+  if(!idxs.length){alert('コピーする品番にチェックを入れてください');return;}
+  const registeredAt=new Date().toLocaleDateString('ja-JP');
+  idxs.forEach(function(i){
+    var src=registeredList[i];
+    if(!src) return;
+    var copy=JSON.parse(JSON.stringify(src));
+    copy.code=getNextCode(src.group||'');
+    copy.registeredAt=registeredAt;
+    registeredList.push(copy);
+    openDetailRows.add(registeredList.length-1);
+  });
+  document.getElementById('total-badge').textContent='登録済 '+registeredList.length+'件';
+  saveRegisteredList();
+  renderList();
+}
 function renderList(){
   if(typeof renderListViewToggle==='function') renderListViewToggle();
   const data=getFilteredRegisteredList();
@@ -3333,7 +3366,7 @@ function renderList(){
           <input class="mono" value="${escAttr(r.code)}" onchange="registeredList[${idx}].code=this.value.trim();saveRegisteredList()" title="品番コード（編集可）" style="width:82px;padding:3px 6px;border:1px solid var(--bd);border-radius:5px;font-size:12px">
         </div>
       </td>
-      <td class="list-name" style="font-size:12px"><input value="${escAttr(displayBizKana(r.name))}" onchange="registeredList[${idx}].name=this.value;saveRegisteredList()" title="品番名（編集可）" style="width:100%;max-width:440px;padding:3px 6px;border:1px solid var(--bd);border-radius:5px;font-size:12px"></td>
+      <td class="list-name" style="font-size:12px"><input class="list-name-input" data-idx="${idx}" value="${escAttr(displayBizKana(r.name))}" oninput="onListNameInput(${idx},this.value,this)" onchange="saveRegisteredList()" title="品番名（編集可）" style="width:100%;max-width:440px;padding:3px 6px;border:1px solid var(--bd);border-radius:5px;font-size:12px"></td>
       <td style="font-size:11px">${r.group}</td>
       <td class="list-month" style="font-size:12px">${r.month||'—'}</td>
       <td style="font-size:12px">${r.staff||'—'}</td>
@@ -3342,7 +3375,10 @@ function renderList(){
       <td style="text-align:center;font-size:11px">${r.ship>0?r.ship+'円':'無料'}</td>
       <td><select class="status-sel" onchange="registeredList[${idx}].status=this.value;saveRegisteredList();renderList()">${STATUS_LIST.map(s=>`<option${r.status===s?' selected':''}>${s}</option>`).join('')}</select></td>
       <td style="text-align:center"><span style="font-weight:600;color:${skuCount===0?'var(--red)':'var(--green)'}">${skuCount}</span></td>
-      <td><button onclick="if(confirm('削除しますか？')){registeredList.splice(${idx},1);document.getElementById('total-badge').textContent='登録済 '+registeredList.length+'件';saveRegisteredList();renderList()}" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px">削除</button></td>
+      <td style="white-space:nowrap">
+        <button onclick="duplicateRegisteredHinban(${idx})" title="この品番の内容をコピーして新しい品番として追加します（品番コードは新規採番）" style="background:none;border:none;color:var(--blue);cursor:pointer;font-size:12px;margin-right:8px">📋 コピー</button>
+        <button onclick="if(confirm('削除しますか？')){registeredList.splice(${idx},1);document.getElementById('total-badge').textContent='登録済 '+registeredList.length+'件';saveRegisteredList();renderList()}" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px">削除</button>
+      </td>
     </tr>
     <tr id="list-sku-row-${idx}" style="display:${openDetailRows.has(idx)?'table-row':'none'};background:#eaf1fb">
       <td colspan="12" style="padding:6px 10px 14px 140px;box-shadow:inset 4px 0 0 var(--blue);background:#eaf1fb">
@@ -3355,6 +3391,29 @@ function renderList(){
   document.getElementById('list-footer').textContent=`${data.length}件表示 / 合計 ${registeredList.length}件`;
   renderFilterDropdowns();
   populateBulkChannel();
+  refreshListNameDupHighlights();
+}
+// 品番名の重複チェック：同じ品番名が他の行にもあれば赤く表示、無ければ通常表示に戻す
+function onListNameInput(idx,value,inputEl){
+  if(registeredList[idx]) registeredList[idx].name=value;
+  refreshListNameDupHighlights();
+}
+function refreshListNameDupHighlights(){
+  var counts={};
+  registeredList.forEach(function(r){
+    var n=(r.name||'').trim();
+    if(!n) return;
+    counts[n]=(counts[n]||0)+1;
+  });
+  document.querySelectorAll('#list-body .list-name-input').forEach(function(inp){
+    var idx=parseInt(inp.getAttribute('data-idx'),10);
+    var r=registeredList[idx];
+    var n=r?(r.name||'').trim():'';
+    var dup=n&&counts[n]>1;
+    inp.style.borderColor=dup?'var(--red, #D94040)':'';
+    inp.style.color=dup?'var(--red, #D94040)':'';
+    inp.title=dup?'他の品番と名前が重複しています。名前を変えてください。':'品番名（編集可）';
+  });
 }
 function clearFilters(){
   listFilterSel={group:new Set(),month:new Set(),staff:new Set(),status:new Set()};
