@@ -3363,10 +3363,10 @@ function renderList(){
       <td>
         <div class="code-cell-wrap">
           <button type="button" class="toggle-marker" onclick="toggleListSkuRow(${idx})" id="list-sku-toggle-${idx}" title="詳細編集・SKU構成を開く" style="${openDetailRows.has(idx)?'color:var(--blue);font-weight:700':''}">${openDetailRows.has(idx)?'⌃':'⌄'}</button>
-          <input class="mono" value="${escAttr(r.code)}" onchange="registeredList[${idx}].code=this.value.trim();saveRegisteredList()" title="品番コード（編集可）" style="width:82px;padding:3px 6px;border:1px solid var(--bd);border-radius:5px;font-size:12px">
+          <input class="mono list-code-input" data-idx="${idx}" value="${escAttr(r.code)}" oninput="onListCodeInput(${idx},this.value,this)" onchange="saveRegisteredList()" title="品番コード（編集可）" style="width:82px;padding:3px 6px;border:1px solid var(--bd);border-radius:5px;font-size:12px">
         </div>
       </td>
-      <td class="list-name" style="font-size:12px"><input class="list-name-input" data-idx="${idx}" value="${escAttr(displayBizKana(r.name))}" oninput="onListNameInput(${idx},this.value,this)" onchange="saveRegisteredList()" title="品番名（編集可）" style="width:100%;max-width:440px;padding:3px 6px;border:1px solid var(--bd);border-radius:5px;font-size:12px"></td>
+      <td class="list-name" style="font-size:12px"><input value="${escAttr(displayBizKana(r.name))}" onchange="registeredList[${idx}].name=this.value;saveRegisteredList()" title="品番名（編集可）" style="width:100%;max-width:440px;padding:3px 6px;border:1px solid var(--bd);border-radius:5px;font-size:12px"></td>
       <td style="font-size:11px">${r.group}</td>
       <td class="list-month" style="font-size:12px">${r.month||'—'}</td>
       <td style="font-size:12px">${r.staff||'—'}</td>
@@ -3391,28 +3391,28 @@ function renderList(){
   document.getElementById('list-footer').textContent=`${data.length}件表示 / 合計 ${registeredList.length}件`;
   renderFilterDropdowns();
   populateBulkChannel();
-  refreshListNameDupHighlights();
+  refreshListCodeDupHighlights();
 }
-// 品番名の重複チェック：同じ品番名が他の行にもあれば赤く表示、無ければ通常表示に戻す
-function onListNameInput(idx,value,inputEl){
-  if(registeredList[idx]) registeredList[idx].name=value;
-  refreshListNameDupHighlights();
+// 品番コードの重複チェック：同じコードが他の行にもあれば赤く表示、無ければ通常表示に戻す
+function onListCodeInput(idx,value,inputEl){
+  if(registeredList[idx]) registeredList[idx].code=value.trim();
+  refreshListCodeDupHighlights();
 }
-function refreshListNameDupHighlights(){
+function refreshListCodeDupHighlights(){
   var counts={};
   registeredList.forEach(function(r){
-    var n=(r.name||'').trim();
-    if(!n) return;
-    counts[n]=(counts[n]||0)+1;
+    var c=(r.code||'').trim();
+    if(!c) return;
+    counts[c]=(counts[c]||0)+1;
   });
-  document.querySelectorAll('#list-body .list-name-input').forEach(function(inp){
+  document.querySelectorAll('#list-body .list-code-input').forEach(function(inp){
     var idx=parseInt(inp.getAttribute('data-idx'),10);
     var r=registeredList[idx];
-    var n=r?(r.name||'').trim():'';
-    var dup=n&&counts[n]>1;
+    var c=r?(r.code||'').trim():'';
+    var dup=c&&counts[c]>1;
     inp.style.borderColor=dup?'var(--red, #D94040)':'';
     inp.style.color=dup?'var(--red, #D94040)':'';
-    inp.title=dup?'他の品番と名前が重複しています。名前を変えてください。':'品番名（編集可）';
+    inp.title=dup?'他の品番とコードが重複しています。コードを変えてください。':'品番コード（編集可）';
   });
 }
 function clearFilters(){
